@@ -1,0 +1,36 @@
+<script lang="ts">
+  import { onMount, untrack } from 'svelte';
+  import type { TeamOptions } from '../config/team';
+  import type { TeamController } from '../features/team-live/controller';
+  import { confirmAction } from './confirm';
+  let { value = $bindable(), team, openEditor, roomId }: { value: TeamOptions; team: TeamController; openEditor: () => void; roomId: string } = $props();
+  let runtime = $state(untrack(() => team.value));
+  onMount(() => team.subscribe(next => { runtime = next; }));
+  async function preview() {
+    const count = team.previewCount(false, roomId);
+    if (!runtime.preview && count > 50 && !await confirmAction('预览数量较多', `即将开启 ${count} 个预览窗口，浏览器可能卡顿，是否继续？`, '开启预览')) return;
+    team.setPreview(!runtime.preview, false);
+  }
+</script>
+<h1>团播</h1><p class="intro">按活动组织名单，按需开启静音预览。</p>
+<section><h2>当前活动</h2>
+  {#if runtime.candidate}
+    <p class="help">{runtime.candidate.pageId ? `活动 ${runtime.candidate.pageId}` : '按房间集合识别'} · {runtime.candidate.rooms.length} 个房间</p>
+    <label class="setting-row" for="team-detection"><span>活动处理</span><select id="team-detection" value={runtime.detection} onchange={event => team.setDetection(event.currentTarget.value as 'auto' | 'include' | 'exclude')}><option value="auto">自动识别</option><option value="include">作为团播使用</option><option value="exclude">排除此活动</option></select></label>
+    <p class="help">此项立即生效并按活动记住。保留宽泛卡片识别；明确的赛事主 / 副舞台纯净流可自动排除，也可手动恢复。</p>
+    {#if !runtime.source}<p class="status">当前活动已排除，原生链接和布局保留。</p>{/if}
+    <div class="inline-actions"><button class="button" disabled={!runtime.source} onclick={openEditor}>编辑名单</button><button class="button" disabled={!runtime.source || runtime.refreshing} onclick={() => { void team.refreshStatus(); }}>{runtime.refreshing ? '刷新中…' : '刷新开播状态'}</button><button class="button" disabled={!runtime.source} onclick={() => { void preview(); }}>{runtime.preview ? '关闭预览' : '开启静音预览'}</button></div>
+    {#if runtime.statusError}<p class="error" role="status">{runtime.statusError}</p>{:else if runtime.lastRefresh}<p class="status">开播状态更新于 {new Date(runtime.lastRefresh).toLocaleTimeString()}</p>{/if}
+  {:else}<p class="help">当前页面尚未出现活动房间卡片。发现卡片后自动接入，无需页面标题包含“团播”。</p>{/if}
+</section>
+<section><h2>布局</h2><label class="setting-row" for="team-columns"><span>队伍列数</span><select id="team-columns" bind:value={value.teamColumns}><option value={0}>自动适应</option>{#each [1,2,3,4,5,6] as count}<option value={count}>{count} 列</option>{/each}</select></label>
+<label class="setting-row" for="member-columns"><span>队内人数列数</span><select id="member-columns" bind:value={value.columns}>{#each [1,2,3,4,5,6,8,10,12] as count}<option value={count}>{count} 列</option>{/each}</select></label>
+<label class="setting-row" for="team-alignment"><span>排列对齐</span><select id="team-alignment" bind:value={value.alignment}><option value="left">靠左</option><option value="center">居中</option><option value="right">靠右</option></select></label>
+<p class="help">顶部大图使用“优化 → 隐藏顶部大图”，同时覆盖团播和普通活动。</p>
+<label class="option-row"><span><strong>跟随播放器与聊天区宽度</strong><small>使用原生播放器和聊天区的公共容器宽度。</small></span><input type="checkbox" bind:checked={value.originalWidth} /></label></section>
+<section><h2>状态刷新与预览</h2><label class="option-row"><span><strong>自动刷新开播状态</strong><small>刷新真实房间状态，保留分组与缺失成员。</small></span><input type="checkbox" bind:checked={value.autoRefresh} /></label>
+<label class="setting-row" for="team-refresh"><span>刷新间隔</span><select id="team-refresh" bind:value={value.refreshSeconds}>{#each [30,60,120,300] as seconds}<option value={seconds}>{seconds} 秒</option>{/each}</select></label>
+<label class="setting-row" for="preview-source"><span>预览来源</span><select id="preview-source" bind:value={value.previewSource}><option value="lowest">优先最低画质，失败回退原生</option><option value="native">原生预览</option></select></label>
+<label class="setting-row" for="preview-retry"><span>失败自动重试</span><select id="preview-retry" bind:value={value.previewRetrySeconds}>{#each [0,30,60,120,300] as seconds}<option value={seconds}>{seconds ? `${seconds} 秒` : '关闭'}</option>{/each}</select></label>
+<label class="option-row"><span><strong>放大时切换高清原声</strong><small>仅放大的画面尝试原声，失败回退静音，还原后立即静音。</small></span><input type="checkbox" bind:checked={value.previewFocusOriginal} /></label>
+<p class="help">预览属于娱乐功能。双击放大或还原，各队互不影响；后台和全屏会暂停并释放资源。以上偏好保存后生效，预览开关仅本页有效。</p></section>

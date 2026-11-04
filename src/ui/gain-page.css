@@ -1,0 +1,12 @@
+#js-player-controlbar:has([data-guanyu-gain]:is([data-open="true"], :focus-within), #guanyu-quick-dock[data-player-controls]:focus-within) > [class*="ControlBar-"] {
+  opacity: 1 !important;
+  visibility: visible !important;
+  transform: none !important;
+}
+.player__jsy1T:has([data-guanyu-gain]:is([data-open="true"], :focus-within), #guanyu-quick-dock[data-player-controls]:focus-within) .case__f4yex {
+  transform: translateY(0) !important;
+  transition: none;
+}
+
+/* 隐藏控件被聚焦时，overflow:hidden 会被浏览器滚动；clip 保留裁剪但不建立滚动容器。 */
+:is(.stream__T55I3, .layout-Player-video):has([data-guanyu-gain]) { overflow: clip; }

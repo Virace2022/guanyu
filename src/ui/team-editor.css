@@ -1,0 +1,100 @@
+.team-window { width: min(1180px, calc(100vw - 36px)); }
+.team-window[open] { display: flex; flex-direction: column; }
+.editor-summary { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 18px; padding: 10px 24px; border-bottom: 1px solid var(--line); font-size: 13px; flex: none; }
+.editor-summary .text-button:first-of-type { margin-left: auto; }
+.text-button { border: 0; border-radius: 4px; background: transparent; color: var(--accent); padding: 5px; font: inherit; }
+.text-button:hover:not(:disabled) { background: var(--tint); }
+.danger { color: var(--danger); }
+.editor-body { min-height: 0; flex: 1; display: grid; grid-template-columns: 188px minmax(260px, 1fr) 310px; }
+.team-nav { width: auto; min-width: 0; min-height: 0; padding: 14px 10px; gap: 6px; display: flex; flex-direction: column; }
+.team-nav > button, .team-select { display: flex; align-items: center; gap: 9px; padding: 11px 10px; border: 0; border-radius: 6px; background: transparent; color: var(--ink); text-align: left; font: inherit; }
+.team-nav small { color: var(--muted); margin-left: auto; font-variant-numeric: tabular-nums; }
+.team-nav .chosen { background: var(--tint); color: var(--accent); font-weight: 600; }
+.team-nav-label { padding: 10px; color: var(--muted); display: flex; align-items: center; justify-content: space-between; font-size: 12px; }
+.team-list { min-height: 0; flex: 1; overflow: auto; }
+.team-entry { display: flex; align-items: center; width: 100%; margin-bottom: 3px; border-radius: 6px; }
+.team-select { min-width: 0; flex: 1; }
+.team-entry.chosen .team-select { color: var(--accent); font-weight: 600; }
+.team-delete { flex: none; width: 26px; height: 28px; margin-right: 5px; padding: 0; border: 0; border-radius: 4px; background: transparent; color: var(--muted); font-size: 18px; }
+.team-delete:hover { color: var(--danger); background: var(--surface); }
+.team-number { font-size: 12px; width: 18px; flex: none; color: var(--muted); }
+.team-name { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.team-nav .add-team { flex: none; justify-content: center; border: 1px solid var(--line); margin-top: auto; }
+.team-detail { padding: 22px; min-width: 0; min-height: 0; overflow: auto; }
+.edit-title { display: flex; flex-direction: column; gap: 5px; color: var(--muted); font-size: 12px; min-width: 0; }
+.edit-title input { width: 100%; font-size: 20px; font-weight: 600; color: var(--ink); }
+.team-window input:not([type="checkbox"]), .team-window textarea { box-sizing: border-box; min-width: 0; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); color: var(--ink); padding: 8px 10px; font-family: inherit; }
+.team-window .edit-title input { font-size: 19px; }
+.team-heading { display: flex; gap: 12px; align-items: flex-end; }
+.team-heading .edit-title { flex: 1; }
+.team-heading .text-button { flex: none; font-size: 12px; }
+.team-order { display: flex; gap: 12px; margin-top: 10px; font-size: 12px; }
+.role-tabs { display: flex; border-bottom: 1px solid var(--line); margin-top: 14px; gap: 20px; }
+.role-tabs button { border: 0; border-bottom: 2px solid transparent; border-radius: 0; padding: 10px 0; background: transparent; color: var(--muted); font: inherit; }
+.role-tabs button[aria-pressed="true"] { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+.assigned-list { margin-top: 18px; }
+.member-row, .person-row, .picker-row { display: flex; align-items: center; gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--line); }
+.person-avatar { flex: none; width: 36px; height: 36px; border-radius: 50%; overflow: hidden; background: var(--tint); color: var(--accent); display: grid; place-items: center; }
+.person-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.member-name { flex: 1; min-width: 0; }
+.member-name strong { display: block; font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.member-name small, .person-fields small { display: block; font-size: 11px; color: var(--muted); }
+.row-actions { display: flex; flex: none; gap: 3px; }
+.row-actions button { width: 27px; height: 30px; padding: 0; border: 0; border-radius: 4px; background: transparent; color: var(--muted); font: inherit; }
+.row-actions button:hover:not(:disabled) { color: var(--accent); background: var(--tint); }
+.person-fields { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.person-fields input { width: 100%; }
+.empty-list { padding: 34px 8px; text-align: center; color: var(--muted); font-size: 13px; }
+.room-picker { min-width: 0; min-height: 0; display: flex; flex-direction: column; border-left: 1px solid var(--line); background: var(--side); }
+.picker-header { padding: 18px 16px 10px; flex: none; }
+.picker-header h2 { display: flex; align-items: center; gap: 8px; font-size: 15px; margin-bottom: 10px; }
+.picker-header h2 small { font-weight: 400; color: var(--muted); }
+.picker-header input[type="search"] { width: 100%; }
+.filter { display: flex; gap: 6px; align-items: center; font-size: 12px; color: var(--muted); margin-top: 10px; }
+.filter input { accent-color: var(--accent); }
+.picker-list { min-height: 0; overflow: auto; padding: 0 16px 12px; flex: 1; }
+.add-member { flex: none; width: 30px; height: 30px; border: 1px solid var(--line); border-radius: 50%; background: var(--surface); color: var(--accent); font: 19px/1 system-ui; }
+.add-member:hover:not(:disabled) { background: var(--tint); }
+.live { color: var(--accent); }
+.missing { color: var(--danger); }
+.team-nav > button, .team-select, .team-delete, .role-tabs button { transition: color 140ms ease-out, background-color 140ms ease-out, border-color 140ms ease-out; }
+@media (prefers-reduced-motion: reduce) { .team-nav > button, .team-select, .team-delete, .role-tabs button { transition: none; } }
+.editor-alert { color: var(--danger); background: var(--side); padding: 8px 24px; font-size: 12px; flex: none; }
+.share-panel { padding: 12px 24px; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; flex: none; max-height: 30%; overflow: auto; }
+.share-panel textarea { width: 100%; min-height: 54px; resize: vertical; font-size: 12px; }
+.share-panel > div { display: flex; gap: 8px; flex-wrap: wrap; }
+.team-window .window-footer p { max-width: 65%; }
+.team-window .window-footer p.error { color: var(--danger); }
+@media (max-width: 930px) {
+  .editor-body { grid-template-columns: 154px minmax(200px, 1fr) 250px; }
+  .team-detail { padding: 16px; }
+  .row-actions { flex-wrap: wrap; max-width: 56px; }
+}
+@media (max-width: 700px) {
+  .team-window { width: calc(100vw - 16px); height: calc(100dvh - 20px); }
+  .editor-summary { gap: 6px 12px; padding: 8px 14px; }
+  .editor-summary .muted { display: none; }
+  .editor-body { grid-template-columns: minmax(0, 1fr) minmax(150px, 44%); grid-template-rows: 52px minmax(0, 1fr); }
+  .team-nav { grid-column: 1 / -1; flex-direction: row; padding: 6px 8px; gap: 5px; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+  .team-nav > button, .team-select { padding: 7px 10px; white-space: nowrap; }
+  .team-nav > button { flex: none; }
+  .team-list { display: flex; flex: none; overflow: visible; gap: 4px; }
+  .team-entry { width: auto; margin: 0; }
+  .team-nav-label, .team-number, .team-nav .add-team { display: none; }
+  .team-nav::after { content: ''; }
+  .team-nav-label { display: flex; order: 3; padding: 0; font-size: 0; }
+  .team-nav-label button { font-size: 20px; padding: 5px 10px; }
+  .team-detail { padding: 12px; }
+  .team-heading { align-items: stretch; flex-direction: column; gap: 5px; }
+  .team-heading .text-button { align-self: flex-end; }
+  .picker-header { padding: 12px 10px 8px; }
+  .picker-list { padding: 0 10px 10px; }
+  .picker-row { gap: 6px; }
+  .picker-row .person-avatar { display: none; }
+  .member-row, .person-row { flex-wrap: wrap; gap: 6px; }
+  .member-row .person-avatar, .person-row .person-avatar { display: none; }
+  .row-actions { max-width: none; margin-left: auto; }
+  .person-fields { min-width: 100%; }
+  .team-window .window-footer { gap: 6px; padding: 10px 14px; }
+  .team-window .window-footer p { max-width: 100%; font-size: 12px; }
+}

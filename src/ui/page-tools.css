@@ -1,0 +1,39 @@
+/* 新版互动层还持有皮肤背景与点击区域，隐藏礼物栏时一起让出扩展后的视频区域。 */
+html.guanyu-hide-gift-bar :is(.PlayerToolbar-ContentRow, .interactive__8Ht4-) { visibility: hidden !important; pointer-events: none !important; }
+html.guanyu-hide-gift-bar :is(.layout-Player-video, .stream__T55I3) { bottom: 0 !important; }
+/* 新版沿用原生层级，抬高 stream 会干扰官方的悬停输入层。 */
+html.guanyu-hide-gift-bar .layout-Player-video { z-index: 25; }
+html.guanyu-hide-gift-bar #js-player-toolbar { z-index: 20 !important; }
+html.guanyu-hide-gift-bar :is(.PELact, .pushTower-wrapper-gf1HG, .LiveRoomLoopVideo, .LiveRoomDianzan) { display: none !important; }
+html.guanyu-hide-pk :is(.PkView-9f6a2c, .MorePk, .RandomPKBar, .maiMaitView-68e80c, .PkView) { display: none !important; }
+/* 活动宿主包括大航海、段位赛等轮播挂件；隐藏宿主可同时收回切换按钮与占位。 */
+html.guanyu-hide-activities #js-room-activity { display: none !important; }
+/* 沿用旧项目已使用的广告宿主，保留播放器、榜单、页面工具栏与交互入口。 */
+html.guanyu-hide-ads :is(.ScreenBannerAd, .XinghaiAd, .IconCardAd, .IconCardAdCard, .CloseVideoPlayerAd, .IconCardAdBoundsBox,
+  .room-top-banner-box, .aside-top-uspension-box, #js-player-asideTopSuspension, .Search-Panel-Advert, .Search-ad,
+  #js-bottom-right-recommendAd, #js-bottom-right-cloudGame, .CloudGameLink, .LadderNav, .HeaderGif-right, .HeaderGif-left,
+  .werbungContainer__2sv7h) { display: none !important; }
+html.guanyu-hide-ads #js-player-asideMain { top: 0 !important; }
+html.guanyu-chat-collapsed .layout-Player-rank { display: none !important; }
+html.guanyu-chat-collapsed .layout-Player-barrageStage:has(> .guanyu-chat-summary) .Barrage { top: 32px !important; height: calc(100% - 32px) !important; }
+/* 摘要先于原生特效层插入，提高一层以保留恢复按钮的点击区域。 */
+.guanyu-chat-summary { position: absolute; inset: 0 0 auto; z-index: 1; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 32px; padding: 0 10px; border-bottom: 1px solid var(--front-border-color, #ddd); background: var(--front-background-color, white); color: var(--front-color, #666); font: 12px/1.5 system-ui, "Microsoft YaHei", sans-serif; }
+.guanyu-chat-summary[hidden], .guanyu-chat-collapse[hidden] { display: none; }
+/* 官方控件是 div，按钮复用其视觉类，仅消除原生 button 的字体与内边距差异。 */
+button.guanyu-chat-collapse, button.guanyu-chat-restore { appearance: none; flex: none; margin: 0; padding: 0; font: var(--guanyu-native-button-font, inherit); cursor: pointer; }
+.DiamondsFansRankInfo > button.guanyu-chat-collapse, .ChatTabContainer-titleWraper > button.guanyu-chat-collapse { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); z-index: 1; }
+.ChatTabContainer-titleWraper:has(> .guanyu-chat-collapse) { position: relative; }
+.ChatTabContainer-titleWraper:has(> .guanyu-chat-collapse) > .ChatTabContainer-titleWraper--tabTitle { width: calc(100% - 96px); }
+button.guanyu-chat-fallback { display: inline-flex; align-items: center; justify-content: center; height: 24px; padding: 0 8px; border: 1px solid var(--front-border-color, #d3d3d3); border-radius: 12px; background: var(--front-background-color, white); color: var(--front-color, #666); font-size: 12px; line-height: 22px; }
+.guanyu-chat-summary .guanyu-chat-restore { position: static; }
+.DiamondsFansRankInfo:has(> .guanyu-chat-collapse) .DiamondsFansRankInfo-policyText { display: none; }
+.guanyu-chat-summary button:focus-visible, .guanyu-chat-collapse:focus-visible { outline: 2px solid var(--guanyu-page-accent, #21815f); outline-offset: 1px; }
+.guanyu-page-error:empty { display: none; }
+.guanyu-page-error { color: #bd3636; font-size: 11px; }
+html.guanyu-video-mirror :is(.layout-Player-videoEntity video, #js-player-video-case video) { scale: -1 1 !important; }
+html.guanyu-auto-header :is(.Header-wrap, .layout-Header:not(:has(.Header-wrap))) { transition: transform 180ms ease-out, opacity 180ms ease-out; }
+html.guanyu-auto-header.guanyu-header-hidden :is(.Header-wrap, .layout-Header:not(:has(.Header-wrap))) { transform: translateY(calc(-100% - 12px)); opacity: 0; pointer-events: none; }
+html.guanyu-auto-header.guanyu-header-hidden #js-player-main::before { visibility: hidden !important; }
+html.guanyu-auto-header #js-player-main::before { transition: visibility 0s linear 180ms; }
+html.guanyu-auto-header.guanyu-header-hidden #js-player-main::before { transition: none; }
+@media (prefers-reduced-motion: reduce) { html.guanyu-auto-header :is(.Header-wrap, .layout-Header:not(:has(.Header-wrap))) { transition: none; } }

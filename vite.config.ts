@@ -1,0 +1,63 @@
+import { defineConfig } from 'vite';
+import { svelte } from '@sveltejs/vite-plugin-svelte';
+import monkey from 'vite-plugin-monkey';
+import versionState from './version.json' with { type: 'json' };
+import { readFileSync } from 'node:fs';
+import { licenseBanner } from './scripts/licenses.mjs';
+
+export default defineConfig(({ command }) => {
+  const version = process.env.GUANYU_BUILD_VERSION ?? versionState.version;
+
+  return {
+    define: {
+      __GUANYU_VERSION__: JSON.stringify(command === 'serve' ? `${version}-dev` : version),
+    },
+    plugins: [
+      svelte({ emitCss: false }),
+      monkey({
+        entry: 'src/main.ts',
+        generate: ({ userscript, mode }) => mode === 'build' ? `${userscript}\n\n${licenseBanner}` : userscript,
+        userscript: {
+          name: '观鱼',
+          namespace: 'https://github.com/Virace2022/guanyu',
+          version,
+          author: 'Virace2022',
+          description: '原生优先的斗鱼网页看播增强：音量增益、团播、官方多屏、签到与每日任务。',
+          icon: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(readFileSync(new URL('./assets/brand/guanyu.svg', import.meta.url), 'utf8'))}`,
+          match: ['https://www.douyu.com/*'],
+          'run-at': 'document-idle',
+          noframes: true,
+          connect: ['douyu.com', 'douyucdn.cn'],
+          license: 'MIT',
+        },
+        server: {
+          open: false,
+          prefix: (name) => `开发 · ${name}`,
+        },
+        build: {
+          fileName: 'douyu.guanyu.js',
+        },
+      }),
+    ],
+    server: {
+      host: '127.0.0.1',
+      port: 5173,
+      strictPort: true,
+      open: false,
+    },
+    build: {
+      target: 'es2022',
+      minify: 'oxc',
+      rolldownOptions: {
+        output: {
+          minify: {
+            compress: true,
+            mangle: true,
+            codegen: { removeWhitespace: false },
+          },
+        },
+      },
+      cssMinify: true,
+    },
+  };
+});

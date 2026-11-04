@@ -1,0 +1,11 @@
+html.guanyu-hide-unread :is(.UserInfo .Badge, .YubaMessage .Badge, .ChatLetter-PopUnread) { display: none !important; }
+.guanyu-room-duration, .guanyu-room-guild, .guanyu-room-last { white-space: nowrap; }
+button.guanyu-backpack-entry { appearance: none; flex: none; margin-left: auto; border: 0; padding: 0 8px; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+.guanyu-backpack-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 0 8px; font: inherit; color: inherit; }
+.guanyu-backpack-metrics { display: contents; }
+.guanyu-backpack-metrics > div { white-space: nowrap; }
+.guanyu-backpack-metrics > [hidden] { display: none !important; }
+.guanyu-backpack-expiry { position: absolute; top: 2px; left: 3px; pointer-events: none; font-size: 10px; color: #d96518; }
+.guanyu-badge-days { font-size: 12px; }
+.guanyu-pocket { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding-top: 4px; }
+.guanyu-pocket img { width: 20px; height: 20px; vertical-align: middle; margin-right: 3px; }

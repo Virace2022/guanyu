@@ -1,0 +1,25 @@
+:host { all: initial; display: flex; flex: none; align-self: center; align-items: center; justify-content: center; width: 28px; height: 28px; margin: 0 0 10px; font: 14px/1.5 system-ui, "Microsoft YaHei", sans-serif; }
+:host([data-floating]) { position: fixed; right: 18px; bottom: 28px; z-index: 1000; width: 40px; height: 40px; margin: 0; background: white; border: 1px solid #d3e3db; border-radius: 8px; }
+:host([hidden]) { display: none; }
+:host([data-player-controls]) { display: inline-flex; width: 32px; height: 32px; margin: 0 4px; color: white; }
+* { box-sizing: border-box; }
+button { font: inherit; cursor: pointer; }
+.dock-trigger { display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border: 0; background: transparent; color: var(--accent, #21815f); }
+.dock-trigger span, .dock-trigger svg { display: block; width: 28px; height: 28px; }
+.dock-trigger svg { color: inherit; }
+:host([data-player-controls]) .dock-trigger { color: white; width: 32px; height: 32px; }
+:host([data-player-controls]) .dock-trigger span, :host([data-player-controls]) .dock-trigger svg { width: 32px; height: 32px; }
+:host([data-player-controls]) .dock-trigger:hover, :host([data-player-controls]) .dock-trigger:focus-visible { color: var(--accent, #21815f); }
+:host([data-player-controls]) .dock-trigger:focus-visible { outline-offset: 3px; }
+:host(:not([data-player-controls])) .dock-trigger:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); border-radius: 5px; }
+.dock-panel { --surface: #fff; --ink: #263c32; --muted: #65766c; --line: #d9e5de; --accent: var(--selected-accent, #21815f); --guanyu-motion-origin: right bottom; position: fixed; inset: auto; margin: 0; padding: 8px; width: max-content; max-width: calc(100vw - 16px); border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); font: inherit; }
+.dock-panel[data-theme="dark"] { --surface: #202a24; --ink: #edf5ef; --muted: #b8c8be; --line: #47564d; --accent: color-mix(in oklab, var(--selected-accent) 65%, white); color-scheme: dark; }
+.dock-heading { display: flex; align-items: baseline; justify-content: space-between; padding: 7px 10px 12px; }
+.dock-panel > button { display: flex; justify-content: flex-start; align-items: center; width: 100%; padding: 10px; border: 0; border-radius: 5px; color: inherit; background: transparent; text-align: left; white-space: nowrap; }
+.dock-panel > button:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.dock-panel > button[aria-pressed="true"] { color: var(--accent); }
+.divider { height: 1px; margin: 6px 2px; background: var(--line); }
+.dock-panel p { color: #c34343; font-size: 12px; padding: 6px 10px; overflow-wrap: anywhere; }
+button:focus-visible { outline: 2px solid var(--accent, #21815f); outline-offset: 1px; }
+.dock-trigger, .dock-panel > button { transition: color 120ms ease-out, background-color 120ms ease-out; }
+@media (prefers-reduced-motion: reduce) { .dock-trigger, .dock-panel > button { transition: none; } }
