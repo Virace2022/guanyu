@@ -4,6 +4,8 @@ import type { TeamController } from '../team-live/controller';
 import type { RoomData } from '../../adapters/douyu/rooms';
 import { createState } from '../../core/state';
 import styles from '../../ui/multiscreen-page.css?style';
+import { createMultiAudio } from './audio';
+import { mountMultiscreenAudio } from '../../adapters/douyu/multiscreen-audio';
 
 export function createMultiscreen(settings: SettingsStore, team: TeamController, prompt: (target?: number) => void, register: (item: HTMLElement) => void) {
   const state = createState({ ready: false, active: false, currentRoom: 0, selected: [] as number[], rooms: [] as RoomData[], status: '等待官方播放器就绪' });
@@ -18,7 +20,9 @@ export function createMultiscreen(settings: SettingsStore, team: TeamController,
         selected: backend.host && backend.native.active() ? backend.native.order() : [], rooms: [...backend.rooms.rooms.values()] });
     }, status(status: string) { state.set({ ...state.value, status }); } },
   });
-  const stop = settings.subscribe(value => backend.configure(value.multi));
+  const audio = createMultiAudio();
+  const audioHost = mountMultiscreenAudio(() => backend.native, audio, id => backend.rooms.rooms.get(id));
+  const stop = settings.subscribe(value => { backend.configure(value.multi); audioHost.apply(value.multi); });
   async function open() {
     if (!settings.value.multi.enabled) throw new Error('请先在多屏设置中开启增强');
     backend.connect();
@@ -31,7 +35,8 @@ export function createMultiscreen(settings: SettingsStore, team: TeamController,
     refresh: () => backend.refresh(true), resolve: (input: string) => backend.rooms.resolve(input) as Promise<RoomData>,
     add: (input: string, save: boolean, target?: number) => backend.add(input, save, target ?? null) as Promise<RoomData>,
     remove: (id: number) => backend.native.remove(id),
-    dispose() { stop(); backend.close(); style.parentNode?.removeChild(style); },
+    audio,
+    dispose() { stop(); audioHost.dispose(); backend.close(); style.parentNode?.removeChild(style); },
   };
 }
 export type MultiscreenController = ReturnType<typeof createMultiscreen>;
