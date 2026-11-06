@@ -10,6 +10,7 @@ export type Theme = 'page' | 'light' | 'dark';
 export type SettingsPreview = Pick<Settings, 'theme' | 'accentColor' | 'optimization' | 'nativeShield'> & {
   barrage: Omit<BarrageOptions, 'linked'>;
   team: Pick<TeamOptions, 'showToolbar' | 'columns' | 'teamColumns' | 'alignment' | 'originalWidth'>;
+  multi: Pick<MultiOptions, 'labelDisplay'>;
 };
 export interface Settings {
   theme: Theme;
@@ -76,7 +77,7 @@ export function createSettings(storage: Storage, events: Window) {
 
   function refreshRuntime() {
     const value = state.value;
-    const next = draft ? { ...value, ...draft, barrage: { ...value.barrage, ...draft.barrage }, team: { ...value.team, ...draft.team } } : value;
+    const next = draft ? { ...value, ...draft, barrage: { ...value.barrage, ...draft.barrage }, team: { ...value.team, ...draft.team }, multi: { ...value.multi, ...draft.multi } } : value;
     if (JSON.stringify(next) !== JSON.stringify(runtime.value)) runtime.set(next);
   }
 

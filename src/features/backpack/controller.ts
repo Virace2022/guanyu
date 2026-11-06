@@ -4,16 +4,28 @@ import { BackpackApi, type BagGift, type FanBadge, type PocketItem, type MonthCo
 import { mountBackpackPage } from '../../adapters/douyu/backpack-page';
 import { accountId, taskDay } from '../../adapters/douyu/task-request';
 import { createState } from '../../core/state';
-import { RoomApi, type RoomData } from '../../adapters/douyu/rooms';
+import { RoomApi } from '../../adapters/douyu/rooms';
 
-interface GlowPlan { uid: string; gift: number; name: string; available: number; each: number; total: number; rooms: (FanBadge & { avatar: string })[]; avatarError: string }
-interface BackpackState { loading: boolean; error: string; gifts: BagGift[]; badges: FanBadge[]; pocket: PocketItem[]; vipDays: number | null; month: MonthCost | null; plan: GlowPlan | null; sending: boolean; results: string[] }
-export function createBackpack(settings: SettingsStore, player: PlayerStore, open: () => void, confirm: (message: string) => Promise<boolean>, openGlow: () => void) {
+interface BadgeRoom extends FanBadge { avatar: string }
+interface GlowPlan { uid: string; gift: number; name: string; available: number; each: number; total: number; rooms: BadgeRoom[]; avatarError: string }
+interface GlowDelivery { status: 'sending' | 'sent' | 'failed'; error?: string }
+interface BackpackState { loading: boolean; error: string; gifts: BagGift[]; badges: BadgeRoom[]; avatarError: string; pocket: PocketItem[]; vipDays: number | null; month: MonthCost | null; plan: GlowPlan | null; preparing: boolean; glowError: string; sending: boolean; deliveries: Record<string, GlowDelivery> }
+export function createBackpack(settings: SettingsStore, player: PlayerStore, open: () => void, openGlow: () => void) {
   const api = new BackpackApi();
   const roomApi = new RoomApi();
-  const state = createState<BackpackState>({ loading: false, error: '', gifts: [], badges: [], pocket: [], vipDays: null, month: null, plan: null, sending: false, results: [] });
+  const avatars = new Map<string, string>();
+  const state = createState<BackpackState>({ loading: false, error: '', gifts: [], badges: [], avatarError: '', pocket: [], vipDays: null, month: null, plan: null, preparing: false, glowError: '', sending: false, deliveries: {} });
   const dom = mountBackpackPage(open, () => { void refresh(); }, openGlow);
   let stopped = false, generation = 0, identity = '', lastOptions = '', nextAt = 0;
+  async function badgeRooms(badges: FanBadge[]) {
+    let avatarError = '';
+    const missing = badges.filter(room => !avatars.has(room.id));
+    if (missing.length) {
+      try { for (const room of await roomApi.info(missing.map(room => room.id))) avatars.set(String(room.rid), room.avt); }
+      catch (cause) { avatarError = `头像未能读取：${cause instanceof Error ? cause.message : String(cause)}`; }
+    }
+    return { rooms: badges.map(room => ({ ...room, avatar: avatars.get(room.id) || '' })), avatarError };
+  }
   function publish(next: Partial<BackpackState>) {
     if (stopped) return;
     state.set({ ...state.value, ...next });
@@ -22,7 +34,7 @@ export function createBackpack(settings: SettingsStore, player: PlayerStore, ope
   }
   async function refresh() {
     const room = player.value.roomId, uid = accountId(), options = { ...settings.value.backpack }, revision = generation;
-    if (!room || !uid || state.value.loading || stopped || state.value.sending) return;
+    if (!room || !uid || state.value.loading || stopped || state.value.sending || state.value.preparing) return;
     publish({ loading: true, error: '' });
     const errors: string[] = [];
     const current = () => !stopped && generation === revision && uid === accountId() && room === player.value.roomId;
@@ -32,8 +44,11 @@ export function createBackpack(settings: SettingsStore, player: PlayerStore, ope
       catch (cause) { if (current()) errors.push(`${label}：${cause instanceof Error ? cause.message : String(cause)}`); }
     }
     await Promise.all([
-      load(options.details || options.glow, '背包', () => api.bag(room), gifts => ({ gifts })),
-      load(options.badgeDays || options.glow, '粉丝牌', () => api.badges(), badges => ({ badges })),
+      load(options.details || options.glow, '背包', () => api.bag(room), gifts => {
+        const plan = state.value.plan;
+        return { gifts, ...(plan && Object.keys(state.value.deliveries).length ? { plan: { ...plan, available: Number(gifts.find(gift => Number(gift.id) === plan.gift)?.count || 0) } } : {}) };
+      }),
+      load(options.badgeDays || options.glow, '粉丝牌', async () => badgeRooms(await api.badges()), result => ({ badges: result.rooms, avatarError: result.avatarError })),
       load(options.pocket, '主播口袋', () => api.pocket(room), pocket => ({ pocket })),
       load(options.vipExpiry, 'VIP', () => api.vip(room), vipDays => ({ vipDays })),
       load(options.monthCost, '月消费', async () => {
@@ -46,47 +61,53 @@ export function createBackpack(settings: SettingsStore, player: PlayerStore, ope
     if (current()) { publish({ loading: false, error: errors.join('；') }); nextAt = Date.now() + 60000; }
   }
   async function prepare(each = settings.value.backpack.glowCount) {
-    if (!settings.value.backpack.glow || stopped || state.value.sending) return;
+    if (!settings.value.backpack.glow || stopped || state.value.sending || state.value.preparing) return;
     const uid = accountId(), room = player.value.roomId, revision = generation;
-    if (!uid || !room) { publish({ error: '请先登录并进入真实直播间' }); return; }
-    if (!Number.isInteger(each) || each < 0 || each > 100000) { publish({ error: '每房数量应为 0～100000 的整数' }); return; }
-    publish({ loading: true, error: '', plan: null, results: [] });
+    if (!uid || !room) { publish({ glowError: '请先登录并进入真实直播间' }); return; }
+    publish({ preparing: true, glowError: '', plan: null, deliveries: {} });
     try {
       const gifts = await api.bag(room), rooms = await api.badges();
       if (stopped || revision !== generation || uid !== accountId()) return;
       const gift = gifts.find(gift => [268, 2358].includes(Number(gift.id)) && Number(gift.count) > 0);
-      if (!gift) throw new Error('背包中没有可赠送的荧光棒');
-      if (!rooms.length) throw new Error('没有粉丝牌房间可供续牌');
-      const count = each || Math.floor(Number(gift.count) / rooms.length);
-      if (count < 1) throw new Error('荧光棒不足以向每个房间平均赠送 1 根');
-      if (count * rooms.length > Number(gift.count)) throw new Error(`计划需 ${count * rooms.length} 根，当前只有 ${gift.count} 根`);
-      let profiles: RoomData[] = [], avatarError = '';
-      try { profiles = await roomApi.info(rooms.map(room => room.id)); }
-      catch (cause) { avatarError = `头像未能读取：${cause instanceof Error ? cause.message : String(cause)}`; }
+      const profiles = await badgeRooms(rooms);
       if (stopped || revision !== generation || uid !== accountId()) return;
-      const avatars = new Map(profiles.map(room => [String(room.rid), room.avt]));
-      publish({ gifts, badges: rooms, plan: { uid, gift: Number(gift.id), name: gift.name, available: Number(gift.count), each: count, total: count * rooms.length,
-        rooms: rooms.map(room => ({ ...room, avatar: avatars.get(room.id) || '' })), avatarError } });
-    } catch (cause) { publish({ error: cause instanceof Error ? cause.message : String(cause) }); }
-    finally { if (revision === generation) publish({ loading: false }); }
+      publish({ gifts, badges: profiles.rooms, avatarError: profiles.avatarError, plan: { uid, gift: Number(gift?.id || 0), name: gift?.name || '荧光棒', available: Number(gift?.count || 0), each: 0, total: 0,
+        rooms: profiles.rooms, avatarError: profiles.avatarError } });
+      setGlowCount(each);
+    } catch (cause) { if (revision === generation) publish({ glowError: cause instanceof Error ? cause.message : String(cause) }); }
+    finally { if (revision === generation) publish({ preparing: false }); }
+  }
+  function setGlowCount(each: number) {
+    const plan = state.value.plan;
+    if (!plan || state.value.sending || Object.keys(state.value.deliveries).length) return;
+    if (!Number.isInteger(each) || each < 0 || each > 100000) { publish({ glowError: '每房数量应为 0～100000 的整数' }); return; }
+    const count = each || (plan.rooms.length ? Math.floor(plan.available / plan.rooms.length) : 0), total = count * plan.rooms.length;
+    const error = !plan.gift ? '背包中没有可赠送的荧光棒' : !plan.rooms.length ? '没有粉丝牌房间可供续牌'
+      : count < 1 ? '荧光棒不足以向每个房间平均赠送 1 根' : total > plan.available ? `计划需 ${total} 根，当前只有 ${plan.available} 根` : '';
+    publish({ plan: { ...plan, each: count, total }, glowError: error, deliveries: {} });
   }
   async function send() {
     const plan = state.value.plan, revision = generation;
-    if (!plan || state.value.sending || !settings.value.backpack.glow) return;
-    if (!await confirm(`将向 ${plan.rooms.length} 个粉丝牌房间每房赠送 ${plan.each} 根${plan.name}，合计 ${plan.total} 根。目标：${plan.rooms.map(room => `${room.name}（${room.id}）`).join('、')}。仅使用背包道具，不购买礼物。`)) return;
-    if (stopped || state.value.sending || state.value.plan !== plan || revision !== generation || plan.uid !== accountId() || !settings.value.backpack.glow) return;
-    publish({ sending: true, error: '', results: [] });
+    if (!plan || stopped || state.value.preparing || state.value.sending || state.value.glowError || Object.keys(state.value.deliveries).length || plan.uid !== accountId() || !settings.value.backpack.glow) return;
+    publish({ sending: true, glowError: '' });
     try {
       const gifts = await api.bag(player.value.roomId || plan.rooms[0]!.id);
       if (Number(gifts.find(gift => Number(gift.id) === plan.gift)?.count || 0) < plan.total) throw new Error('荧光棒数量已变化，请重新生成计划');
       for (const room of plan.rooms) {
         if (stopped || revision !== generation || plan.uid !== accountId() || !settings.value.backpack.glow) break;
-        await api.donate(plan.gift, plan.each, room.id);
-        publish({ results: [...state.value.results, `${room.name}（${room.id}）：已赠送 ${plan.each} 根`] });
+        publish({ deliveries: { ...state.value.deliveries, [room.id]: { status: 'sending' } } });
+        try {
+          await api.donate(plan.gift, plan.each, room.id);
+          if (stopped || revision !== generation || plan.uid !== accountId()) return;
+          publish({ deliveries: { ...state.value.deliveries, [room.id]: { status: 'sent' } } });
+        } catch (cause) {
+          if (revision === generation) publish({ deliveries: { ...state.value.deliveries, [room.id]: { status: 'failed', error: cause instanceof Error ? cause.message : String(cause) } } });
+          throw cause;
+        }
         await new Promise(resolve => setTimeout(resolve, 250));
       }
-    } catch (cause) { publish({ error: `${cause instanceof Error ? cause.message : String(cause)}；已停止后续赠送，不自动重发` }); }
-    finally { publish({ sending: false, plan: null }); void refresh(); }
+    } catch (cause) { if (revision === generation) publish({ glowError: `${cause instanceof Error ? cause.message : String(cause)}；已停止后续赠送，不自动重发` }); }
+    finally { if (revision === generation) { publish({ sending: false }); void refresh(); } }
   }
   function sync() {
     const nextIdentity = `${accountId()}:${player.value.roomId || ''}`, nextOptions = JSON.stringify(settings.value.backpack);
@@ -94,12 +115,12 @@ export function createBackpack(settings: SettingsStore, player: PlayerStore, ope
     if (identity === nextIdentity && lastOptions === nextOptions) return;
     const accountChanged = identity.split(':')[0] !== accountId();
     identity = nextIdentity; lastOptions = nextOptions; generation++; api.close(); roomApi.close(); nextAt = 0;
-    publish({ loading: false, plan: null, vipDays: null, pocket: [], ...(accountChanged ? { gifts: [], badges: [], month: null, results: [], error: '' } : {}) });
+    publish({ loading: false, preparing: false, sending: false, plan: null, glowError: '', deliveries: {}, vipDays: null, pocket: [], ...(accountChanged ? { gifts: [], badges: [], avatarError: '', month: null, error: '' } : {}) });
     void refresh();
   }
   const stopSettings = settings.subscribe(sync), stopPlayer = player.subscribe(sync);
   const timer = setInterval(() => { sync(); if (!document.hidden && Date.now() >= nextAt) void refresh(); }, 1000);
-  return { ...state, get value() { return state.value; }, refresh, prepare, send,
+  return { ...state, get value() { return state.value; }, refresh, prepare, setGlowCount, send, openGlow,
     dispose() { stopped = true; generation++; clearInterval(timer); stopSettings(); stopPlayer(); api.close(); roomApi.close(); dom.dispose(); } };
 }
 export type BackpackController = ReturnType<typeof createBackpack>;

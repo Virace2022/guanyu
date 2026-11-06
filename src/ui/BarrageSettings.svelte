@@ -13,4 +13,4 @@
 
 <h1>弹幕</h1><p class="intro">保留聊天正文，按需收起多余标记。</p>
 <section><h2>标记与装饰</h2><div class="option-list">{#each marks as mark (mark.key)}<label class="option-row"><span><strong>{mark.label}</strong><small>{mark.hint}</small></span><input type="checkbox" bind:checked={value[mark.key]} /></label>{/each}</div></section>
-<section><h2>消息过滤</h2><div class="option-list"><label class="option-row"><span><strong>隐藏进场提示</strong><small>隐藏聊天区底部“谁谁谁来了”的提示，进场特效另在优化中控制。</small></span><input type="checkbox" bind:checked={value.enter} /></label><label class="option-row"><span><strong>隐藏活动 / 带链接的弹幕</strong><small>整条活动或链接消息不显示，粉丝牌链接不在此范围内；保存后应用。</small></span><input type="checkbox" bind:checked={value.linked} /></label></div><p class="help">标记和进场提示立即预览，放弃更改后恢复；整条消息过滤保存后应用。</p></section>
+<section><h2>消息过滤</h2><div class="option-list"><label class="option-row"><span><strong>隐藏进场提示</strong><small>隐藏聊天区底部“谁谁谁来了”的提示，进场特效另在优化中控制。</small></span><input type="checkbox" bind:checked={value.enter} /></label><label class="option-row"><span><strong>隐藏活动 / 带链接的弹幕</strong><small>整条活动或链接消息不显示，粉丝牌链接不在此范围内。</small></span><input type="checkbox" bind:checked={value.linked} /></label></div></section>

@@ -12,5 +12,5 @@
   ];
 </script>
 <h1>播放</h1><p class="intro">复用原生播放器，分别设置进入房间时的播放偏好。</p>
-<section><h2>播放偏好</h2><div class="option-list">{#each choices as choice (choice.key)}<label class="option-row"><span><strong>{choice.label}</strong><small>{choice.hint}</small></span><input type="checkbox" bind:checked={value[choice.key]} /></label>{/each}</div><p class="help">保存后应用。网页全屏可以通过原生按钮退出。</p></section>
+<section><h2>播放偏好</h2><div class="option-list">{#each choices as choice (choice.key)}<label class="option-row"><span><strong>{choice.label}</strong><small>{choice.hint}</small></span><input type="checkbox" bind:checked={value[choice.key]} /></label>{/each}</div></section>
 {#if runtime.error}<p class="error" role="alert">{runtime.error}</p>{/if}

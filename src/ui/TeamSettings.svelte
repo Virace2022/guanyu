@@ -15,7 +15,7 @@
   {#if runtime.candidate}
     <p class="help">{runtime.candidate.pageId ? `活动 ${runtime.candidate.pageId}` : '按房间集合识别'} · {runtime.candidate.rooms.length} 个房间</p>
     <label class="setting-row" for="team-detection"><span>活动处理</span><select id="team-detection" value={runtime.detection} onchange={event => team.setDetection(event.currentTarget.value as 'auto' | 'include' | 'exclude')}><option value="auto">自动识别</option><option value="include">作为团播使用</option><option value="exclude">排除此活动</option></select></label>
-    <p class="help">此项立即生效并按活动记住。保留宽泛卡片识别；明确的赛事主 / 副舞台纯净流可自动排除，也可手动恢复。</p>
+    <p class="help">此选择按活动单独保存。明确的赛事主 / 副舞台纯净流可自动排除，也可手动恢复。</p>
     {#if !runtime.source}<p class="status">当前活动已排除，原生链接和布局保留。</p>{/if}
     <div class="inline-actions"><button class="button" disabled={!runtime.source} onclick={openEditor}>编辑名单</button><button class="button" disabled={!runtime.source || runtime.refreshing} onclick={() => { void team.refreshStatus(); }}>{runtime.refreshing ? '刷新中…' : '刷新开播状态'}</button><button class="button" disabled={!runtime.source} onclick={() => { void preview(); }}>{runtime.preview ? '关闭预览' : '开启静音预览'}</button></div>
     {#if runtime.statusError}<p class="error" role="status">{runtime.statusError}</p>{:else if runtime.lastRefresh}<p class="status">开播状态更新于 {new Date(runtime.lastRefresh).toLocaleTimeString()}</p>{/if}
@@ -33,4 +33,4 @@
 <label class="setting-row" for="preview-source"><span>预览来源</span><select id="preview-source" bind:value={value.previewSource}><option value="lowest">优先最低画质，失败回退原生</option><option value="native">原生预览</option></select></label>
 <label class="setting-row" for="preview-retry"><span>失败自动重试</span><select id="preview-retry" bind:value={value.previewRetrySeconds}>{#each [0,30,60,120,300] as seconds}<option value={seconds}>{seconds ? `${seconds} 秒` : '关闭'}</option>{/each}</select></label>
 <label class="option-row"><span><strong>放大时切换高清原声</strong><small>仅放大的画面尝试原声，失败回退静音，还原后立即静音。</small></span><input type="checkbox" bind:checked={value.previewFocusOriginal} /></label>
-<p class="help">预览属于娱乐功能。少于 50 个预览窗口直接开启，50 个及以上需确认。双击放大或还原，各队互不影响；后台和全屏会暂停并释放资源。布局与入口立即预览，刷新和画质偏好保存后生效；预览开关仅本页有效。</p></section>
+<p class="help">预览属于娱乐功能。双击放大或还原，各队互不影响；后台和全屏会暂停预览。预览开关仅本页有效。</p></section>

@@ -1,5 +1,5 @@
 import { GM_xmlhttpRequest } from '$';
-import { hex_md5 } from './md5';
+import { hex_md5 } from '../../../core/md5';
 import { getCookieValue, getDouyuRealLiveAuth } from './auth';
 export class TeamLiveStreamSource {
     constructor(monitor) {

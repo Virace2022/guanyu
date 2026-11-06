@@ -16,7 +16,7 @@ export function readNativeMenu(): { items: NativeMenuEntry[]; style: string } {
   return { items, style: appearance ? `--guanyu-native-menu-color:${appearance.color};--guanyu-native-menu-font:${appearance.fontFamily};--guanyu-native-menu-background:${appearance.backgroundColor};--guanyu-native-menu-border:${appearance.borderColor}` : '' };
 }
 export function mountPlayerMenu(settings: SettingsStore, actions: Partial<Record<MenuAction, PlayerAction>>, report: (message: string) => void) {
-  const nodes = new Map<MenuAction, HTMLElement>(), external = new Set<MenuAction>();
+  const nodes = new Map<MenuAction, HTMLElement>();
   const labels = new Map<MenuAction, HTMLElement>(), release = new Map<MenuAction, () => void>();
   const sheet = styles.cloneNode(true);
   document.head.append(sheet);
@@ -39,7 +39,7 @@ export function mountPlayerMenu(settings: SettingsStore, actions: Partial<Record
     for (const [id, item] of nodes) {
       if (!active.includes(id) || !menu) { item.remove(); continue; }
       const action = actions[id];
-      if (!external.has(id) && action) {
+      if (action) {
         const label = action.label(), checked = action.checked?.();
         labels.get(id)!.textContent = `${checked ? '✓ ' : ''}${label}`; item.setAttribute('aria-label', label);
         item.setAttribute('role', checked === undefined ? 'menuitem' : 'menuitemcheckbox');
@@ -61,7 +61,6 @@ export function mountPlayerMenu(settings: SettingsStore, actions: Partial<Record
   document.addEventListener('contextmenu', onContext, true);
   const timer = setInterval(sync, 1000), stop = settings.subscribe(sync);
   return {
-    register(id: MenuAction, item: HTMLElement) { release.get(id)?.(); release.delete(id); nodes.get(id)?.remove(); item.dataset.guanyuAction = id; item.tabIndex = 0; item.setAttribute('role', 'menuitem'); nodes.set(id, item); external.add(id); sync(); },
     dispose() { stop(); clearInterval(timer); cancelAnimationFrame(frame); document.removeEventListener('contextmenu', onContext, true); for (const dispose of release.values()) dispose(); for (const item of nodes.values()) item.remove(); sheet.parentNode?.removeChild(sheet); },
   };
 }

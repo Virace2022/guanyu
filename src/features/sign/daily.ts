@@ -1,7 +1,7 @@
 import type { SettingsStore } from '../../config/settings';
 import { signTasks, type SignTask } from '../../config/sign';
 import { createState } from '../../core/state';
-import { accountId, createTaskRequest, taskDay, taskDelay, interrupted, type TaskRequest } from '../../adapters/douyu/task-request';
+import { accountId, createTaskRequest, taskDay, taskDelay, interrupted, alreadySigned, type TaskRequest } from '../../adapters/douyu/task-request';
 import { createDouyuTasks, type LevelTask, type TaskRoom } from '../../adapters/douyu/tasks';
 import type { TaskRunner } from '../../adapters/douyu/task-runner';
 import { checkPoints } from './points';
@@ -22,7 +22,7 @@ export function createDailyTasks(settings: SettingsStore, roomId: () => string, 
   let uid = '', state: Progress | undefined, restore: Restore | undefined, running = false, stopped = false, waiting = false, error = '';
   let timer: ReturnType<typeof setTimeout> | undefined;
   let previous = JSON.stringify(settings.value.sign);
-  let active: string | undefined, resetRooms = false;
+  let active: string | undefined;
   const key = () => `guanyu:daily-tasks:v1:${uid}`;
   const restoreKey = () => `guanyu:follow-restore:v1:${uid}`;
   const taskRoom = () => roomId() || runner.room();
@@ -32,6 +32,31 @@ export function createDailyTasks(settings: SettingsStore, roomId: () => string, 
     view.set({ uid, day: state?.day || taskDay(), running, waiting, error,
       rows: Object.values(state?.lanes || {}).map(row => ({ ...row, status: settings.value.sign.enabled && settings.value.sign[row.id as SignTask] ? row.status : 'disabled' })),
       tasks: [...state?.tasks || []], restore: restore ? `${restore.name}（${restore.id}）等待恢复未关注状态` : '' });
+  }
+  function summarizeFansHome(lane: Lane) {
+    const targets = lane.targets!;
+    const count = targets.filter(room => lane.results?.[room.id]).length;
+    const pending = targets.filter(room => !lane.results?.[room.id]);
+    const failed = pending.find(room => lane.failures?.[room.id]);
+    lane.detail = `${count} / ${targets.length} 个房间已确认${pending.length ? '，继续按间隔处理' : ''}${failed ? `；${failed.name}：${lane.failures![failed.id]!.error}` : ''}`;
+    lane.status = !pending.length ? 'done' : pending.some(room => (lane.failures?.[room.id]?.nextAt || 0) <= Date.now()) ? 'pending' : 'error';
+    lane.nextAt = lane.status === 'error' ? Math.min(...pending.map(room => lane.failures![room.id]!.nextAt)) : 0;
+    if (lane.status === 'done') lane.attempts = 0;
+  }
+  function restoreFansHome() {
+    const lane = state?.lanes.fansHome;
+    if (!lane?.targets || !lane.failures) return false;
+    let changed = false;
+    for (const room of lane.targets) {
+      const failure = lane.failures[room.id];
+      if (!failure || !alreadySigned(failure.error)) continue;
+      lane.results ||= {};
+      lane.results[room.id] ||= 'already';
+      delete lane.failures[room.id];
+      changed = true;
+    }
+    if (changed) summarizeFansHome(lane);
+    return changed;
   }
   function load() {
     uid = accountId(); state = undefined; restore = undefined;
@@ -47,6 +72,7 @@ export function createDailyTasks(settings: SettingsStore, roomId: () => string, 
     }
     state!.lanes = Object.fromEntries(signTasks.filter(task => task.id !== 'yuba').map(task => [task.id,
       state!.lanes[task.id] || { id: task.id, label: task.label, status: 'pending', detail: '等待按间隔处理', nextAt: 0, attempts: 0 }]));
+    return restoreFansHome();
   }
   async function restoreFollow() {
     if (!restore) return;
@@ -67,16 +93,16 @@ export function createDailyTasks(settings: SettingsStore, roomId: () => string, 
     finally { if (!stopped && accountId() === uid) await restoreFollow(); }
     return true;
   }
-  async function roomLane(lane: Lane, fans: boolean) {
+  async function fansHomeLane(lane: Lane) {
     if (!lane.targets) {
-      lane.targets = fans ? await api.badges() : (await api.followed()).filter(room => settings.value.sign.roomScope === 'all' || room.live);
+      lane.targets = await api.badges();
       current(); lane.results ||= {}; persist();
     }
     lane.failures ||= {};
     const target = lane.targets.find(room => !lane.results?.[room.id] && (lane.failures?.[room.id]?.nextAt || 0) <= Date.now());
     if (target) {
       try {
-        const result = fans ? await api.signFansHome(target.id) : await api.signRoom(target.id);
+        const result = await api.signFansHome(target.id);
         current(); lane.results![target.id] = result; delete lane.failures[target.id]; persist();
       } catch (cause: any) {
         if (cause.interrupted) throw cause;
@@ -85,12 +111,7 @@ export function createDailyTasks(settings: SettingsStore, roomId: () => string, 
         persist();
       }
     }
-    const count = lane.targets.filter(room => lane.results?.[room.id]).length;
-    const pending = lane.targets.filter(room => !lane.results?.[room.id]);
-    const failed = pending.find(room => lane.failures?.[room.id]);
-    lane.detail = `${count} / ${lane.targets.length} 个房间已确认${count < lane.targets.length ? '，继续按间隔处理' : ''}${failed ? `；${failed.name}：${lane.failures[failed.id].error}` : ''}`;
-    lane.status = !pending.length ? 'done' : pending.some(room => (lane.failures?.[room.id]?.nextAt || 0) <= Date.now()) ? 'pending' : 'error';
-    if (lane.status === 'error') lane.nextAt = Math.min(...pending.map(room => lane.failures![room.id].nextAt));
+    summarizeFansHome(lane);
   }
   async function readLane(lane: Lane) {
     const rid = taskRoom(); if (!rid) throw new Error('等待识别真实房间号');
@@ -132,8 +153,7 @@ export function createDailyTasks(settings: SettingsStore, roomId: () => string, 
   async function execute(lane: Lane) {
     switch (lane.id) {
       case 'client': { const result = await api.client(); lane.detail = result.status === 'already' ? '今日已签到' : `签到成功${result.rewards ? `：${result.rewards}` : ''}`; lane.status = 'done'; break; }
-      case 'rooms': await roomLane(lane, false); break;
-      case 'fansHome': await roomLane(lane, true); break;
+      case 'fansHome': await fansHomeLane(lane); break;
       case 'readPosts': await readLane(lane); break;
       case 'follow': await followLane(lane); break;
       case 'points': {
@@ -192,17 +212,14 @@ export function createDailyTasks(settings: SettingsStore, roomId: () => string, 
       await navigator.locks.request(`guanyu:daily-tasks:${uid}`, { ifAvailable: true }, async lock => {
         if (!lock) { waiting = true; return; }
         current();
-        load(); current();
+        const restored = load(); current();
+        if (restored) persist();
         if (restore) await restoreFollow();
-        if (resetRooms && state!.lanes.rooms) {
-          state!.lanes.rooms.targets = undefined; state!.lanes.rooms.status = 'pending'; state!.lanes.rooms.nextAt = 0;
-          resetRooms = false; persist();
-        }
         if (!settings.value.sign.enabled || navigator.onLine === false) return;
         if (runner.take('daily')) manual = true;
         if (manual) for (const lane of Object.values(state!.lanes)) {
           if (lane.status !== 'done') lane.nextAt = 0;
-          if (lane.id === 'rooms' || lane.id === 'fansHome') { lane.targets = undefined; lane.status = 'pending'; lane.nextAt = 0; }
+          if (lane.id === 'fansHome') { lane.targets = undefined; lane.status = 'pending'; lane.nextAt = 0; }
         }
         const lane = Object.values(state!.lanes).filter(lane => settings.value.sign[lane.id as SignTask] && lane.status !== 'done' && lane.nextAt <= Date.now())
           .sort((a, b) => a.nextAt - b.nextAt)[0];
@@ -236,13 +253,11 @@ export function createDailyTasks(settings: SettingsStore, roomId: () => string, 
   const stopSettings = settings.subscribe(value => {
     const next = JSON.stringify(value.sign);
     if (next === previous) return;
-    const scopeChanged = JSON.parse(previous).roomScope !== value.sign.roomScope;
     previous = next;
-    if (scopeChanged) resetRooms = true;
-    if (active && (!value.sign.enabled || !value.sign[active as SignTask] || scopeChanged && active === 'rooms')) {
+    if (active && (!value.sign.enabled || !value.sign[active as SignTask])) {
       http.dispose(); http = createTaskRequest();
     }
-    void wake(scopeChanged);
+    void wake();
   });
   window.addEventListener('storage', onStorage); window.addEventListener('online', onOnline); document.addEventListener('visibilitychange', onVisible);
   void wake();

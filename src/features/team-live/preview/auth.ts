@@ -1,4 +1,4 @@
-import { hex_md5 } from './md5';
+import { hex_md5 } from '../../../core/md5';
 export function getCookieValue(name: string) {
   const entry = document.cookie.split(';').map(value => value.trim()).find(value => value.startsWith(`${name}=`));
   return entry ? decodeURIComponent(entry.slice(name.length + 1)) : '';

@@ -14,5 +14,5 @@
   ];
 </script>
 <h1>房间页面</h1><p class="intro">补充房间信息，独立控制页面提醒。</p>
-<section><h2>信息与提醒</h2><div class="option-list">{#each choices as choice (choice.key)}<label class="option-row"><span><strong>{choice.label}</strong><small>{choice.hint}</small></span><input type="checkbox" bind:checked={value[choice.key]} /></label>{/each}</div><p class="help">保存后应用。房间资料每分钟刷新，关闭选项会移除对应增强内容。</p></section>
+<section><h2>信息与提醒</h2><div class="option-list">{#each choices as choice (choice.key)}<label class="option-row"><span><strong>{choice.label}</strong><small>{choice.hint}</small></span><input type="checkbox" bind:checked={value[choice.key]} /></label>{/each}</div></section>
 {#if runtime.error}<p class="error" role="alert">{runtime.error}</p>{/if}

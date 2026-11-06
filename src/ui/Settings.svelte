@@ -6,7 +6,6 @@
   import type { Readable } from '../core/state';
   import FishIcon from './FishIcon.svelte';
   import AccentPicker from './AccentPicker.svelte';
-  import { accentText } from './theme';
   import { version } from '../core/version';
   import type { PageTools } from '../features/page-tools/controller';
   import type { SettingsSection } from './settings-types';
@@ -75,7 +74,7 @@
       barrage: { fans: barrage.fans, diamond: barrage.diamond, noble: barrage.noble, level: barrage.level,
         other: barrage.other, suffix: barrage.suffix, enter: barrage.enter },
       team: { showToolbar: teamOptions.showToolbar, columns: teamOptions.columns, teamColumns: teamOptions.teamColumns,
-        alignment: teamOptions.alignment, originalWidth: teamOptions.originalWidth } }) : null;
+        alignment: teamOptions.alignment, originalWidth: teamOptions.originalWidth }, multi: { labelDisplay: multiOptions.labelDisplay } }) : null;
     untrack(() => settings.preview(draft));
   });
 
@@ -176,7 +175,7 @@
 
 <svelte:window onbeforeunload={leave} />
 
-<dialog bind:this={dialog} class="settings-window guanyu-themed" oncancel={cancel} onclose={() => { if (!dialog.open) { opened = false; settings.preview(null); } }} onpointerdown={event => { backdropDown = outside(event); }} onclick={backdrop} aria-labelledby="guanyu-title" data-theme={resolvedTheme} style:--guanyu-accent={accentColor} style:--guanyu-on-accent={accentText(accentColor)}>
+<dialog bind:this={dialog} class="settings-window guanyu-themed" oncancel={cancel} onclose={() => { if (!dialog.open) { opened = false; settings.preview(null); } }} onpointerdown={event => { backdropDown = outside(event); }} onclick={backdrop} aria-labelledby="guanyu-title" data-theme={resolvedTheme} style:--guanyu-accent={accentColor}>
   <header class="window-header" inert={confirming}>
     <div class="brand"><FishIcon class="brand-icon" /><strong>观鱼</strong><span class="header-divider"></span><span id="guanyu-title">设置</span></div>
     <button class="icon-button close" aria-label="关闭设置" onclick={close}>×</button>
@@ -195,12 +194,12 @@
         <button class:current={section === 'optimization'} aria-current={section === 'optimization' ? 'page' : undefined} onclick={() => { section = 'optimization'; }}><span aria-hidden="true">☷</span><span>优化</span>{#if optimizationDirty}<small>未保存</small>{/if}</button>
         <button class:current={section === 'playback'} aria-current={section === 'playback' ? 'page' : undefined} onclick={() => { section = 'playback'; }}><span aria-hidden="true">▷</span><span>播放</span>{#if playbackDirty}<small>未保存</small>{/if}</button>
         <button class:current={section === 'room'} aria-current={section === 'room' ? 'page' : undefined} onclick={() => { section = 'room'; }}><span aria-hidden="true">⌂</span><span>房间页面</span>{#if roomDirty}<small>未保存</small>{/if}</button>
-        <button class:current={section === 'backpack'} aria-current={section === 'backpack' ? 'page' : undefined} onclick={() => { section = 'backpack'; }}><span aria-hidden="true">▣</span><span>背包增强</span>{#if backpackDirty}<small>未保存</small>{/if}</button>
+        <button class:current={section === 'backpack'} aria-current={section === 'backpack' ? 'page' : undefined} onclick={() => { section = 'backpack'; }}><span aria-hidden="true">▣</span><span>背包</span>{#if backpackDirty}<small>未保存</small>{/if}</button>
         <button class:current={section === 'barrage'} aria-current={section === 'barrage' ? 'page' : undefined} onclick={() => { section = 'barrage'; }}><span aria-hidden="true">☰</span><span>弹幕</span>{#if barrageDirty}<small>未保存</small>{/if}</button>
         <button class:current={section === 'team'} aria-current={section === 'team' ? 'page' : undefined} onclick={() => { section = 'team'; }}><span aria-hidden="true">♧</span><span>团播</span>{#if teamDirty}<small>未保存</small>{/if}</button>
-        <button class:current={section === 'multi'} aria-current={section === 'multi' ? 'page' : undefined} onclick={() => { section = 'multi'; }}><span aria-hidden="true">▦</span><span>多屏</span>{#if multiDirty}<small>未保存</small>{/if}</button>
+        <button class:current={section === 'multi'} aria-current={section === 'multi' ? 'page' : undefined} onclick={() => { section = 'multi'; }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></svg><span>多屏</span>{#if multiDirty}<small>未保存</small>{/if}</button>
         <button class:current={section === 'menu'} aria-current={section === 'menu' ? 'page' : undefined} onclick={() => { section = 'menu'; }}><span aria-hidden="true">☰</span><span>右键菜单</span>{#if menuDirty}<small>未保存</small>{/if}</button>
-        <button class:current={section === 'sign'} aria-current={section === 'sign' ? 'page' : undefined} onclick={() => { section = 'sign'; }}><span aria-hidden="true">✓</span><span>签到与任务</span>{#if signDirty}<small>未保存</small>{/if}</button>
+        <button class:current={section === 'sign'} aria-current={section === 'sign' ? 'page' : undefined} onclick={() => { section = 'sign'; }}><span aria-hidden="true">✓</span><span>签到</span>{#if signDirty}<small>未保存</small>{/if}</button>
       </div>
       <p class="nav-version">观鱼 {version}</p>
     </nav>
@@ -216,9 +215,7 @@
               <option value="page">跟随页面</option><option value="light">浅色</option><option value="dark">深色</option>
             </select>
           </label>
-          <p class="help">立即预览；跟随页面时使用斗鱼官方的深浅色模式，放弃更改后恢复。</p>
           <AccentPicker bind:value={accentColor} />
-          <p class="help">立即预览观鱼界面主题色，保存后保留。</p>
         </section>
       {:else if section === 'optimization'}
         <OptimizationSettings bind:value={optimization} bind:shield={nativeShield} {tools} />
@@ -264,7 +261,7 @@
         <section class="room-section">
           <h2>当前房间</h2>
           <p class="room-id">{sound.roomId ? `房间 ${sound.roomId}` : '等待识别直播间'}</p>
-          <p class="live-note">以下操作立即生效，单独记住当前房间。</p>
+          <p class="live-note">当前房间的增益独立保存。</p>
           <div class="setting-row gain-toggle"><span id="guanyu-gain-label">额外增益</span>
             <button class="switch" role="switch" aria-labelledby="guanyu-gain-label" aria-checked={sound.amount > 100} disabled={!sound.available || sound.maxAmount === 100} onclick={gain.toggle}><span></span></button>
           </div>

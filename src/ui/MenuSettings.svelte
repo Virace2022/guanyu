@@ -53,7 +53,7 @@
 </script>
 
 <h1>播放器右键菜单</h1>
-<p class="intro">在菜单中拖动排序；从右侧拖入添加，拖回右侧移除。保存全部后应用。</p>
+<p class="intro">在菜单中拖动排序；从右侧拖入添加，拖回右侧移除。</p>
 <div class="menu-editor" style={appearance}>
   <section>
     <h2 id="guanyu-current-menu">当前菜单</h2>

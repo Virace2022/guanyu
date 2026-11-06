@@ -93,9 +93,16 @@ export class MultiScreenNative {
         const ids = this.order();
         if (id === this.roomId || !ids.includes(id)) return;
         if (ids.length <= 2) {
-            this.control.closeMutiPlayer();
-            this.service.historyRoomList = [this.roomId];
+            this.exit();
+            return;
         } else this.service.changeMultiRoomList("delete", id);
+        this.syncPanel();
+    }
+
+    exit() {
+        if (!this.active()) return;
+        this.control.closeMutiPlayer();
+        this.service.historyRoomList = [this.roomId];
         this.syncPanel();
     }
 

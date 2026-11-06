@@ -18,6 +18,7 @@
     "check": "svelte-check --tsconfig ./tsconfig.json && tsc --project ./tsconfig.node.json",
     "test:sign": "node --test tests/sign-yuba.test.cjs tests/task-center.test.cjs",
     "test:settings": "node --test tests/settings-preview.test.cjs",
+    "test:backpack": "node --test tests/backpack.test.cjs",
     "build": "npm run check && node scripts/build.mjs"
   },
   "dependencies": {

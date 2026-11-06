@@ -178,7 +178,6 @@ export class MultiScreenController {
         const room = await this.rooms.resolve(input);
         if (oldId !== null) {
             if (!this.settings.enabled || !this.host || native !== this.native) throw new Error("当前直播间已变化或增强已关闭，请重新选择分屏。");
-            if (Number(room.showStatus) !== 1) throw new Error(`${room.nn} 尚未开播，原分屏保持不变。`);
             if (this.native.order().includes(room.rid)) throw new Error("这个直播间已在当前多屏中。");
         }
         if (save) {
@@ -215,7 +214,6 @@ export class MultiScreenController {
         } finally { this.applying = false; }
     }
 
-    registerReplaceMenu(item) { this.dependencies.registerReplaceMenu(item); }
 
     close() {
         document.removeEventListener("visibilitychange", this.onVisibility);

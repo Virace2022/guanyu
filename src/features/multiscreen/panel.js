@@ -8,12 +8,6 @@ export class MultiScreenPanel {
             if (!owner.settings.enabled || !card || !["Enter", " "].includes(event.key) || card.getAttribute("aria-disabled") === "true") return;
             event.preventDefault(); event.stopPropagation(); card.click();
         };
-        this.context = event => {
-            const native = owner.native, rect = owner.host?.getBoundingClientRect();
-            const inside = rect && event.clientX >= rect.left && event.clientX <= rect.right && event.clientY >= rect.top && event.clientY <= rect.bottom;
-            this.targetId = owner.settings.enabled && inside && !event.target.closest('.guanyu-multi-editor') ? native.target(event) : null;
-            if (this.menu) this.menu.hidden = !this.targetId;
-        };
     }
 
     observe() {
@@ -24,25 +18,12 @@ export class MultiScreenPanel {
         });
         const root = document.getElementById("room-html5-player");
         if (root) this.domObserver.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ["style"] });
-        document.addEventListener("contextmenu", this.context, true);
-        if (!this.menu) {
-            const item = document.createElement("li"); item.id = "guanyu-multi-replace"; item.textContent = "更换此分屏直播间…"; item.hidden = true;
-            item.addEventListener("click", () => { if (this.targetId) this.owner.ui.prompt(this.targetId); });
-            item.addEventListener("keydown", event => {
-                if (!["Enter", " "].includes(event.key)) return;
-                event.preventDefault(); event.stopPropagation(); item.click();
-            });
-            this.menu = item;
-            this.owner.registerReplaceMenu(item);
-        }
     }
 
     unobserve() {
         if (this.frame !== null) cancelAnimationFrame(this.frame);
         this.frame = null;
         this.domObserver?.disconnect();
-        document.removeEventListener("contextmenu", this.context, true);
-        if (this.menu) this.menu.hidden = true;
     }
 
     schedule() {
@@ -79,6 +60,7 @@ export class MultiScreenPanel {
         if (open && !this.open) void owner.refresh();
         this.open = open;
         const ids = owner.native.active() ? owner.native.order() : [];
+        owner.ui.render();
         this.count.textContent = `已选 ${ids.length} / ${Number(owner.native.config().webNumLimit) || 4}`;
         const signature = JSON.stringify(ids.map(id => [id, owner.rooms.rooms.get(id)?.nn]));
         if (signature !== this.signature) {
@@ -152,6 +134,5 @@ export class MultiScreenPanel {
             });
         }
         this.bar?.remove(); this.offline?.remove(); this.bar = this.node = this.offline = null; this.open = false; this.signature = this.offlineSignature = "";
-        if (this.menu) this.menu.hidden = true;
     }
 }

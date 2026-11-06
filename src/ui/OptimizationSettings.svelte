@@ -20,4 +20,4 @@
 
 <h1>优化</h1><p class="intro">整理直播画面，让常用内容留在眼前。</p>
 <NativeShieldSettings bind:value={shield} status={runtime.shieldStatus} />
-<section><h2>页面显示</h2><div class="option-list">{#each choices as choice (choice.key)}<label class="option-row"><span><strong>{choice.label}</strong><small>{choice.hint}</small></span><input type="checkbox" bind:checked={value[choice.key]} /></label>{/each}</div><p class="help">修改后立即预览，保存后保留，放弃更改会恢复。聊天区也可直接点击按钮收起或恢复。</p></section>
+<section><h2>页面显示</h2><div class="option-list">{#each choices as choice (choice.key)}<label class="option-row"><span><strong>{choice.label}</strong><small>{choice.hint}</small></span><input type="checkbox" bind:checked={value[choice.key]} /></label>{/each}</div></section>

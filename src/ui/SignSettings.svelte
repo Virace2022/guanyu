@@ -8,7 +8,7 @@
   const statusName = { pending: '等待', done: '完成', waiting: '待检查', error: '重试中', disabled: '已关闭' };
 </script>
 
-<h1>签到与任务</h1>
+<h1>签到</h1>
 <p class="intro">按当前账号完成每日签到，读取官方任务进度并领取已完成的奖励。</p>
 <section>
   <h2>自动处理</h2>
@@ -18,8 +18,7 @@
     <label class="option-row"><span><strong>{task.label}</strong><small>{task.help}</small></span><input type="checkbox" bind:checked={value[task.id]} disabled={!value.enabled} /></label>
   {/each}
   </div>
-  <label class="setting-row" for="sign-room-scope"><span>房间签到范围</span><select id="sign-room-scope" bind:value={value.roomScope} disabled={!value.enabled || !value.rooms}><option value="live">只签到开播的关注房间</option><option value="all">全部关注房间</option></select></label>
-  <p class="help">上面的偏好保存后生效。关注任务只临时关注原本未关注的房间，随后取关；已有关注保留。</p>
+  <p class="help">关注任务只临时关注原本未关注的房间，随后取关；已有关注保留。</p>
 </section>
 <section>
   <h2>鱼吧未完成提醒</h2>

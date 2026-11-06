@@ -28,7 +28,6 @@
       <div role="group" aria-labelledby="guanyu-shield-title">{#each nativeShieldChoices as choice (choice.key)}<label class="shield-option"><input type="checkbox" bind:checked={value[choice.key]} /><span>{choice.label}</span></label>{/each}</div>
     </div>
   </details>
-  <p class="help">默认保留“屏蔽全部礼物”为关闭，其余项目开启；修改后立即预览，保存后保留，放弃更改会恢复。</p>
   <p class="help">进入直播间时应用所选偏好；在原生菜单里的临时调整，下次进入时恢复。</p>
   <p class="status" role="status">{status}</p>
 </section>

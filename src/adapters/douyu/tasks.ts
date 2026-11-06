@@ -124,12 +124,11 @@ export function createDouyuTasks(http: TaskRequest) {
       const status = confirmedResult(result);
       return { status, rewards: result.data?.sign_pl?.map((item: any) => `${item.name}×${item.cnt}`).join('、') || '' };
     },
-    async signRoom(id: string) {
-      return confirmedResult(await request('https://apiv2.douyucdn.cn/japi/roomuserlevel/apinc/checkIn?client_sys=android', {
-        method: 'POST', data: new URLSearchParams({ rid: id }).toString(), headers: { token: accountToken(), aid: 'android1' },
-      }));
+    async signFansHome(id: string) {
+      const result = await request('/japi/interactnc/web/fanshome/sign', { method: 'POST',
+        data: new URLSearchParams({ ctn: cookie('acf_ccn') || cookie('ccn'), rid: id }).toString() });
+      return confirmedResult(result);
     },
-    async signFansHome(id: string) { return confirmedResult(await post('/japi/interactnc/web/fanshome/sign', { rid: id })); },
     follow: (id: string) => post('/wgapi/livenc/liveweb/follow/add', { rid: id }),
     unfollow: (id: string) => post('/wgapi/livenc/liveweb/follow/rm', { rid: id }),
     levelPrize: (roomId: string, taskId: number) => post('/japi/tasksys/userLevelTask/getPrize', { roomId, taskIds: taskId }),

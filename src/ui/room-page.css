@@ -5,13 +5,14 @@ button.guanyu-backpack-entry { appearance: none; flex: none; min-height: 24px; m
 button.guanyu-backpack-entry:hover { border-color: var(--guanyu-page-accent, #ff5d23); color: var(--guanyu-page-accent, #ff5d23); }
 button.guanyu-backpack-entry:focus-visible, .guanyu-glow-entry:focus-visible, .guanyu-month-toggle:focus-visible { outline: 2px solid var(--guanyu-page-accent, #ff5d23); outline-offset: 2px; }
 .guanyu-backpack-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 0 8px; font: inherit; color: inherit; }
-.guanyu-backpack-month { white-space: nowrap; }
-.InteractABAd-valueInfo .guanyu-backpack-month > i.guanyu-month-icon { display: block; flex: none; top: 0; width: 16px; height: 16px; margin-right: 2px; background: none; color: var(--guanyu-native-muted, var(--text-light-color, #888)); }
+.guanyu-backpack-month { --guanyu-native-icon: #bbb; --guanyu-native-icon-detail: #ededed; white-space: nowrap; }
+[data-mantine-color-scheme=dark] .guanyu-backpack-month { --guanyu-native-icon: #595a66; --guanyu-native-icon-detail: #94959c; }
+.InteractABAd-valueInfo .guanyu-backpack-month > i.guanyu-month-icon { display: block; flex: none; top: 1px; width: 16px; height: 16px; margin-right: 2px; background: none; color: var(--guanyu-native-icon); }
 .guanyu-month-icon svg { display: block; width: 100%; height: 100%; }
 .guanyu-month-value { display: inline-flex; align-items: center; min-height: 18px; font-variant-numeric: tabular-nums; }
-.guanyu-month-toggle { appearance: none; display: inline-flex; align-items: center; justify-content: center; flex: none; width: 18px; height: 18px; margin-left: 3px; padding: 1px; border: 0; background: transparent; color: var(--guanyu-native-muted, var(--text-light-color, #888)); cursor: pointer; }
-.guanyu-month-toggle:hover { color: var(--guanyu-page-accent, #ff5d23); }
-.guanyu-month-toggle svg { display: block; width: 14px; height: 14px; }
+.guanyu-month-toggle { appearance: none; position: relative; top: 1px; display: inline-flex; align-items: center; justify-content: center; flex: none; width: 18px; height: 18px; margin-left: 3px; padding: 1px; border: 0; background: transparent; color: var(--guanyu-native-icon); cursor: pointer; }
+.guanyu-month-toggle:hover { --guanyu-native-icon-detail: var(--guanyu-native-icon); color: var(--guanyu-native-muted, var(--text-light-color, #888)); }
+.guanyu-month-toggle svg { display: block; width: 16px; height: 16px; }
 .guanyu-backpack-vip { padding: 0 8px; white-space: nowrap; }
 .guanyu-glow-entry { appearance: none; display: inline-flex; align-items: center; justify-content: center; flex: none; width: 32px; height: 30px; margin: 0 6px; padding: 4px; border: 0; border-radius: 4px; background: transparent; color: var(--guanyu-page-accent, #ff5d23); cursor: pointer; }
 .guanyu-glow-entry svg { width: 22px; height: 22px; }

@@ -36,16 +36,15 @@ export function start() {
   const gain = createGain(player, settings, localStorage, window), pageTools = createPageTools(settings, unsafeWindow), barrage = createBarrage(settings, unsafeWindow);
   const teamSource = observeTeam(unsafeWindow), team = createTeam(teamSource, localStorage, window, settings);
   const teamEditor = createTeamEditor(team, settings, pageTheme);
-  let context: ReturnType<typeof mountPlayerMenu> | undefined;
   let prompt = (_target?: number) => {};
-  const multi = createMultiscreen(settings, team, target => prompt(target), item => context?.register('replaceScreen', item));
+  const multi = createMultiscreen(settings, team, target => prompt(target));
   const multiWindow = createMultiWindow(multi); prompt = multiWindow.open;
   const openTeam = () => { if (team.value.source) teamEditor.open(); else settingsWindow.open('team'); };
   const sign = createSign(settings, () => player.value.roomId || '', (title, content) => confirmAction(title, content, '前往鱼吧', '继续自动重试'));
   const roomPage = createRoomPage(settings, player);
   const playback = createPlayback(settings, player, () => roomPage.value.roomId === player.value.roomId && roomPage.value.live === true);
   let openGlow = () => {};
-  const backpack = createBackpack(settings, player, () => settingsWindow.open('backpack'), message => confirmAction('赠送荧光棒', message, '按计划赠送'), () => openGlow());
+  const backpack = createBackpack(settings, player, () => settingsWindow.open('backpack'), () => openGlow());
   const glowWindow = createGlowWindow(backpack, settings); openGlow = glowWindow.open;
   const settingsWindow = createSettingsWindow(settings, gain, pageTheme, pageTools, team, multi, sign, backpack, playback, roomPage, openTeam);
   const info = createPlayerInfo(player, settings);
@@ -54,7 +53,7 @@ export function start() {
   const removeTopBanner = mountTopBanner(settings, team);
   const removeRoomLayout = mountRoomLayout(settings, team);
   const removeQuickDock = mountQuickDock(settings, () => settingsWindow.open());
-  const menus = [GM_registerMenuCommand('观鱼 · 设置', () => settingsWindow.open()), GM_registerMenuCommand('观鱼 · 团播名单', openTeam), GM_registerMenuCommand('观鱼 · 签到与任务', () => settingsWindow.open('sign'))];
+  const menus = [GM_registerMenuCommand('观鱼 · 设置', () => settingsWindow.open()), GM_registerMenuCommand('观鱼 · 团播名单', openTeam), GM_registerMenuCommand('观鱼 · 签到', () => settingsWindow.open('sign'))];
   const toggle = (key: keyof OptimizationOptions) => settings.save({ ...settings.value, optimization: { ...settings.value.optimization, [key]: !settings.value.optimization[key] } });
   const hasTeam = () => !!team.value.source;
   async function preview() {
@@ -69,7 +68,8 @@ export function start() {
     team: { label: () => '团播名单', run: openTeam, enabled: hasTeam },
     preview: { label: () => '团播预览', checked: () => team.value.preview, run: preview, enabled: hasTeam },
     refreshTeam: { label: () => '刷新团播开播状态', run: async () => { await team.refreshStatus(); }, enabled: () => hasTeam() && !team.value.refreshing },
-    multi: { label: () => '官方多屏', checked: () => multi.value.active, run: multi.open, enabled: () => multi.value.ready && settings.value.multi.enabled },
+    multi: { label: () => multi.value.active ? '退出多屏' : '进入多屏', run: () => multi.value.active ? multi.exit() : multi.open(), enabled: () => multi.value.ready && settings.value.multi.enabled },
+    editMulti: { label: () => '编辑多屏', run: multi.open, enabled: () => multi.value.ready && multi.value.active && settings.value.multi.enabled },
     hidePk: { label: () => '隐藏 PK 条', checked: () => settings.value.optimization.hidePk, run: () => toggle('hidePk') },
     hideActivities: { label: () => '隐藏活动浮窗', checked: () => settings.value.optimization.hideActivities, run: () => toggle('hideActivities') },
     hideAds: { label: () => '隐藏页面广告', checked: () => settings.value.optimization.hideAds, run: () => toggle('hideAds') },
@@ -80,16 +80,16 @@ export function start() {
     teamSettings: { label: () => '团播设置', run: () => settingsWindow.open('team') },
     multiSettings: { label: () => '多屏设置', run: () => settingsWindow.open('multi') },
     menuSettings: { label: () => '右键菜单设置', run: () => settingsWindow.open('menu') },
-    signSettings: { label: () => '签到与任务', run: () => settingsWindow.open('sign') },
+    signSettings: { label: () => '签到', run: () => settingsWindow.open('sign') },
   };
-  context = mountPlayerMenu(settings, actions, message => { void confirmAction('操作未完成', message, '知道了'); });
+  const context = mountPlayerMenu(settings, actions, message => { void confirmAction('操作未完成', message, '知道了'); });
   multi.start();
   console.info('[观鱼] 已启动', { version, sameWindow: monkeyWindow === unsafeWindow });
   function onPageHide(event: PageTransitionEvent) { if (!event.persisted) dispose(); }
   function dispose() {
     for (const menu of menus) GM_unregisterMenuCommand(menu);
     settingsWindow.dispose();
-    context?.dispose(); multi.dispose(); multiWindow.dispose(); info.dispose(); sign.dispose(); playback.dispose(); roomPage.dispose(); glowWindow.dispose(); backpack.dispose();
+    context.dispose(); multi.dispose(); multiWindow.dispose(); info.dispose(); sign.dispose(); playback.dispose(); roomPage.dispose(); glowWindow.dispose(); backpack.dispose();
     removeTopBanner();
     removeRoomLayout();
     removeQuickDock(); barrage.dispose(); pageTools.dispose(); removeTeamLayout(); teamEditor.dispose(); team.dispose(); teamSource.dispose();

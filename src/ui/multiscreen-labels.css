@@ -1,0 +1,16 @@
+.guanyu-label-anchor { position: absolute; width: 25px; height: 29px; pointer-events: none; }
+.guanyu-label-anchor .guanyu-audio-label { position: absolute; top: 0; left: 0; right: auto !important; bottom: auto !important; width: max-content; max-width: none; pointer-events: auto; transition: opacity 200ms ease-out, transform 200ms ease-out; }
+.guanyu-label-anchor[data-corner$="-right"] .guanyu-audio-label { left: auto; right: 0 !important; }
+.guanyu-label-anchor .guanyu-audio-switch, .guanyu-label-anchor .guanyu-audio-panel { pointer-events: auto; }
+.guanyu-label-anchor .guanyu-audio-label > :nth-child(2) { max-width: min(220px, 35vw); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; transition: max-width 180ms ease-out, opacity 180ms ease-out, margin 180ms ease-out; pointer-events: auto; }
+.guanyu-label-anchor[data-display="avatar"]:not([data-expanded="true"]) .guanyu-audio-label > :nth-child(2) { max-width: 0; margin-inline: 0; opacity: 0; pointer-events: none; }
+.guanyu-label-anchor[data-display="hover"]:not([data-expanded="true"]) .guanyu-audio-label { opacity: 0; transform: translateY(4px); }
+.guanyu-label-anchor[data-display="hover"]:not([data-expanded="true"]) .guanyu-audio-label * { pointer-events: none; }
+.guanyu-audio-menu-open .guanyu-audio-panel { display: none !important; }
+.guanyu-audio-label.guanyu-audio-keyboard:not(.guanyu-audio-dismissed) .guanyu-audio-panel:not([hidden]) { display: flex; }
+.guanyu-label-hotspot { display: none; position: absolute; width: 44px; height: 44px; top: 0; left: 0; pointer-events: auto; }
+.guanyu-label-anchor[data-display="hover"] .guanyu-label-hotspot { display: block; }
+.guanyu-label-anchor[data-corner$="-right"] .guanyu-label-hotspot { left: auto; right: 0; }
+.guanyu-label-anchor[data-corner^="bottom-"] .guanyu-label-hotspot { top: auto; bottom: 0; }
+.guanyu-label-hint { position: absolute; left: 50%; top: calc(50% + 42px); transform: translateX(-50%); max-width: calc(100% - 24px); padding: 6px 12px; border-radius: 5px; background: rgb(0 0 0 / 80%); color: white; font: 12px/1.5 system-ui, 'Microsoft YaHei', sans-serif; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { .guanyu-label-anchor .guanyu-audio-label, .guanyu-label-anchor .guanyu-audio-label > :nth-child(2) { transition: none; } }

@@ -34,9 +34,11 @@
 
 `adapters/douyu/theme.ts` 优先观察官方 `data-mantine-color-scheme`。`ui/theme.ts` 合并手动主题和官方状态，向自有侧栏、预览标题、多屏选房和确认提示分发主题，`theme.css` 仅作用于自有主题宿主。`ui/edge-drag.ts` 处理侧栏指针拖动、键盘移动、视口与尺寸变化及释放。
 
-页面增强通过 `--guanyu-page-accent` 共用主题色，独立窗口仍持有各自主题变量。续牌计划通过 `RoomApi` 批量补充主播头像；`glow-prompt.css` 显式挂载到窗口 Shadow DOM，原生消费行与多屏音量轨道复用官方结构、样式及资源。
+页面增强通过 `--guanyu-page-accent` 共用主题色，独立窗口仍持有各自主题变量，主按钮文字统一由共享主题定义为白色。粉丝牌资料与续牌计划共用 `RoomApi` 批量头像查询及本页缓存；`glow-prompt.css` 显式挂载到窗口 Shadow DOM，原生消费行与多屏音量轨道复用官方结构、样式及资源。
 
 任务中心的签到与观时领取由 `features/sign/points.ts` 分别执行并汇总结果。`task-request.ts` 的同源请求分支保留账号互斥、间隔、超时和释放，使用浏览器 fetch 处理任务中心 Cookie/CSRF；鱼吧等跨源请求继续使用 GM 桥接。
+
+`core/md5.js` 为团播取流签名提供共享 MD5 工具，沿用已验证的 JS 实现。
 
 | 数据 | 存储键或范围 |
 | --- | --- |
@@ -65,7 +67,7 @@
 
 `multiscreen/audio.ts` 持有总音量、单路发声对象、各房间比例和静音恢复值。它不依赖 DOM 或 Svelte。
 
-`multiscreen-audio.ts` 负责原生媒体和标签适配：
+`multiscreen-audio.ts` 负责原生媒体音量适配，`multiscreen-labels.ts` 负责标签、热区和关联弹层：
 
 - 多屏期间仅在各媒体实例上接管 `volume/muted` 属性，保留原属性描述符；不修改全局媒体原型。
 - 主视频向官方服务呈现当前底部音量，实际音量用原生属性描述符写入乘积，避免 SDK 回读后重复缩放。
@@ -74,7 +76,7 @@
 - 标签与弹幕使用同级绘制顺序，插在弹幕之后、原生操作和编辑面板之前。布局按实际画面位置计算，原生位置避让展开的控制栏。
 - 退出时恢复媒体实例属性、原标签与事件，清理自有层、观察器、帧任务和计时器。
 
-`multi.independentVolume` 默认 false，`multi.centerLabels` 默认 true，两者保存后独立应用；布局和候选更新保留媒体节点。
+`multi.independentVolume` 默认 false，`multi.centerLabels` 默认 true，两者保存后独立应用；`multi.labelDisplay` 默认为 `always`，通过 `SettingsStore.runtime` 仅预览自身字段，保存或撤回不重置音量。布局和候选更新保留媒体节点。
 
 ## 团播与预览
 
@@ -99,9 +101,13 @@ flv.js 1.6.2 从固定 npmmirror 地址按需加载，HLS 使用斗鱼 SDK。HLS
 
 ## 官方多屏与菜单
 
-`multiscreen/controller.js` 组织候选、官方活动状态、刷新和启停；`rooms.js` 读取关注和房间资料；`panel.js` 增强选房面板并定位副屏右键目标。`feature.ts` 向设置暴露订阅和操作，并连接音量模型与适配器。
+`multiscreen/controller.js` 组织候选、官方活动状态、刷新和启停；`rooms.js` 读取关注和房间资料；`panel.js` 增强选房面板。`feature.ts` 向设置暴露订阅和操作，并组织音量、标签和画质生命周期。
 
-`adapters/douyu/multiscreen.js` 通过运行时能力发现官方服务，保存原名单，原子替换 battleList，使用 `fresh` 定点换人，保护主房间。关闭本地模式回到单屏；真实官方模式恢复原名单。
+`multiscreen/quality.ts` 按房间持有实际画质与切换状态；`adapters/douyu/multiscreen-quality.ts` 发现原生主副屏能力，仅在当前副屏实例上包装取流、响应、播放就绪及错误回调，并保留本次期望档位。官方刷新沿用本次画质，退出时恢复原方法；主房间仍走原生画质处理器。`ui/multiscreen-menu.ts` 负责标签专用菜单、定位与键盘操作，通过回调选择画质或进入原定点换人窗口。旧 `replaceScreen` 配置只在读取时归一化，不再注册到通用菜单。
+
+`adapters/douyu/multiscreen-rates.ts` 从官方已加载运行时按导出特征发现签名、配置和事件服务，用隔离事件取得官方签名，后台请求副屏档位，不创建播放器或调用现有流的播放方法。请求按实例接入发起，档位缓存与播放确认分开，结束时取消请求和监听；读取失败重试也只取元数据。
+
+`adapters/douyu/multiscreen.js` 通过运行时能力发现官方服务，保存原名单，原子替换 battleList，使用 `fresh` 定点换人，保护主房间；`exit()` 复用官方关闭能力恢复单屏。原生面板同步时向功能状态回传当前启停与已选房间，UI 仅在状态变化时通知订阅。关闭增强时，本地模式回到单屏，真实官方模式恢复原名单。
 
 `player-menu.ts` 保留官方项并按配置插入动作，动作复用已有功能控制器，通过 `checked` 回调同步官方勾选前缀与 `aria-checked`，操作完成后立即刷新。`player-submenu.ts` 沿用官方子菜单结构与悬停/键盘行为。主播配置在入口启用后预读，结果按房间缓存，换房、关闭或释放时取消未完成请求。
 
@@ -115,13 +121,13 @@ flv.js 1.6.2 从固定 npmmirror 地址按需加载，HLS 使用斗鱼 SDK。HLS
 
 `room-page/controller.ts` 管理直播/轮播资料与显示调度。`backpack-api.ts` 集中背包、粉丝牌、口袋、VIP、消费与赠送接口，`backpack-page.ts` 按原道具 ID 装饰页面。`backpack/controller.ts` 持有独立请求结果和待确认赠送计划；账号变化不复用旧计划，赠送失败不自动重发。
 
-`backpack-page.ts` 将道具总亲密度留在背包，分别挂载月消费显隐、独立 VIP 提示、本房聊天工具栏牌龄和充值旁续牌按钮。`GlowPrompt.svelte` 与设置页调用同一个背包控制器的计划/赠送操作，窗口不持有独立业务。`ui/icons.ts` 复用线形图标并显式保留描边，避免原生 SVG 样式使图标不可见。
+`backpack-page.ts` 将道具总亲密度留在背包，分别挂载月消费显隐、独立 VIP 提示、本房聊天工具栏牌龄和充值旁续牌按钮。`GlowPrompt.svelte` 打开时调用背包控制器准备计划，数量变化只重算本地计划；设置页使用同一窗口入口。逐房赠送状态按房间 ID 保存在控制器，成功后保留计划与状态供头像回显，账号/房间变化清空，迟到响应不写入新账号。`RoomAvatar.svelte` 与显式导入的 `avatar-grid.css` 复用头像、加号、描边勾和进度展示，分别用于续牌与多屏选房。`ui/icons.ts` 显式区分实心钱包、显隐眼睛与其他线形图标，避免原生 SVG 样式覆盖图标。
 
 ## 签到调度
 
 `task-runner.ts` 长持账号级 Web Lock，统一鱼吧与其他任务的页面所有权；其他已匹配页面只同步状态或提交共享检查请求，接手时重新读取进度。共享真实房间号使缺少房间上下文的调度页也可处理需房间上下文的任务。`task-request.ts` 在请求时读取当前凭据，统一取消、超时、同源 Web Locks 与请求间隔，不持久保存凭据。`tasks.ts` 封装真实任务、鱼吧文章、等级和星推接口。`star-packet.ts` 通过官方事件和文字识别原生红包入口。
 
-`sign/yuba.js` 和 `yuba-response.js` 管理鱼吧调度与成功判定；`daily.ts` 管理其他任务、逐房间结果、退避、官方进度和关注恢复；`feature.ts` 合并可订阅状态。进度按账号和北京时间保存，恢复未完成的关注还原操作优先于新增任务。
+`sign/yuba.js` 和 `yuba-response.js` 管理鱼吧调度与成功判定；`daily.ts` 管理其他任务、逐房间结果、退避、官方进度和关注恢复；`feature.ts` 合并可订阅状态。粉丝家园入口直接交由签到结果判定器处理原始响应，允许明确已签到消息先于通用错误码确认。读取同账号当天进度时，复用已签到消息判定修正旧失败记录；逐房间结果与旧记录恢复共用汇总，只有持有调度锁的页面写回修正结果。已下线的关注房间签到不进入设置定义或调度。进度按账号和北京时间保存，恢复未完成的关注还原操作优先于新增任务。
 
 ## 生命周期与样式
 

@@ -4,7 +4,7 @@ import { createIcon } from '../../ui/icons';
 
 export interface BackpackPageData { gifts: BagGift[]; badges: FanBadge[]; pocket: PocketItem[]; vipDays: number | null; month: MonthCost | null; roomId: string; uid: string }
 export function mountBackpackPage(open: () => void, refresh: () => void, openGlow: () => void) {
-  const entry = document.createElement('button'); entry.type = 'button'; entry.className = 'guanyu-backpack-entry'; entry.textContent = '背包增强'; entry.onclick = open;
+  const entry = document.createElement('button'); entry.type = 'button'; entry.className = 'guanyu-backpack-entry'; entry.textContent = '背包'; entry.onclick = open;
   const summary = document.createElement('div'); summary.className = 'guanyu-backpack-summary';
   const monthItem = document.createElement('div'); monthItem.className = 'InteractABAd-valueInfo--item guanyu-backpack-month';
   const monthIcon = document.createElement('i'); monthIcon.className = 'guanyu-month-icon'; monthIcon.append(createIcon('wallet'));

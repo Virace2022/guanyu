@@ -19,7 +19,7 @@ function load(file, overrides = {}, cache = new Map()) {
   return exports;
 }
 
-const { createSettings, settingsKey } = load(path.join(__dirname, '../src/config/settings.ts'));
+const { createSettings, settingsKey, defaults } = load(path.join(__dirname, '../src/config/settings.ts'));
 
 function session() {
   const values = new Map();
@@ -89,6 +89,53 @@ test('跨页更新后放弃草稿恢复最新保存值', () => {
   settings.preview(null);
   assert.equal(settings.runtime.value.theme, 'light');
   assert.equal(settings.runtime.value.accentColor, '#2255aa');
+  settings.dispose();
+});
+
+test('旧多屏配置回填显示方式，退役菜单项不影响其他项与存储', () => {
+  const { settings, storage, events } = session();
+  const { labelDisplay, ...multi } = defaults.multi;
+  const raw = JSON.stringify({ ...defaults, multi, playerMenu: ['settings', 'replaceScreen', 'mirror'] });
+  storage.setItem(settingsKey, raw);
+  const reopened = createSettings(storage, events);
+  assert.equal(reopened.error, '');
+  assert.equal(reopened.value.multi.labelDisplay, 'always');
+  assert.deepEqual(Array.from(reopened.value.playerMenu), ['settings', 'mirror']);
+  assert.equal(storage.getItem(settingsKey), raw);
+  const { readPlayerMenu } = load(path.join(__dirname, '../src/config/player-menu.ts'));
+  assert.throws(() => readPlayerMenu(['settings', 'unknown-action']), /右键菜单配置无效/);
+  settings.dispose(); reopened.dispose();
+});
+
+test('标签显示方式只预览自身，放弃及保存分别恢复和保留', () => {
+  const { settings, storage, events, draft } = session();
+  settings.save({ ...settings.value, multi: { ...settings.value.multi, centerLabels: false, useFollow: false, custom: [9999] } });
+  const before = storage.getItem(settingsKey);
+  settings.preview({ ...draft(), multi: { labelDisplay: 'hover' } });
+  assert.equal(settings.value.multi.labelDisplay, 'always');
+  assert.equal(settings.runtime.value.multi.labelDisplay, 'hover');
+  assert.equal(settings.runtime.value.multi.centerLabels, false);
+  assert.equal(settings.runtime.value.multi.useFollow, false);
+  assert.deepEqual(Array.from(settings.runtime.value.multi.custom), [9999]);
+  assert.equal(storage.getItem(settingsKey), before);
+  settings.preview(null);
+  assert.equal(settings.runtime.value.multi.labelDisplay, 'always');
+  settings.save({ ...settings.value, multi: { ...settings.value.multi, labelDisplay: 'avatar' } });
+  const reopened = createSettings(storage, events);
+  assert.equal(reopened.value.multi.labelDisplay, 'avatar');
+  settings.dispose(); reopened.dispose();
+});
+
+test('标签显示方式保存失败保留预览与原设置', () => {
+  const { settings, storage, draft, fail } = session();
+  settings.preview({ ...draft(), multi: { labelDisplay: 'hover' } });
+  fail();
+  assert.throws(() => settings.save({ ...settings.value, multi: { ...settings.value.multi, labelDisplay: 'hover' } }), /空间不足/);
+  assert.equal(settings.value.multi.labelDisplay, 'always');
+  assert.equal(settings.runtime.value.multi.labelDisplay, 'hover');
+  assert.equal(storage.getItem(settingsKey), null);
+  settings.preview(null);
+  assert.equal(settings.runtime.value.multi.labelDisplay, 'always');
   settings.dispose();
 });
 

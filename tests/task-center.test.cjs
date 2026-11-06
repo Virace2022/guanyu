@@ -23,6 +23,78 @@ const { checkPoints } = load('src/features/sign/points.ts');
 const signed = value => ({ error: 0, data: { todaySigned: value, todayTaskFinished: 1 } });
 const view = tasks => ({ error: 0, data: { startTime: 1793894400, taskList: tasks } });
 
+test('粉丝家园 error=-1 且明确今日已签到时，确认完成而不重试', async () => {
+  const api = createDouyuTasks({ async request() { return { error: -1, msg: '今日已签到，请明天再来' }; } });
+  assert.equal(await api.signFansHome('71415'), 'already');
+});
+
+test('粉丝家园真正失败仍保留错误，不误报今日完成', async () => {
+  const api = createDouyuTasks({ async request() { return { error: -1, msg: '签到失败，请稍后重试' }; } });
+  await assert.rejects(api.signFansHome('71415'), /签到失败.*error=-1/);
+});
+
+async function restoreFansHome(error) {
+  const day = '2026-11-06', nextAt = Date.now() + 300000;
+  const targets = Array.from({ length: 15 }, (_, index) => ({ id: String(index + 1), name: index === 14 ? 'CSTG' : `房间${index + 1}`, live: false }));
+  const lane = { id: 'fansHome', label: '粉丝家园签到', status: 'error', attempts: 4, nextAt,
+    detail: `14 / 15 个房间已确认，继续按间隔处理；CSTG：${error}`,
+    targets, results: Object.fromEntries(targets.slice(0, 14).map(room => [room.id, 'signed'])),
+    failures: { 15: { attempts: 4, nextAt, error } } };
+  const key = 'guanyu:daily-tasks:v1:test-account';
+  const values = new Map([[key, JSON.stringify({ day, lanes: { fansHome: lane }, readIds: [], tasks: [] })]]);
+  const requests = [];
+  let scheduled;
+  const core = load('src/core/state.ts');
+  const { createDailyTasks } = load('src/features/sign/daily.ts', {
+    localStorage: { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, value) },
+    navigator: { onLine: true, locks: { request: async (_key, _options, run) => run({}) } },
+    window: { addEventListener() {}, removeEventListener() {} },
+    document: { addEventListener() {}, removeEventListener() {} },
+    setTimeout: callback => { scheduled = callback; return 0; }, clearTimeout() {},
+  }, {
+    '../../core/state': core,
+    '../../config/sign': load('src/config/sign.ts'),
+    '../../adapters/douyu/task-request': { ...requestHelpers, taskDay: () => day,
+      createTaskRequest: () => ({ async request(url) { requests.push(url); throw new Error('本场景不应重新请求签到'); }, dispose() {} }) },
+    '../../adapters/douyu/tasks': { createDouyuTasks },
+    './points': { checkPoints },
+  });
+  const daily = createDailyTasks(core.createState({ sign: { enabled: true, fansHome: true } }), () => '71415',
+    { claim: async () => true, room: () => '71415', take: () => false });
+  await new Promise(resolve => setImmediate(resolve));
+  return { daily, requests, saved: () => JSON.parse(values.get(key)).lanes.fansHome,
+    async tick() { scheduled(); await new Promise(resolve => setImmediate(resolve)); } };
+}
+
+test('当天历史 14/15 已签到错误恢复为 15/15，并保存完成状态且不重复请求', async () => {
+  const { daily, requests, saved, tick } = await restoreFansHome('今日已签到，请明天再来（error=-1）');
+  try {
+    const row = daily.value.rows.find(row => row.id === 'fansHome');
+    assert.equal(row.status, 'done');
+    assert.equal(row.detail, '15 / 15 个房间已确认');
+    assert.equal(row.nextAt, 0);
+    assert.equal(row.attempts, 0);
+    assert.equal(saved().results['15'], 'already');
+    assert.deepEqual(saved().failures, {});
+    await tick();
+    assert.deepEqual(requests, []);
+    assert.equal(daily.value.rows.find(row => row.id === 'fansHome').status, 'done');
+  } finally { daily.dispose(); }
+});
+
+test('历史真正失败仍显示 14/15 并保留重试记录', async () => {
+  const message = '签到失败，请稍后重试（error=-1）';
+  const { daily, requests, saved } = await restoreFansHome(message);
+  try {
+    const row = daily.value.rows.find(row => row.id === 'fansHome');
+    assert.equal(row.status, 'error');
+    assert.match(row.detail, /^14 \/ 15 个房间已确认/);
+    assert.equal(saved().results['15'], undefined);
+    assert.equal(saved().failures['15'].error, message);
+    assert.deepEqual(requests, []);
+  } finally { daily.dispose(); }
+});
+
 test('任务中心签到沿用官方验证参数，31200 成功后仍核对今日状态', async () => {
   const calls = [];
   let reads = 0;

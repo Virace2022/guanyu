@@ -24,10 +24,13 @@ export function assertResponse(result: any) {
     throw new Error(responseError(result));
   }
 }
+export function alreadySigned(message: string) {
+  const text = message.trim();
+  return /^(?:(?:您|你)(?:今天|今日)?|(?:今天|今日)(?:您|你)?)?(?:已|已经)(?:成功)?签(?:到(?:过)?|过到?)(?:了)?(?:$|[！!。，,；;.])/.test(text)
+    || /^请勿重复签到[！!。.]?$/.test(text);
+}
 export function confirmedResult(result: any): 'signed' | 'already' {
-  const message = String(result.message || result.msg || '').trim();
-  if (/^(?:(?:您|你)(?:今天|今日)?|(?:今天|今日)(?:您|你)?)?(?:已|已经)(?:成功)?签(?:到(?:过)?|过到?)(?:了)?(?:$|[！!。，,；;.])/.test(message)
-    || /^请勿重复签到[！!。.]?$/.test(message)) return 'already';
+  if (alreadySigned(String(result.message || result.msg || ''))) return 'already';
   assertResponse(result);
   if (result.error != null && Number(result.error) === 0 || result.status_code != null && Number(result.status_code) === 200) return 'signed';
   throw new Error(responseError(result, '接口未确认操作成功'));
@@ -36,6 +39,7 @@ export function confirmedResult(result: any): 'signed' | 'already' {
 interface RequestOptions {
   method?: string; data?: string; headers?: Record<string, string>; attempt?: number;
   groupId?: string; mobile?: boolean; yuba?: boolean; text?: boolean; sameOrigin?: boolean;
+  prepare?: () => { data: string; headers: Record<string, string> };
 }
 
 export function createTaskRequest(storage: Storage = localStorage) {
@@ -63,6 +67,10 @@ export function createTaskRequest(storage: Storage = localStorage) {
       // 所有签到共享账号间隔；页面在请求中关闭，接手页也须等待原超时边界。
       storage.setItem(key, String(Date.now() + timeout + taskGap()));
       try {
+        // 排队结束后再读取登录态和生成签名，避免等待期间的凭据刷新或时间戳失效。
+        const prepared = options.prepare?.();
+        check(uid);
+        const data = prepared?.data ?? options.data;
         return await new Promise((resolve, reject) => {
           let cancelRequest = () => {}, settled = false;
           const finish = (error?: Error, result?: unknown) => {
@@ -73,7 +81,7 @@ export function createTaskRequest(storage: Storage = localStorage) {
           const stop = () => { finish(interrupted()); cancelRequest(); };
           const timer = setTimeout(() => { finish(new Error(`请求超过 ${timeout / 1000} 秒未响应`)); cancelRequest(); }, timeout);
           abort.signal.addEventListener('abort', stop, { once: true });
-          const headers: Record<string, string> = { 'Content-Type': 'application/x-www-form-urlencoded', ...options.headers };
+          const headers: Record<string, string> = { 'Content-Type': 'application/x-www-form-urlencoded', ...options.headers, ...prepared?.headers };
           if (options.mobile) { headers.client = 'android'; headers.token = accountToken(); }
           else if (options.yuba || path.includes('yuba.douyu.com') || path.startsWith('/wbapi') || path.startsWith('/ybapi')) {
             headers['dy-client'] = 'pc'; headers['dy-token'] = accountToken();
@@ -93,12 +101,12 @@ export function createTaskRequest(storage: Storage = localStorage) {
           try {
             if (options.sameOrigin) {
               const controller = new AbortController(); cancelRequest = () => controller.abort();
-              void fetch(url, { method: options.method || 'GET', headers, body: options.data, credentials: 'include', signal: controller.signal })
+              void fetch(url, { method: options.method || 'GET', headers, body: data, credentials: 'include', signal: controller.signal })
                 .then(async response => receive({ status: response.status, responseText: await response.text() }))
                 .catch(error => finish(error));
               return;
             }
-            const handle = GM_xmlhttpRequest({ method: options.method || 'GET', url, headers, data: options.data,
+            const handle = GM_xmlhttpRequest({ method: options.method || 'GET', url, headers, data,
               timeout, responseType: options.text ? 'text' : 'json',
               onload: receive,
               onerror: () => finish(new Error('网络请求失败')),

@@ -6,7 +6,6 @@
   import type { Readable } from '../core/state';
   import { assignedRooms, copyLayout, emptyLayout, exportLayout, importLayout, layoutRooms, type TeamLayout, type Person } from '../features/team-live/layout';
   import FishIcon from './FishIcon.svelte';
-  import { accentText } from './theme';
   import { animateContent } from './motion';
   import { pointerSort } from './pointer-sort';
   import { showModal } from './modal';
@@ -225,7 +224,7 @@
   </button>
 {/snippet}
 
-<dialog bind:this={dialog} class="team-window guanyu-themed" data-theme={theme} style:--guanyu-accent={accentColor} style:--guanyu-on-accent={accentText(accentColor)} aria-labelledby="team-title" oncancel={event => { event.preventDefault(); if (confirming) confirming = false; else close(); }}>
+<dialog bind:this={dialog} class="team-window guanyu-themed" data-theme={theme} style:--guanyu-accent={accentColor} aria-labelledby="team-title" oncancel={event => { event.preventDefault(); if (confirming) confirming = false; else close(); }}>
   <header class="window-header" inert={confirming}>
     <div class="brand"><FishIcon class="brand-icon" /><strong>观鱼</strong><span class="header-divider"></span><span id="team-title">团播名单</span></div>
     <button class="icon-button" aria-label="关闭名单编辑" onclick={close}>×</button>
