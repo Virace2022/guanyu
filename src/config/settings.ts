@@ -7,6 +7,10 @@ import { signDefaults, readSignOptions, type SignOptions } from './sign';
 import { playbackDefaults, roomDefaults, backpackDefaults, readPlayback, readRoom, readBackpack, type PlaybackOptions, type RoomOptions, type BackpackOptions } from './enhancements';
 
 export type Theme = 'page' | 'light' | 'dark';
+export type SettingsPreview = Pick<Settings, 'theme' | 'accentColor' | 'optimization' | 'nativeShield'> & {
+  barrage: Omit<BarrageOptions, 'linked'>;
+  team: Pick<TeamOptions, 'showToolbar' | 'columns' | 'teamColumns' | 'alignment' | 'originalWidth'>;
+};
 export interface Settings {
   theme: Theme;
   accentColor: string;
@@ -25,7 +29,7 @@ export interface Settings {
 }
 
 export const settingsKey = 'guanyu:settings:v1';
-export const defaults: Settings = { theme: 'page', accentColor: '#21815f', maxMultiplier: 2,
+export const defaults: Settings = { theme: 'page', accentColor: '#ff5d23', maxMultiplier: 2,
   gainPresets: [0, 50, 100, 150], optimization: { ...optimizationDefaults }, barrage: { ...barrageDefaults }, nativeShield: { ...nativeShieldDefaults },
   team: { ...teamDefaults }, multi: { ...multiDefaults, custom: [] }, playerMenu: [...menuDefaults], sign: { ...signDefaults },
   playback: { ...playbackDefaults }, room: { ...roomDefaults }, backpack: { ...backpackDefaults } };
@@ -67,17 +71,27 @@ export function createSettings(storage: Storage, events: Window) {
   try { initial = read(storage); }
   catch (error) { loadError = `设置读取失败：${String(error)}`; }
   const state = createState(initial);
+  const runtime = createState(initial);
+  let draft: SettingsPreview | null = null;
+
+  function refreshRuntime() {
+    const value = state.value;
+    const next = draft ? { ...value, ...draft, barrage: { ...value.barrage, ...draft.barrage }, team: { ...value.team, ...draft.team } } : value;
+    if (JSON.stringify(next) !== JSON.stringify(runtime.value)) runtime.set(next);
+  }
 
   function save(value: Settings) {
     const next = validate(value);
     storage.setItem(settingsKey, JSON.stringify(next));
     loadError = '';
+    draft = null;
     state.set(next);
+    refreshRuntime();
   }
 
   function onStorage(event: StorageEvent) {
     if (event.key !== settingsKey && event.key !== null) return;
-    try { const value = read(storage); loadError = ''; state.set(value); }
+    try { const value = read(storage); loadError = ''; state.set(value); refreshRuntime(); }
     catch (error) { loadError = `设置读取失败：${String(error)}`; }
   }
   events.addEventListener('storage', onStorage);
@@ -86,6 +100,8 @@ export function createSettings(storage: Storage, events: Window) {
     ...state,
     get value() { return state.value; },
     get error() { return loadError; },
+    runtime: { subscribe: runtime.subscribe, get value() { return runtime.value; } },
+    preview(value: SettingsPreview | null) { draft = value; refreshRuntime(); },
     save,
     dispose: () => events.removeEventListener('storage', onStorage),
   };

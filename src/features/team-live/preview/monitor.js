@@ -3,6 +3,7 @@ import { TeamLiveStreamSource } from './stream-source';
 import { TeamLiveFocus } from './focus';
 import { element as TeamLive_element, button as TeamLive_button } from './dom';
 import { loadFlv } from './libraries';
+import { teamColumns } from '../layout';
 export class TeamLiveMonitor {
     constructor(page) {
         this.page = page;
@@ -48,7 +49,7 @@ export class TeamLiveMonitor {
     }
 
     mountTeam(team, layout) {
-        const group = TeamLive_element("div", "guanyu-preview-team");
+        const group = TeamLive_element("div", `guanyu-preview-team${team.independent ? ' guanyu-preview-independent' : ''}`);
         if (team.name) group.appendChild(TeamLive_element("h4", "guanyu-preview-group-title", team.name));
         this.mountRow(group, team.captains, "captains", layout);
         if (layout.enabled && layout.previewMembers) this.mountRow(group, team.members, "members", layout);
@@ -89,7 +90,7 @@ export class TeamLiveMonitor {
     arrange(layout) {
         if (!this.groups) return;
         const teams = this.previewTeams(layout), width = this.groups.clientWidth;
-        const columns = layout.enabled ? Math.max(1, Math.min(teams.length, layout.teamColumns || Math.floor(width / 280) || 1, Math.floor(width / 200) || 1)) : 1;
+        const columns = layout.enabled ? teamColumns(teams.filter(team => !team.independent).length, width, layout.teamColumns) : 1;
         this.groups.style.gridTemplateColumns = `repeat(${columns}, minmax(0, 1fr))`;
         Array.from(this.groups.children).forEach((group, index) => {
             const available = group.clientWidth || width / columns;

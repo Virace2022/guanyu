@@ -9,7 +9,10 @@ const ts = require("typescript");
 const requestSource = ts.transpileModule(readFileSync(path.join(__dirname, "../src/adapters/douyu/task-request.ts"), "utf8"), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
 }).outputText;
-const source = requestSource + "\n" + ["yuba-response.js", "yuba.js"].map(file =>
+const runnerSource = ts.transpileModule(readFileSync(path.join(__dirname, "../src/adapters/douyu/task-runner.ts"), "utf8").replace(/^import .*;\r?\n/gm, ""), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
+}).outputText;
+const source = requestSource + "\n" + runnerSource + "\n" + ["yuba-response.js", "yuba.js"].map(file =>
     readFileSync(path.join(__dirname, "../src/features/sign", file), "utf8").replace(/^import .*;\r?\n/gm, "").replace(/^export /gm, "")
 ).join("\n");
 const noon = Date.parse("2026-10-26T12:00:00+08:00");
@@ -102,10 +105,11 @@ async function browser(options = {}) {
     vm.runInContext(source, context);
     const Controller = vm.runInContext("SignYubaController", context);
     const apiRequest = vm.runInContext("createTaskRequest(localStorage)", context);
+    const runner = vm.runInContext("createTaskRunner(localStorage)", context);
     const controller = new Controller(
         { get value() { return { sign: options.settings || { reminderEnabled: false, reminderTime: "23:50" } }; } },
         apiRequest, (controller, message) => statuses.push(message),
-        (message, type) => messages.push({ message, type }), dialog => dialogs.push(dialog)
+        (message, type) => messages.push({ message, type }), dialog => dialogs.push(dialog), runner
     );
     const api = {
         store, clock, requests, messages, dialogs, statuses, logs, document, window,
@@ -113,7 +117,8 @@ async function browser(options = {}) {
         signRequests() { return requests.filter(request => request.args.url.includes("/topic/sign")); },
         setAccount(account) { uid = account; },
         async wake(manual = false) { await controller.wake(manual); await flush(); },
-        close() { controller.dispose(); },
+        requestRetry() { runner.submit(uid); },
+        close() { controller.dispose(); runner.dispose(); },
         async advanceUntil(check) {
             for (let steps = 0; steps < 500; steps++) {
                 if (check()) return;
@@ -392,4 +397,51 @@ test("HTTP 错误记录接口原因，补签失败不撤销今日签到也不弹
     assert.match(page.state().groups["1"].supplementError, /补签请求失败.*9002/);
     assert.match(page.state().groups["2"].error, /HTTP 403.*请求被拒绝.*9003/);
     assert.equal(page.messages.length, 0);
+});
+
+test("十个标签页共用一个调度者，排队重试不丢失，完成后接手不重复签到", async () => {
+    const sharedLocks = locks(), store = new Map(), clock = { now: noon };
+    let ready = false;
+    const pages = await Promise.all(Array.from({ length: 10 }, () => browser({ locks: sharedLocks, store, clock, reply(request) {
+        if (request.args.url.includes('myFollow')) request.respond(list());
+        else if (request.args.url.includes('/supplement')) request.respond({ error: 0, data: { supplementary_cards: 0 } });
+        else request.respond(ready ? success : failure);
+    } })));
+    const owner = pages.find(page => page.requests.length);
+    const followers = pages.filter(page => page !== owner);
+    await owner.advanceUntil(() => owner.signRequests().length === 1);
+    assert.equal(owner.state().groups['1'].status, 'pending');
+    assert.ok(followers.every(page => page.requests.length === 0));
+    followers[0].requestRetry();
+    await followers[0].wake(true);
+    assert.equal(followers[0].requests.length, 0);
+    assert.ok(store.has('guanyu:task-retry:v1:101:yuba'));
+    ready = true;
+    await owner.wake();
+    await owner.advanceUntil(() => owner.state().groups['1'].supplemented);
+    assert.equal(owner.signRequests().length, 2);
+    assert.equal(owner.state().groups['1'].status, 'signed');
+    assert.equal(store.has('guanyu:task-retry:v1:101:yuba'), false);
+    owner.close();
+    await followers[0].wake(true);
+    assert.equal(followers[0].requests.length, 0);
+    assert.ok(followers[0].messages.some(item => item.message.includes('今日已签到')));
+    for (const page of followers) page.close();
+});
+
+test("补签返回已签到或 1001 时保留完成状态，真正补签失败仍保留原因", async () => {
+    const page = await browser({ reply(request) {
+        if (request.args.url.includes('myFollow')) request.respond(list(['1', '2']));
+        else if (request.args.url.includes('/supplement')) request.respond(request.args.data === 'group_id=1'
+            ? { status_code: 1001, message: '补签失败' }
+            : { error: 1, message: '今日已签到' });
+        else request.respond(success);
+    } });
+    await page.advanceUntil(() => Object.values(page.state().groups).every(group => group.supplemented));
+    for (const group of Object.values(page.state().groups)) {
+        assert.equal(group.status, 'signed');
+        assert.equal(group.supplementError, '');
+    }
+    assert.ok(page.logs.every(item => item.level !== 'warn'));
+    page.close();
 });

@@ -3,6 +3,8 @@ import { signTasks, type SignTask } from '../../config/sign';
 import { createState } from '../../core/state';
 import { accountId, createTaskRequest, taskDay, taskDelay, interrupted, type TaskRequest } from '../../adapters/douyu/task-request';
 import { createDouyuTasks, type LevelTask, type TaskRoom } from '../../adapters/douyu/tasks';
+import type { TaskRunner } from '../../adapters/douyu/task-runner';
+import { checkPoints } from './points';
 
 export interface SignRow { id: string; label: string; status: 'pending' | 'done' | 'waiting' | 'error' | 'disabled'; detail: string; nextAt: number; attempts: number }
 interface Lane extends SignRow {
@@ -13,7 +15,7 @@ interface Progress { day: string; lanes: Record<string, Lane>; readIds: string[]
 interface Restore { id: string; name: string }
 export interface DailySnapshot { uid: string; day: string; running: boolean; waiting: boolean; error: string; rows: SignRow[]; tasks: LevelTask[]; restore: string }
 
-export function createDailyTasks(settings: SettingsStore, roomId: () => string) {
+export function createDailyTasks(settings: SettingsStore, roomId: () => string, runner: TaskRunner) {
   let http = createTaskRequest();
   const api = createDouyuTasks({ request: (...args: Parameters<TaskRequest['request']>) => http.request(...args), dispose: () => http.dispose() });
   const view = createState<DailySnapshot>({ uid: '', day: taskDay(), running: false, waiting: false, error: '', rows: [], tasks: [], restore: '' });
@@ -23,7 +25,8 @@ export function createDailyTasks(settings: SettingsStore, roomId: () => string) 
   let active: string | undefined, resetRooms = false;
   const key = () => `guanyu:daily-tasks:v1:${uid}`;
   const restoreKey = () => `guanyu:follow-restore:v1:${uid}`;
-  function current() { if (stopped || accountId() !== uid) throw interrupted(); }
+  const taskRoom = () => roomId() || runner.room();
+  function current() { if (stopped || accountId() !== uid || state?.day !== taskDay()) throw interrupted(); }
   function persist() { current(); localStorage.setItem(key(), JSON.stringify(state)); }
   function publish() {
     view.set({ uid, day: state?.day || taskDay(), running, waiting, error,
@@ -90,7 +93,7 @@ export function createDailyTasks(settings: SettingsStore, roomId: () => string) 
     if (lane.status === 'error') lane.nextAt = Math.min(...pending.map(room => lane.failures![room.id].nextAt));
   }
   async function readLane(lane: Lane) {
-    const rid = roomId(); if (!rid) throw new Error('等待识别真实房间号');
+    const rid = taskRoom(); if (!rid) throw new Error('等待识别真实房间号');
     const tasks = await api.level(rid); current(); state!.tasks = tasks;
     const task = tasks.find(task => task.taskType === 10);
     if (!task || Number(task.taskStatus) === 1 || Number(task.cur) >= Number(task.max)) {
@@ -113,7 +116,7 @@ export function createDailyTasks(settings: SettingsStore, roomId: () => string) 
     lane.nextAt = Date.now() + 60000;
   }
   async function followLane(lane: Lane) {
-    const rid = roomId(); if (!rid) throw new Error('等待识别真实房间号');
+    const rid = taskRoom(); if (!rid) throw new Error('等待识别真实房间号');
     const tasks = await api.level(rid); current(); state!.tasks = tasks;
     const task = tasks.find(task => task.taskType === 7);
     if (!task || task.taskStatus === 1) { lane.status = 'done'; lane.detail = task ? '官方已确认关注任务完成' : '官方当前没有关注任务'; return; }
@@ -134,12 +137,14 @@ export function createDailyTasks(settings: SettingsStore, roomId: () => string) 
       case 'readPosts': await readLane(lane); break;
       case 'follow': await followLane(lane); break;
       case 'points': {
-        if (!lane.signed) { const result = await api.pointsSign(); lane.signed = true; lane.detail = result === 'already' ? '今日已签到' : '官方已确认今日签到'; persist(); }
-        const count = await api.viewRewards(); lane.status = 'waiting'; lane.nextAt = Date.now() + 300000;
-        lane.detail = `今日签到已确认；${count ? `本轮领取 ${count} 档观时积分` : '本轮无可领取观时积分'}，每 5 分钟检查`; break;
+        const result = await checkPoints(api, current);
+        lane.signed = result.signed; lane.detail = result.detail; persist();
+        if (result.failed) throw new Error(result.detail);
+        lane.status = 'waiting'; lane.nextAt = Date.now() + 300000;
+        lane.detail += '，每 5 分钟检查'; break;
       }
       case 'level': {
-        const rid = roomId(); if (!rid) throw new Error('等待识别真实房间号');
+        const rid = taskRoom(); if (!rid) throw new Error('等待识别真实房间号');
         let tasks = await api.level(rid); current();
         const claimable = tasks.filter(task => task.taskStatus === 1 && task.prizeStatus === 0);
         for (const task of claimable) { await api.levelPrize(rid, task.taskId); current(); }
@@ -151,7 +156,7 @@ export function createDailyTasks(settings: SettingsStore, roomId: () => string) 
         lane.detail = `${claimable.length ? `本轮已领取 ${claimable.length} 项` : '暂无可领取等级奖励'}，每 35 秒检查`; break;
       }
       case 'star': {
-        const rid = roomId(); if (!rid) throw new Error('等待识别真实房间号');
+        const rid = taskRoom(); if (!rid) throw new Error('等待识别真实房间号');
         const config = await api.starConfig(); current();
         if (!config) { lane.status = 'done'; lane.detail = '官方星推当前未开放'; break; }
         if (!lane.targets) { lane.targets = await api.starRooms(rid); lane.results ||= {}; current(); persist(); }
@@ -181,10 +186,12 @@ export function createDailyTasks(settings: SettingsStore, roomId: () => string) 
     running = true; waiting = false; clearTimeout(timer);
     try {
       load(); error = ''; publish();
-      if (!uid) return;
+      if (!uid) { await runner.claim(''); return; }
       if (!navigator.locks) throw new Error('自动签到需要 HTTPS 和支持 Web Locks 的新版浏览器');
+      if (!await runner.claim(uid, roomId())) { waiting = true; return; }
       await navigator.locks.request(`guanyu:daily-tasks:${uid}`, { ifAvailable: true }, async lock => {
         if (!lock) { waiting = true; return; }
+        current();
         load(); current();
         if (restore) await restoreFollow();
         if (resetRooms && state!.lanes.rooms) {
@@ -192,6 +199,7 @@ export function createDailyTasks(settings: SettingsStore, roomId: () => string) 
           resetRooms = false; persist();
         }
         if (!settings.value.sign.enabled || navigator.onLine === false) return;
+        if (runner.take('daily')) manual = true;
         if (manual) for (const lane of Object.values(state!.lanes)) {
           if (lane.status !== 'done') lane.nextAt = 0;
           if (lane.id === 'rooms' || lane.id === 'fansHome') { lane.targets = undefined; lane.status = 'pending'; lane.nextAt = 0; }
@@ -222,7 +230,7 @@ export function createDailyTasks(settings: SettingsStore, roomId: () => string) 
     }
     timer = setTimeout(() => { void wake(); }, delay);
   }
-  const onStorage = (event: StorageEvent) => { if (!event.key || event.key === key() || event.key === restoreKey()) void wake(); };
+  const onStorage = (event: StorageEvent) => { if (!event.key || event.key === key() || event.key === restoreKey() || runner.matches(event.key)) void wake(); };
   const onVisible = () => { if (!document.hidden) void wake(); };
   const onOnline = () => { void wake(); };
   const stopSettings = settings.subscribe(value => {

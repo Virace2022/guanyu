@@ -5,6 +5,8 @@
   import type { GainController } from '../features/volume-gain/controller';
   import type { Readable } from '../core/state';
   import FishIcon from './FishIcon.svelte';
+  import AccentPicker from './AccentPicker.svelte';
+  import { accentText } from './theme';
   import { version } from '../core/version';
   import type { PageTools } from '../features/page-tools/controller';
   import type { SettingsSection } from './settings-types';
@@ -49,6 +51,8 @@
   let sound = $state(untrack(() => gain.value));
   let detectedTheme = $state<'light' | 'dark'>('light');
   let confirming = $state(false);
+  let opened = $state(false);
+  let backdropDown = false;
   let error = $state('');
   let outsideChange = $state(false);
   const generalDirty = $derived(theme !== saved.theme || accentColor !== saved.accentColor);
@@ -64,7 +68,33 @@
   const roomDirty = $derived(JSON.stringify(roomOptions) !== JSON.stringify(saved.room));
   const backpackDirty = $derived(JSON.stringify(backpackOptions) !== JSON.stringify(saved.backpack));
   const dirtyCount = $derived(Number(playbackDirty) + Number(roomDirty) + Number(backpackDirty) + Number(signDirty) + Number(teamDirty) + Number(multiDirty) + Number(menuDirty) + Number(generalDirty) + Number(soundDirty) + Number(optimizationDirty) + Number(barrageDirty));
-  const resolvedTheme = $derived(saved.theme === 'page' ? detectedTheme : saved.theme);
+  const resolvedTheme = $derived(theme === 'page' ? detectedTheme : theme);
+
+  $effect(() => {
+    const draft = opened && !outsideChange ? $state.snapshot({ theme, accentColor, optimization, nativeShield,
+      barrage: { fans: barrage.fans, diamond: barrage.diamond, noble: barrage.noble, level: barrage.level,
+        other: barrage.other, suffix: barrage.suffix, enter: barrage.enter },
+      team: { showToolbar: teamOptions.showToolbar, columns: teamOptions.columns, teamColumns: teamOptions.teamColumns,
+        alignment: teamOptions.alignment, originalWidth: teamOptions.originalWidth } }) : null;
+    untrack(() => settings.preview(draft));
+  });
+
+  function finish() {
+    opened = false;
+    settings.preview(null);
+    dialog.close();
+  }
+
+  function outside(event: MouseEvent) {
+    const rect = dialog.getBoundingClientRect();
+    return event.target === dialog && (event.clientX < rect.left || event.clientX > rect.right
+      || event.clientY < rect.top || event.clientY > rect.bottom);
+  }
+
+  function backdrop(event: MouseEvent) {
+    if (backdropDown && outside(event) && !confirming) close();
+    backdropDown = false;
+  }
 
   function reset() {
     saved = { ...settings.value };
@@ -85,11 +115,11 @@
   export function show(target?: SettingsSection) {
     if (target) section = target;
     if (dialog.open) { showModal(dialog); return; }
-    reset(); confirming = false;
+    reset(); confirming = false; opened = true;
     showModal(dialog);
   }
 
-  function save(close = false) {
+  function save() {
     if (maxMultiplier === undefined || !Number.isFinite(maxMultiplier) || maxMultiplier < 1 || maxMultiplier > 5) {
       error = '最大倍率应为 1.0～5.0 倍'; section = 'sound'; return;
     }
@@ -101,13 +131,13 @@
         optimization: { ...optimization }, barrage: { ...barrage }, nativeShield: { ...nativeShield }, team: { ...teamOptions }, multi: { ...multiOptions, custom: [...multiOptions.custom] }, playerMenu: [...playerMenu], sign: { ...signOptions },
         playback: { ...playbackOptions }, room: { ...roomOptions }, backpack: { ...backpackOptions } });
       reset();
-      if (close) dialog.close();
+      finish();
     } catch (cause) { error = `保存失败：${String(cause)}`; }
   }
 
   function close() {
     if (dirtyCount) { confirming = true; return; }
-    dialog.close();
+    finish();
   }
 
   function addPreset() {
@@ -127,7 +157,7 @@
   }
 
   function leave(event: BeforeUnloadEvent) {
-    if (!dirtyCount) return;
+    if (!opened || !dirtyCount) return;
     event.preventDefault();
     event.returnValue = '';
   }
@@ -140,13 +170,13 @@
     });
     const stopGain = gain.subscribe(value => { sound = value; });
     const stopTheme = pageTheme.subscribe(value => { detectedTheme = value; });
-    return () => { stopSettings(); stopGain(); stopTheme(); };
+    return () => { stopSettings(); stopGain(); stopTheme(); settings.preview(null); };
   });
 </script>
 
 <svelte:window onbeforeunload={leave} />
 
-<dialog bind:this={dialog} oncancel={cancel} aria-labelledby="guanyu-title" data-theme={resolvedTheme} style:--guanyu-accent={saved.accentColor}>
+<dialog bind:this={dialog} class="settings-window guanyu-themed" oncancel={cancel} onclose={() => { if (!dialog.open) { opened = false; settings.preview(null); } }} onpointerdown={event => { backdropDown = outside(event); }} onclick={backdrop} aria-labelledby="guanyu-title" data-theme={resolvedTheme} style:--guanyu-accent={accentColor} style:--guanyu-on-accent={accentText(accentColor)}>
   <header class="window-header" inert={confirming}>
     <div class="brand"><FishIcon class="brand-icon" /><strong>观鱼</strong><span class="header-divider"></span><span id="guanyu-title">设置</span></div>
     <button class="icon-button close" aria-label="关闭设置" onclick={close}>×</button>
@@ -186,9 +216,9 @@
               <option value="page">跟随页面</option><option value="light">浅色</option><option value="dark">深色</option>
             </select>
           </label>
-          <p class="help">保存后应用到观鱼界面。</p>
-          <div class="setting-row color-row"><label for="guanyu-accent">主题色</label><input id="guanyu-accent" aria-label="主题色" type="color" bind:value={accentColor} /><span class="muted">{accentColor}</span><button class="button" disabled={accentColor === defaults.accentColor} onclick={() => { accentColor = defaults.accentColor; }}>恢复绿色</button></div>
-          <p class="help">用于观鱼界面与播放器增益图标的悬停效果，保存后生效。</p>
+          <p class="help">立即预览；跟随页面时使用斗鱼官方的深浅色模式，放弃更改后恢复。</p>
+          <AccentPicker bind:value={accentColor} />
+          <p class="help">立即预览观鱼界面主题色，保存后保留。</p>
         </section>
       {:else if section === 'optimization'}
         <OptimizationSettings bind:value={optimization} bind:shield={nativeShield} {tools} />
@@ -258,7 +288,7 @@
 
   <footer class="window-footer" inert={confirming}>
     <p role="status">{dirtyCount ? `有 ${dirtyCount} 项未保存的修改` : '所有设置已保存'}</p>
-    <div><button class="button" disabled={!dirtyCount} onclick={reset}>放弃更改</button><button class="button primary" disabled={!dirtyCount} onclick={() => save()}>保存全部</button></div>
+    <div><button class="button" onclick={() => { reset(); finish(); }}>放弃更改</button><button class="button primary" onclick={save}>保存全部</button></div>
   </footer>
 
   {#if confirming}
@@ -266,7 +296,7 @@
       <div class="confirm-panel" role="alertdialog" aria-modal="true" aria-labelledby="guanyu-confirm-title" tabindex="-1" use:focusConfirm>
         <h2 id="guanyu-confirm-title">要保存本次修改吗？</h2>
         <p>还有 {dirtyCount} 项设置未保存。</p>
-        <div class="confirm-actions"><button class="button" onclick={() => { confirming = false; }}>继续编辑</button><button class="button" onclick={() => { reset(); confirming = false; dialog.close(); }}>放弃更改</button><button class="button primary" onclick={() => { save(true); confirming = false; }}>保存并关闭</button></div>
+        <div class="confirm-actions"><button class="button" onclick={() => { confirming = false; }}>继续编辑</button><button class="button" onclick={() => { reset(); confirming = false; finish(); }}>放弃更改</button><button class="button primary" onclick={() => { save(); confirming = false; }}>保存并关闭</button></div>
       </div>
     </div>
   {/if}

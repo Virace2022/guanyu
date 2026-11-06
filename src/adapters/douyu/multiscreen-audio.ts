@@ -22,6 +22,8 @@ interface Label {
   offset: { left: number; bottom: number };
   panel: HTMLElement;
   slider: HTMLInputElement;
+  fill: HTMLElement;
+  thumb: HTMLElement;
   output: HTMLOutputElement;
   dispose: () => void;
 }
@@ -86,8 +88,14 @@ export function mountMultiscreenAudio(getNative: () => MultiScreenNative, audio:
     const button = document.createElement('button'); button.type = 'button'; button.className = 'guanyu-audio-switch';
     button.setAttribute('aria-haspopup', 'dialog');
     const panel = document.createElement('div'); panel.className = 'guanyu-audio-panel'; panel.setAttribute('role', 'dialog');
+    const templateTrack = document.querySelector<HTMLElement>('.volume-07c230 [class*="volume-bar-all-"] > [class*="volume-bar-"]');
+    const track = templateTrack?.cloneNode(false) as HTMLElement || document.createElement('div'); track.classList.add('guanyu-audio-track');
+    const parts = ['back', 'front', 'point'].map(part => templateTrack?.querySelector<HTMLElement>(`[class*="${part}-"]`)?.cloneNode(false) as HTMLElement || document.createElement('div'));
+    const [back, fill, thumb] = parts as [HTMLElement, HTMLElement, HTMLElement];
+    back.classList.add('guanyu-audio-track-back'); fill.classList.add('guanyu-audio-track-fill'); thumb.classList.add('guanyu-audio-track-thumb');
     const slider = document.createElement('input'); slider.type = 'range'; slider.min = '0'; slider.max = '100'; slider.step = '1'; slider.setAttribute('aria-orientation', 'vertical');
-    const output = document.createElement('output'); panel.append(slider, output); node.append(button, panel);
+    track.append(back, fill, thumb, slider);
+    const output = document.createElement('output'); panel.append(track, output); node.append(button, panel);
     const stop = (event: Event) => event.stopPropagation();
     for (const type of ['pointerdown', 'mousedown', 'mouseup', 'dblclick', 'contextmenu']) node.addEventListener(type, stop);
     const navigate = (event: MouseEvent) => {
@@ -116,7 +124,7 @@ export function mountMultiscreenAudio(getNative: () => MultiScreenNative, audio:
       audio.setLevel(id, (audio.value.levels.get(id) ?? 0) + (event.deltaY < 0 ? .05 : -.05));
     };
     button.addEventListener('wheel', wheel, { passive: false }); panel.addEventListener('wheel', wheel, { passive: false });
-    return { node, source, slot, id, main, button, offset, panel, slider, output, dispose() {
+    return { node, source, slot, id, main, button, offset, panel, slider, fill, thumb, output, dispose() {
       if (component && replacement) {
         native?.core.d.off('Event_multiClick', replacement);
         if (component.multiClickHandle === replacement) {
@@ -172,6 +180,8 @@ export function mountMultiscreenAudio(getNative: () => MultiScreenNative, audio:
       label.slider.setAttribute('aria-label', `${name}独立音量`);
       const level = Math.round((value.levels.get(label.id) ?? 0) * 100);
       if (label.slider.value !== String(level)) label.slider.value = String(level);
+      label.fill.style.height = `${level}px`;
+      label.thumb.style.bottom = `${12 + level - 5}px`;
       if (label.output.value !== `${level}%`) label.output.value = `${level}%`;
     }
   }

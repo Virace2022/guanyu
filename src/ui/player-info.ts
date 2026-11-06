@@ -25,10 +25,9 @@ export function createPlayerInfo(player: PlayerStore, settings: SettingsStore) {
     try {
       const info = await readMetadata(expected, abort.signal) as Metadata;
       if (abort.signal.aborted || expected !== roomId) return;
-      const fields = [['dy_cpu_model', 'CPU'], ['dy_gpu_model', '显卡'], ['dy_device_model', '设备'], ['dy_os_version', '系统'], ['z_canvas_code', '场景']];
+      const fields = [['dy_cpu_model', '🤖CPU'], ['dy_gpu_model', '🎮显卡'], ['dy_device_model', '📱设备'], ['dy_os_version', '🖥️系统'], ['z_canvas_code', '🎥场景']];
       const rows = fields.filter(([key]) => info.metadata?.[key!] != null).map(([key, label]) => [label!, String(info.metadata![key!])]);
-      if (!rows.length) rows.push(['当前直播流未提供主播设备配置']);
-      if (info.width && info.height) rows.push(['直播画面', `${info.width} × ${info.height}${info.fps ? ` · ${info.fps} fps` : ''}`]);
+      if (info.width && info.height) rows.push([`📺直播画面 ${info.width} × ${info.height}${info.fps ? ` · ${info.fps} fps` : ''}`]);
       loaded = true; render(rows);
     } catch (error) {
       if (!abort.signal.aborted && expected === roomId) render([[String(error instanceof Error ? error.message : error)], ['再次悬停可重试']]);

@@ -4,19 +4,21 @@ import { BackpackApi, type BagGift, type FanBadge, type PocketItem, type MonthCo
 import { mountBackpackPage } from '../../adapters/douyu/backpack-page';
 import { accountId, taskDay } from '../../adapters/douyu/task-request';
 import { createState } from '../../core/state';
+import { RoomApi, type RoomData } from '../../adapters/douyu/rooms';
 
-interface GlowPlan { uid: string; gift: number; name: string; available: number; each: number; total: number; rooms: FanBadge[] }
+interface GlowPlan { uid: string; gift: number; name: string; available: number; each: number; total: number; rooms: (FanBadge & { avatar: string })[]; avatarError: string }
 interface BackpackState { loading: boolean; error: string; gifts: BagGift[]; badges: FanBadge[]; pocket: PocketItem[]; vipDays: number | null; month: MonthCost | null; plan: GlowPlan | null; sending: boolean; results: string[] }
-export function createBackpack(settings: SettingsStore, player: PlayerStore, open: () => void, confirm: (message: string) => Promise<boolean>) {
+export function createBackpack(settings: SettingsStore, player: PlayerStore, open: () => void, confirm: (message: string) => Promise<boolean>, openGlow: () => void) {
   const api = new BackpackApi();
+  const roomApi = new RoomApi();
   const state = createState<BackpackState>({ loading: false, error: '', gifts: [], badges: [], pocket: [], vipDays: null, month: null, plan: null, sending: false, results: [] });
-  const dom = mountBackpackPage(open, () => { void refresh(); });
+  const dom = mountBackpackPage(open, () => { void refresh(); }, openGlow);
   let stopped = false, generation = 0, identity = '', lastOptions = '', nextAt = 0;
   function publish(next: Partial<BackpackState>) {
     if (stopped) return;
     state.set({ ...state.value, ...next });
     const value = state.value;
-    dom.update({ ...value, month: value.month ? (value.month.total / 100).toFixed(2) : '' });
+    dom.update({ ...value, uid: accountId(), roomId: player.value.roomId || '' });
   }
   async function refresh() {
     const room = player.value.roomId, uid = accountId(), options = { ...settings.value.backpack }, revision = generation;
@@ -43,10 +45,11 @@ export function createBackpack(settings: SettingsStore, player: PlayerStore, ope
     ]);
     if (current()) { publish({ loading: false, error: errors.join('；') }); nextAt = Date.now() + 60000; }
   }
-  async function prepare() {
+  async function prepare(each = settings.value.backpack.glowCount) {
     if (!settings.value.backpack.glow || stopped || state.value.sending) return;
     const uid = accountId(), room = player.value.roomId, revision = generation;
     if (!uid || !room) { publish({ error: '请先登录并进入真实直播间' }); return; }
+    if (!Number.isInteger(each) || each < 0 || each > 100000) { publish({ error: '每房数量应为 0～100000 的整数' }); return; }
     publish({ loading: true, error: '', plan: null, results: [] });
     try {
       const gifts = await api.bag(room), rooms = await api.badges();
@@ -54,10 +57,16 @@ export function createBackpack(settings: SettingsStore, player: PlayerStore, ope
       const gift = gifts.find(gift => [268, 2358].includes(Number(gift.id)) && Number(gift.count) > 0);
       if (!gift) throw new Error('背包中没有可赠送的荧光棒');
       if (!rooms.length) throw new Error('没有粉丝牌房间可供续牌');
-      const count = settings.value.backpack.glowCount || Math.floor(Number(gift.count) / rooms.length);
+      const count = each || Math.floor(Number(gift.count) / rooms.length);
       if (count < 1) throw new Error('荧光棒不足以向每个房间平均赠送 1 根');
       if (count * rooms.length > Number(gift.count)) throw new Error(`计划需 ${count * rooms.length} 根，当前只有 ${gift.count} 根`);
-      publish({ gifts, badges: rooms, plan: { uid, gift: Number(gift.id), name: gift.name, available: Number(gift.count), each: count, total: count * rooms.length, rooms } });
+      let profiles: RoomData[] = [], avatarError = '';
+      try { profiles = await roomApi.info(rooms.map(room => room.id)); }
+      catch (cause) { avatarError = `头像未能读取：${cause instanceof Error ? cause.message : String(cause)}`; }
+      if (stopped || revision !== generation || uid !== accountId()) return;
+      const avatars = new Map(profiles.map(room => [String(room.rid), room.avt]));
+      publish({ gifts, badges: rooms, plan: { uid, gift: Number(gift.id), name: gift.name, available: Number(gift.count), each: count, total: count * rooms.length,
+        rooms: rooms.map(room => ({ ...room, avatar: avatars.get(room.id) || '' })), avatarError } });
     } catch (cause) { publish({ error: cause instanceof Error ? cause.message : String(cause) }); }
     finally { if (revision === generation) publish({ loading: false }); }
   }
@@ -84,13 +93,13 @@ export function createBackpack(settings: SettingsStore, player: PlayerStore, ope
     dom.apply(settings.value.backpack);
     if (identity === nextIdentity && lastOptions === nextOptions) return;
     const accountChanged = identity.split(':')[0] !== accountId();
-    identity = nextIdentity; lastOptions = nextOptions; generation++; api.close(); nextAt = 0;
+    identity = nextIdentity; lastOptions = nextOptions; generation++; api.close(); roomApi.close(); nextAt = 0;
     publish({ loading: false, plan: null, vipDays: null, pocket: [], ...(accountChanged ? { gifts: [], badges: [], month: null, results: [], error: '' } : {}) });
     void refresh();
   }
   const stopSettings = settings.subscribe(sync), stopPlayer = player.subscribe(sync);
   const timer = setInterval(() => { sync(); if (!document.hidden && Date.now() >= nextAt) void refresh(); }, 1000);
   return { ...state, get value() { return state.value; }, refresh, prepare, send,
-    dispose() { stopped = true; generation++; clearInterval(timer); stopSettings(); stopPlayer(); api.close(); dom.dispose(); } };
+    dispose() { stopped = true; generation++; clearInterval(timer); stopSettings(); stopPlayer(); api.close(); roomApi.close(); dom.dispose(); } };
 }
 export type BackpackController = ReturnType<typeof createBackpack>;

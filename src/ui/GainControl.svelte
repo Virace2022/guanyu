@@ -41,7 +41,7 @@
 
   onMount(() => {
     const unsubscribe = gain.subscribe(next => { value = next; });
-    const stopSettings = settings.subscribe(next => { appearance = next; });
+    const stopSettings = settings.runtime.subscribe(next => { appearance = next; });
     function wheel(event: WheelEvent) {
       if (!value.available || event.ctrlKey || event.deltaY === 0) return;
       event.preventDefault(); event.stopPropagation();

@@ -2,7 +2,7 @@ import type { TeamSource, TeamSourceStore } from '../../adapters/douyu/team';
 import { RoomApi } from '../../adapters/douyu/rooms';
 import type { SettingsStore } from '../../config/settings';
 import { createState } from '../../core/state';
-import { copyLayout, emptyLayout, validateLayout, type TeamLayout } from './layout';
+import { copyLayout, emptyLayout, layoutRooms, validateLayout, type TeamLayout, type CustomRoom } from './layout';
 
 const prefix = 'guanyu:team:layout:v1:';
 const preferencesKey = 'guanyu:team:preferences:v1';
@@ -51,7 +51,7 @@ export function createTeam(source: TeamSourceStore, storage: Storage, events: Wi
     updateSource();
     if (changed) { read(); schedule(); if (state.value.options.autoRefresh) void refreshStatus(); }
   });
-  const stopSettings = settings.subscribe(value => {
+  const stopSettings = settings.runtime.subscribe(value => {
     const previous = state.value.options;
     state.set({ ...state.value, options: { ...value.team, hideBanner: value.optimization.hideTopBanner } });
     if (previous.autoRefresh !== value.team.autoRefresh || previous.refreshSeconds !== value.team.refreshSeconds) {
@@ -61,7 +61,7 @@ export function createTeam(source: TeamSourceStore, storage: Storage, events: Wi
 
   async function refreshStatus() {
     if (pending || !state.value.source) return pending;
-    const expected = activity, ids = state.value.source.rooms.map(room => room.id);
+    const expected = activity, ids = layoutRooms(state.value.layout, state.value.source.rooms).map(room => room.id);
     state.set({ ...state.value, refreshing: true, statusError: '' });
     const task = (async () => {
       try {
@@ -103,6 +103,10 @@ export function createTeam(source: TeamSourceStore, storage: Storage, events: Wi
       : value.source?.rooms.map(room => room.id) ?? [];
     return ids.filter(id => id !== currentRoom).length;
   }
+  async function resolveRoom(input: string): Promise<CustomRoom> {
+    const room = await api.resolve(input);
+    return { id: String(room.rid), name: room.nn, avatar: room.avt, live: room.showStatus === '1' };
+  }
   function onStorage(event: StorageEvent) {
     if (event.key === prefix + activity || event.key === null) read();
     if (event.key === preferencesKey || event.key === null) {
@@ -111,7 +115,7 @@ export function createTeam(source: TeamSourceStore, storage: Storage, events: Wi
     }
   }
   events.addEventListener('storage', onStorage);
-  return { subscribe: state.subscribe, get value() { return state.value; }, save, setGrouped, setDetection, setPreview, previewCount, refreshStatus, refresh: source.refresh,
+  return { subscribe: state.subscribe, get value() { return state.value; }, save, setGrouped, setDetection, setPreview, previewCount, refreshStatus, resolveRoom, refresh: source.refresh,
     dispose() { released = true; clearInterval(timer); api.close(); stop(); stopSettings(); events.removeEventListener('storage', onStorage); } };
 }
 export type TeamController = ReturnType<typeof createTeam>;

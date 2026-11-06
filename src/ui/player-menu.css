@@ -1,5 +1,5 @@
 .menu-da2a9e [data-guanyu-action][aria-disabled="true"] { opacity: .45; cursor: default; }
-.menu-da2a9e [data-guanyu-action]:focus-visible { outline: 2px solid var(--guanyu-page-accent, #21815f); outline-offset: -2px; }
+.menu-da2a9e [data-guanyu-action]:focus-visible { outline: 2px solid var(--guanyu-page-accent, #ff5d23); outline-offset: -2px; }
 .menu-da2a9e .guanyu-player-info { width: max-content; min-width: 160px; max-width: min(320px, 80vw); overflow-x: hidden; overflow-y: auto; white-space: normal; }
 .menu-da2a9e .guanyu-player-info > li { overflow-wrap: anywhere; }
 .guanyu-submenu [role="menuitem"]:focus-visible { outline: 1px solid currentColor; outline-offset: -2px; }

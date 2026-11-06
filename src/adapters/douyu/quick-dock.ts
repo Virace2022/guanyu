@@ -1,18 +1,33 @@
 import { isPlayerFullscreen } from './player';
+import styles from '../../ui/quick-dock-page.css?style';
 
-export function attachQuickDock(host: HTMLElement, onMove: () => void) {
+export function attachQuickDock(host: HTMLElement) {
+  const style = styles.cloneNode(true); document.head.append(style);
+  let sidebar: Element | null = null;
+  function setSidebar(next: Element | null) {
+    if (sidebar === next) return;
+    sidebar?.classList.remove('guanyu-snapbar-autohide');
+    sidebar = next;
+    sidebar?.classList.add('guanyu-snapbar-autohide');
+  }
   function mount() {
+    if (!document.getElementById('js-player-main')) {
+      host.hidden = true;
+      host.remove();
+      setSidebar(null);
+      return;
+    }
     const fullscreen = isPlayerFullscreen();
     const shield = document.querySelector<HTMLElement>('#js-player-controlbar [class^="shieldSetting-"]');
     const native = document.querySelector('#js-room-snapbar');
+    setSidebar(native);
     const target = fullscreen ? shield?.parentElement : native || document.body;
     const hidden = fullscreen && (!shield || !!document.fullscreenElement && !document.fullscreenElement.contains(shield));
     host.hidden = hidden;
     host.toggleAttribute('data-player-controls', fullscreen);
     host.toggleAttribute('data-floating', !fullscreen && !native);
-    if (!target || hidden) { onMove(); return; }
+    if (!target || hidden) return;
     if (host.parentElement !== target || fullscreen && host.nextElementSibling !== shield) {
-      if (host.isConnected) onMove();
       if (fullscreen) target.insertBefore(host, shield!); else target.prepend(host);
     }
   }
@@ -21,5 +36,5 @@ export function attachQuickDock(host: HTMLElement, onMove: () => void) {
   document.addEventListener('fullscreenchange', mount);
   mount();
   const timer = setInterval(mount, 1000);
-  return () => { clearInterval(timer); observer.disconnect(); document.removeEventListener('fullscreenchange', mount); host.remove(); };
+  return () => { clearInterval(timer); observer.disconnect(); document.removeEventListener('fullscreenchange', mount); setSidebar(null); style.parentNode?.removeChild(style); host.remove(); };
 }

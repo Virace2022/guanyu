@@ -1,9 +1,11 @@
 import type { OptimizationOptions } from '../../config/options';
 import styles from '../../ui/page-tools.css?style';
+import { createIcon } from '../../ui/icons';
 
 const classes: Record<keyof OptimizationOptions, string> = {
   hideAds: 'guanyu-hide-ads',
   hideTopBanner: 'guanyu-hide-top-banner',
+  hideRoomExtras: 'guanyu-hide-room-extras',
   hideGiftBar: 'guanyu-hide-gift-bar', hidePk: 'guanyu-hide-pk', hideActivities: 'guanyu-hide-activities',
   collapseChat: 'guanyu-chat-collapsed', autoHideHeader: 'guanyu-auto-header',
 };
@@ -20,6 +22,11 @@ export function mountPageTools(toggleChat: () => void) {
   let mirrored = false;
   const summary = document.createElement('div'); summary.className = 'guanyu-chat-summary';
   const counts = document.createElement('span'); counts.className = 'guanyu-chat-counts';
+  const rankItems = ['贵宾', '钻粉'].map((name, index) => {
+    const item = document.createElement('span'), text = document.createElement('span');
+    item.append(createIcon(index ? 'diamond' : 'crown'), text); counts.append(item);
+    return { name, item, text };
+  });
   const restore = document.createElement('button'); restore.textContent = '恢复活动区'; restore.type = 'button'; restore.className = 'guanyu-chat-restore';
   const collapse = document.createElement('button'); collapse.textContent = '收起活动区'; collapse.type = 'button'; collapse.className = 'guanyu-chat-collapse';
   const status = document.createElement('span'); status.className = 'guanyu-page-error'; status.setAttribute('role', 'status');
@@ -37,10 +44,13 @@ export function mountPageTools(toggleChat: () => void) {
     if (!options) return;
     let changed = !style.isConnected;
     if (changed) document.head.append(style);
+    const room = !!document.getElementById('js-player-main');
     for (const key of Object.keys(classes) as (keyof OptimizationOptions)[]) {
-      if (root.classList.contains(classes[key]) === options[key]) continue;
-      root.classList.toggle(classes[key], options[key]); changed = true;
+      const enabled = options[key] && (key !== 'autoHideHeader' || room);
+      if (root.classList.contains(classes[key]) === enabled) continue;
+      root.classList.toggle(classes[key], enabled); changed = true;
     }
+    if (!room) showHeader();
     if (root.classList.contains('guanyu-video-mirror') !== mirrored) root.classList.toggle('guanyu-video-mirror', mirrored);
     syncChat();
     if (changed) window.dispatchEvent(new Event('resize'));
@@ -77,8 +87,11 @@ export function mountPageTools(toggleChat: () => void) {
       const match = tab.textContent?.match(/^\s*(贵宾|钻粉)\s*[（(]([^）)]+)[）)]/);
       if (match) values.push(`${match[1]} ${match[2]!.trim()}`);
     });
-    const text = values.join('　') || '聊天活动区';
-    if (counts.textContent !== text) counts.textContent = text;
+    for (const { name, item, text } of rankItems) {
+      const value = values.find(value => value.startsWith(name)); item.hidden = !value;
+      if (text.textContent !== (value ?? '')) text.textContent = value ?? '';
+    }
+    counts.setAttribute('aria-label', values.join('，') || '聊天活动区');
     summary.hidden = !options?.collapseChat;
     collapse.hidden = !!options?.collapseChat;
     const target = options?.collapseChat ? summary : toolbar;
@@ -86,13 +99,14 @@ export function mountPageTools(toggleChat: () => void) {
   }
 
   function showHeader() {
-    root.classList.remove('guanyu-header-hidden'); direction = distance = 0;
+    if (root.classList.contains('guanyu-header-hidden')) root.classList.remove('guanyu-header-hidden');
+    direction = distance = 0;
   }
 
   function updateHeader() {
     frame = 0;
     const y = Math.max(0, scrollY), delta = y - previousY; previousY = y;
-    if (!options?.autoHideHeader || y <= 8 || document.fullscreenElement
+    if (!options?.autoHideHeader || !document.getElementById('js-player-main') || y <= 8 || document.fullscreenElement
       || document.querySelector('#guanyu-settings')?.shadowRoot?.querySelector('dialog[open]')
       || document.querySelector('#guanyu-team-editor')?.shadowRoot?.querySelector('dialog[open]')) { showHeader(); return; }
     const next = Math.sign(delta);

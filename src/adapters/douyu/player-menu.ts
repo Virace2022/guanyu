@@ -3,7 +3,7 @@ import type { MenuAction } from '../../config/player-menu';
 import { mountPlayerSubmenu, type PlayerSubmenu } from './player-submenu';
 import styles from '../../ui/player-menu.css?style';
 
-export interface PlayerAction { label: () => string; run?: () => void | Promise<unknown>; enabled?: () => boolean; submenu?: PlayerSubmenu }
+export interface PlayerAction { label: () => string; run?: () => void | Promise<unknown>; enabled?: () => boolean; checked?: () => boolean; submenu?: PlayerSubmenu }
 export interface NativeMenuEntry { label: string; separator: boolean; disabled: boolean; submenu: boolean }
 export function readNativeMenu(): { items: NativeMenuEntry[]; style: string } {
   const menu = document.querySelector('.menu-da2a9e:not(.subMenu-de1c61)');
@@ -25,7 +25,7 @@ export function mountPlayerMenu(settings: SettingsStore, actions: Partial<Record
     const label = document.createElement('span'); labels.set(id, label);
     if (action.submenu) { const name = document.createElement('div'); name.className = 'name-2f52df'; name.append(label); item.append(name); }
     else item.append(label);
-    const run = () => { if (action.enabled?.() === false) return; Promise.resolve().then(action.run).catch(error => report(String(error instanceof Error ? error.message : error))); };
+    const run = () => { if (action.enabled?.() === false) return; Promise.resolve().then(action.run).then(sync).catch(error => report(String(error instanceof Error ? error.message : error))); };
     if (action.submenu) release.set(id, mountPlayerSubmenu(item, action.submenu, report));
     else {
       item.onclick = run;
@@ -40,7 +40,10 @@ export function mountPlayerMenu(settings: SettingsStore, actions: Partial<Record
       if (!active.includes(id) || !menu) { item.remove(); continue; }
       const action = actions[id];
       if (!external.has(id) && action) {
-        labels.get(id)!.textContent = action.label(); item.setAttribute('aria-label', action.label());
+        const label = action.label(), checked = action.checked?.();
+        labels.get(id)!.textContent = `${checked ? '✓ ' : ''}${label}`; item.setAttribute('aria-label', label);
+        item.setAttribute('role', checked === undefined ? 'menuitem' : 'menuitemcheckbox');
+        if (checked === undefined) item.removeAttribute('aria-checked'); else item.setAttribute('aria-checked', String(checked));
         item.setAttribute('aria-disabled', String(action.enabled?.() === false));
       }
     }

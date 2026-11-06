@@ -1,0 +1,4 @@
+#js-room-snapbar.guanyu-snapbar-autohide { position: relative; transform: translateX(calc(100% - 4px)) !important; transition: transform 180ms ease-out 100ms, opacity 180ms ease-out; }
+#js-room-snapbar.guanyu-snapbar-autohide:hover, #js-room-snapbar.guanyu-snapbar-autohide:focus-within { transform: translateX(0) !important; opacity: 1; transition-delay: 0s; }
+#js-room-snapbar.guanyu-snapbar-autohide::after { position: absolute; content: ""; inset: 0 calc(var(--margin, 4px) * -1) 0 auto; width: var(--margin, 4px); }
+@media (prefers-reduced-motion: reduce) { #js-room-snapbar.guanyu-snapbar-autohide { transition: none; } }

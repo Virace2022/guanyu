@@ -1,6 +1,7 @@
 export const optimizationDefaults = {
   hideAds: true,
   hideTopBanner: true,
+  hideRoomExtras: true,
   hideGiftBar: true,
   hidePk: true,
   hideActivities: true,
@@ -16,6 +17,7 @@ export const barrageDefaults = {
   other: false,
   suffix: false,
   linked: false,
+  enter: true,
 };
 
 export const nativeShieldDefaults = {

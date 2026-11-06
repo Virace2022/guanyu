@@ -1,13 +1,18 @@
 import { createState } from '../../core/state';
+import { teamCardElements } from './team-card-preview';
+
+interface LiveIcon { icon: string; top?: string; right?: string }
 
 export interface TeamRoom {
   id: string;
   name: string;
   href: string;
+  target: string;
   avatar: string;
   live: boolean;
   element: HTMLElement;
   decoration: HTMLElement;
+  liveIcon?: LiveIcon;
 }
 
 export interface TeamSource {
@@ -16,6 +21,7 @@ export interface TeamSource {
   native: HTMLElement;
   rooms: TeamRoom[];
   streamPromotion: boolean;
+  liveIcon?: LiveIcon;
 }
 
 interface RoomInfo {
@@ -29,6 +35,8 @@ interface RoomInfo {
 interface NativeProps {
   roomInfo?: RoomInfo;
   service?: { pageId?: string | number };
+  liveIcon?: LiveIcon;
+  children?: { props?: { cmpprops?: { liveIcon?: LiveIcon } } }[];
 }
 
 interface Fiber {
@@ -56,8 +64,9 @@ function findSource(page: Window & { zhtId?: string | number }): TeamSource | nu
   for (const native of document.querySelectorAll<HTMLElement>('.wm-pc-switchroom, .room-info')) {
     const roomInfo = native.matches('.room-info');
     const rooms = new Map<string, TeamRoom>();
-    for (const element of native.querySelectorAll<HTMLElement>(roomInfo ? '.room-info-btn' : '.wm-pc-room-button')) {
-      const info = roomInfo ? findProps(element, props => !!props.roomInfo?.RoomID)?.roomInfo : null;
+    for (const element of teamCardElements(native, roomInfo ? '.room-info-btn' : '.wm-pc-room-button')) {
+      const props = roomInfo ? findProps(element, props => !!props.roomInfo?.RoomID) : null;
+      const info = props?.roomInfo;
       const anchor = element.closest<HTMLAnchorElement>('a[href]');
       if (roomInfo ? !info : !anchor) continue;
       let url: URL;
@@ -67,19 +76,22 @@ function findSource(page: Window & { zhtId?: string | number }): TeamSource | nu
         ?? (url.pathname.startsWith('/topic/') ? url.searchParams.get('rid') : null);
       if (!id || !/^[1-9]\d*$/.test(id) || !/(^|\.)douyu\.com$/.test(url.hostname)) continue;
       rooms.set(id, {
-        id, href: url.href, element, decoration: roomInfo ? element.parentElement! : element,
+        id, href: url.href, target: anchor?.target ?? '', element, decoration: roomInfo ? element.parentElement! : element, liveIcon: props?.liveIcon,
         name: element.querySelector('.wm-pc-room-button-text, .room-info-text')?.textContent?.trim() || info?.NickName || id,
         avatar: info?.AvatarMid || info?.Avatar || '',
         live: info ? Number(info.ShowStatus) === 1 : !!element.querySelector('img[alt="直播中"], img.room-info-live'),
       });
     }
     if (!rooms.size) continue;
-    const id = findProps(native, props => !!props.service?.pageId)?.service?.pageId ?? page.zhtId;
+    const props = findProps(native, props => !!props.service?.pageId);
+    const id = props?.service?.pageId ?? page.zhtId;
+    const liveIcon = [...rooms.values()].map(room => room.liveIcon).find(Boolean)
+      ?? props?.children?.map(child => child?.props?.cmpprops?.liveIcon).find(icon => /^https?:\/\//.test(icon?.icon ?? ''));
     const pageId = /^\d+$/.test(String(id)) ? String(id) : null;
     // 只排除有明确主 / 副舞台纯净流标识的赛事切流，其他同模板活动保持宽泛识别。
     const names = [...rooms.values()].map(room => room.name);
     const streamPromotion = names.some(name => /主舞台.*纯净流/.test(name)) && names.some(name => /副舞台.*纯净流/.test(name));
-    return { native, pageId, rooms: [...rooms.values()], streamPromotion,
+    return { native, pageId, rooms: [...rooms.values()], streamPromotion, liveIcon,
       activity: pageId ? `page-${pageId}` : `rooms-${[...rooms.keys()].sort().join('-')}` };
   }
   return null;

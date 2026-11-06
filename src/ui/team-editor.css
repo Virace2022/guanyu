@@ -10,16 +10,13 @@
 .team-nav > button, .team-select { display: flex; align-items: center; gap: 9px; padding: 11px 10px; border: 0; border-radius: 6px; background: transparent; color: var(--ink); text-align: left; font: inherit; }
 .team-nav small { color: var(--muted); margin-left: auto; font-variant-numeric: tabular-nums; }
 .team-nav .chosen { background: var(--tint); color: var(--accent); font-weight: 600; }
-.team-nav-label { padding: 10px; color: var(--muted); display: flex; align-items: center; justify-content: space-between; font-size: 12px; }
-.team-list { min-height: 0; flex: 1; overflow: auto; }
+.team-list { min-height: 0; flex: 1; overflow: auto; padding-top: 6px; }
 .team-entry { display: flex; align-items: center; width: 100%; margin-bottom: 3px; border-radius: 6px; }
 .team-select { min-width: 0; flex: 1; }
 .team-entry.chosen .team-select { color: var(--accent); font-weight: 600; }
-.team-delete { flex: none; width: 26px; height: 28px; margin-right: 5px; padding: 0; border: 0; border-radius: 4px; background: transparent; color: var(--muted); font-size: 18px; }
-.team-delete:hover { color: var(--danger); background: var(--surface); }
-.team-number { font-size: 12px; width: 18px; flex: none; color: var(--muted); }
 .team-name { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.team-nav .add-team { flex: none; justify-content: center; border: 1px solid var(--line); margin-top: auto; }
+.team-nav .add-team { display: block; box-sizing: border-box; width: 100%; margin-top: 6px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 5px; background: transparent; color: var(--accent); font: inherit; font-size: 12px; line-height: 1.5; text-align: center; }
+.team-nav .add-team:hover { background: var(--tint); }
 .team-detail { padding: 22px; min-width: 0; min-height: 0; overflow: auto; }
 .edit-title { display: flex; flex-direction: column; gap: 5px; color: var(--muted); font-size: 12px; min-width: 0; }
 .edit-title input { width: 100%; font-size: 20px; font-weight: 600; color: var(--ink); }
@@ -28,7 +25,6 @@
 .team-heading { display: flex; gap: 12px; align-items: flex-end; }
 .team-heading .edit-title { flex: 1; }
 .team-heading .text-button { flex: none; font-size: 12px; }
-.team-order { display: flex; gap: 12px; margin-top: 10px; font-size: 12px; }
 .role-tabs { display: flex; border-bottom: 1px solid var(--line); margin-top: 14px; gap: 20px; }
 .role-tabs button { border: 0; border-bottom: 2px solid transparent; border-radius: 0; padding: 10px 0; background: transparent; color: var(--muted); font: inherit; }
 .role-tabs button[aria-pressed="true"] { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
@@ -39,26 +35,44 @@
 .member-name { flex: 1; min-width: 0; }
 .member-name strong { display: block; font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .member-name small, .person-fields small { display: block; font-size: 11px; color: var(--muted); }
-.row-actions { display: flex; flex: none; gap: 3px; }
-.row-actions button { width: 27px; height: 30px; padding: 0; border: 0; border-radius: 4px; background: transparent; color: var(--muted); font: inherit; }
-.row-actions button:hover:not(:disabled) { color: var(--accent); background: var(--tint); }
+.drag-handle { display: grid; place-items: center; flex: none; width: 30px; height: 34px; padding: 0; border: 0; border-radius: 4px; background: transparent; color: var(--muted); cursor: grab; touch-action: none; }
+.drag-handle svg { pointer-events: none; }
+.drag-handle:hover, .drag-handle:focus-visible { color: var(--accent); background: var(--tint); }
+.drag-handle:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.sort-pressed { outline: 1px solid var(--accent); outline-offset: -1px; }
+.sort-placeholder { opacity: .28; outline: 1px dashed var(--accent); outline-offset: -1px; }
+.sort-floating { position: fixed; z-index: 5; box-sizing: border-box; pointer-events: none; opacity: 1; background: var(--surface); color: var(--ink); border-radius: 6px; box-shadow: 0 3px 8px rgb(0 0 0 / 30%); outline: 1px solid var(--accent); }
+.sort-floating.member-row, .sort-floating.person-row, .sort-floating.picker-row { padding-inline: 8px; }
+.sorting, .sorting .drag-handle { cursor: grabbing; user-select: none; }
 .person-fields { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
 .person-fields input { width: 100%; }
 .empty-list { padding: 34px 8px; text-align: center; color: var(--muted); font-size: 13px; }
 .room-picker { min-width: 0; min-height: 0; display: flex; flex-direction: column; border-left: 1px solid var(--line); background: var(--side); }
 .picker-header { padding: 18px 16px 10px; flex: none; }
-.picker-header h2 { display: flex; align-items: center; gap: 8px; font-size: 15px; margin-bottom: 10px; }
+.picker-title { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px; margin-bottom: 10px; }
+.picker-header h2 { display: flex; align-items: center; gap: 8px; font-size: 15px; margin: 0; }
 .picker-header h2 small { font-weight: 400; color: var(--muted); }
+.custom-room-toggle { font-size: 12px; padding: 4px 0; }
+.custom-room-form { display: flex; flex-direction: column; gap: 7px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--line); font-size: 12px; }
+.custom-room-form > div { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.custom-room-form small { color: var(--muted); }
+.custom-room-form .button { padding: 4px 12px; min-height: 30px; }
+.custom-room-form p { color: var(--danger); }
 .picker-header input[type="search"] { width: 100%; }
 .filter { display: flex; gap: 6px; align-items: center; font-size: 12px; color: var(--muted); margin-top: 10px; }
 .filter input { accent-color: var(--accent); }
 .picker-list { min-height: 0; overflow: auto; padding: 0 16px 12px; flex: 1; }
-.add-member { flex: none; width: 30px; height: 30px; border: 1px solid var(--line); border-radius: 50%; background: var(--surface); color: var(--accent); font: 19px/1 system-ui; }
-.add-member:hover:not(:disabled) { background: var(--tint); }
+.picker-avatar { position: relative; padding: 0; border: 0; font: inherit; cursor: pointer; }
+.picker-avatar:disabled { opacity: 1; cursor: default; }
+.picker-avatar:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.avatar-add { position: absolute; inset: 0; display: grid; place-items: center; border-radius: inherit; background: rgb(0 0 0 / 62%); color: #fff; font: 24px/1 system-ui; opacity: 0; pointer-events: none; transition: opacity 140ms ease-out; }
+.picker-row:hover .avatar-add, .picker-avatar:focus-visible .avatar-add { opacity: 1; }
+@media (hover: none) { .picker-avatar:not(:disabled) .avatar-add { opacity: 1; } }
+@media (pointer: coarse) { .picker-avatar { width: 44px; height: 44px; } }
 .live { color: var(--accent); }
 .missing { color: var(--danger); }
-.team-nav > button, .team-select, .team-delete, .role-tabs button { transition: color 140ms ease-out, background-color 140ms ease-out, border-color 140ms ease-out; }
-@media (prefers-reduced-motion: reduce) { .team-nav > button, .team-select, .team-delete, .role-tabs button { transition: none; } }
+.team-nav > button, .team-select, .drag-handle, .role-tabs button { transition: color 140ms ease-out, background-color 140ms ease-out, border-color 140ms ease-out; }
+@media (prefers-reduced-motion: reduce) { .team-nav > button, .team-select, .drag-handle, .role-tabs button, .avatar-add { transition: none; } }
 .editor-alert { color: var(--danger); background: var(--side); padding: 8px 24px; font-size: 12px; flex: none; }
 .share-panel { padding: 12px 24px; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; flex: none; max-height: 30%; overflow: auto; }
 .share-panel textarea { width: 100%; min-height: 54px; resize: vertical; font-size: 12px; }
@@ -68,7 +82,6 @@
 @media (max-width: 930px) {
   .editor-body { grid-template-columns: 154px minmax(200px, 1fr) 250px; }
   .team-detail { padding: 16px; }
-  .row-actions { flex-wrap: wrap; max-width: 56px; }
 }
 @media (max-width: 700px) {
   .team-window { width: calc(100vw - 16px); height: calc(100dvh - 20px); }
@@ -78,23 +91,18 @@
   .team-nav { grid-column: 1 / -1; flex-direction: row; padding: 6px 8px; gap: 5px; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--line); }
   .team-nav > button, .team-select { padding: 7px 10px; white-space: nowrap; }
   .team-nav > button { flex: none; }
-  .team-list { display: flex; flex: none; overflow: visible; gap: 4px; }
+  .team-list { display: flex; flex: none; overflow: visible; gap: 4px; padding-top: 0; }
   .team-entry { width: auto; margin: 0; }
-  .team-nav-label, .team-number, .team-nav .add-team { display: none; }
-  .team-nav::after { content: ''; }
-  .team-nav-label { display: flex; order: 3; padding: 0; font-size: 0; }
-  .team-nav-label button { font-size: 20px; padding: 5px 10px; }
+  .team-nav .add-team { width: auto; margin: 0 0 0 4px; white-space: nowrap; align-self: center; }
   .team-detail { padding: 12px; }
   .team-heading { align-items: stretch; flex-direction: column; gap: 5px; }
   .team-heading .text-button { align-self: flex-end; }
   .picker-header { padding: 12px 10px 8px; }
   .picker-list { padding: 0 10px 10px; }
   .picker-row { gap: 6px; }
-  .picker-row .person-avatar { display: none; }
   .member-row, .person-row { flex-wrap: wrap; gap: 6px; }
   .member-row .person-avatar, .person-row .person-avatar { display: none; }
-  .row-actions { max-width: none; margin-left: auto; }
-  .person-fields { min-width: 100%; }
+  .person-fields { min-width: 0; }
   .team-window .window-footer { gap: 6px; padding: 10px 14px; }
   .team-window .window-footer p { max-width: 100%; font-size: 12px; }
 }

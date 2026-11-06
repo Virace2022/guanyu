@@ -16,10 +16,32 @@ export interface TeamLayout {
   peopleTitle: string;
   people: Person[];
   teams: Team[];
+  customRooms?: CustomRoom[];
+}
+
+export interface CustomRoom {
+  id: string;
+  name: string;
+  avatar: string;
+  live: boolean;
 }
 
 export function emptyLayout(): TeamLayout {
-  return { peopleTitle: '独立人物', people: [], teams: [] };
+  return { peopleTitle: '团长', people: [], teams: [], customRooms: [] };
+}
+
+export function visibleTeams(layout: TeamLayout) {
+  return layout.teams.filter(team => team.captains.length || team.members.length);
+}
+
+export function layoutRooms<T extends CustomRoom>(layout: TeamLayout, native: T[], statuses?: Map<string, boolean>): (T | CustomRoom)[] {
+  const rooms = new Map<string, T | CustomRoom>(native.map(room => [room.id, room]));
+  for (const room of layout.customRooms ?? []) if (!rooms.has(room.id)) rooms.set(room.id, { ...room, live: statuses?.get(room.id) ?? room.live });
+  return [...rooms.values()];
+}
+
+export function teamColumns(count: number, width: number, preferred = 0) {
+  return Math.max(1, Math.min(count, preferred || count, Math.floor((width + 12) / 212) || 1));
 }
 
 export function copyLayout(value: TeamLayout): TeamLayout {
@@ -52,7 +74,10 @@ export function validateLayout(value: unknown): TeamLayout {
       || !name(person.name) || typeof person.label !== 'string' || person.label.length > 40)
     || value.teams.some(team => !record(team) || !name(team.id) || !name(team.name) || !slots(team.captains) || !slots(team.members))
     || new Set(value.people.map(person => person.id)).size !== value.people.length
-    || new Set(value.teams.map(team => team.id)).size !== value.teams.length) {
+    || new Set(value.teams.map(team => team.id)).size !== value.teams.length
+    || (value.customRooms !== undefined && (!Array.isArray(value.customRooms)
+      || value.customRooms.some(room => !record(room) || !roomId(room.id) || !name(room.name) || typeof room.avatar !== 'string' || typeof room.live !== 'boolean')
+      || new Set(value.customRooms.map(room => room.id)).size !== value.customRooms.length))) {
     throw new Error('名单格式无效：名称需为 1～40 个字符，房间号和分组不能损坏或重复');
   }
   return copyLayout(value as unknown as TeamLayout);

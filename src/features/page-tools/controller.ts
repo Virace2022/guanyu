@@ -8,7 +8,7 @@ export function createPageTools(settings: SettingsStore, nativePage: Window) {
   const page = mountPageTools(toggleChat);
   const shield = mountNativeShield(nativePage);
   const stopShield = shield.subscribe(shieldStatus => state.set({ ...state.value, shieldStatus }));
-  const stop = settings.subscribe(value => {
+  const stop = settings.runtime.subscribe(value => {
     page.apply(value.optimization, state.value.mirrored, value.accentColor);
     shield.apply(value.nativeShield);
   });
@@ -21,7 +21,7 @@ export function createPageTools(settings: SettingsStore, nativePage: Window) {
     toggleGiftBar() { toggleOption('hideGiftBar'); },
     toggleMirror() {
       state.set({ ...state.value, mirrored: !state.value.mirrored });
-      page.apply(settings.value.optimization, state.value.mirrored, settings.value.accentColor);
+      page.apply(settings.runtime.value.optimization, state.value.mirrored, settings.runtime.value.accentColor);
     },
     dispose() { stop(); stopShield(); shield.dispose(); page.dispose(); },
   };

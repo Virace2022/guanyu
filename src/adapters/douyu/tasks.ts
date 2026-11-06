@@ -83,29 +83,39 @@ export function createDouyuTasks(http: TaskRequest) {
   }
   async function pointsSign() {
     const alias = '20250521OPFOY_qd2';
-    const status = await get(`/japi/carnivalApi/nc/sign/getStatus?signAlias=${alias}`);
+    const statusPath = `/japi/carnivalApi/nc/sign/getStatus?signAlias=${alias}`;
+    const readStatus = async () => { const result = await request(statusPath, { sameOrigin: true }); assertResponse(result); return result.data; };
+    const status = await readStatus();
     if (Number(status?.todaySigned) === 1) return 'already';
     if (Number(status?.todayTaskFinished) !== 1) throw new Error('官方任务中心的今日签到条件尚未完成');
-    if (!cookie('cvl_csrf_token')) await post('/japi/carnival/nc/common/generateCsrf');
+    if (!cookie('cvl_csrf_token')) assertResponse(await request('/japi/carnival/nc/common/generateCsrf', { method: 'POST', sameOrigin: true }));
     const csrfToken = cookie('cvl_csrf_token');
     if (!csrfToken) throw new Error('官方签到凭据未能生成');
-    const result = await request('/japi/carnivalApi/sign/doSign', { method: 'POST', data: new URLSearchParams({ csrfToken, signAlias: alias, useJiYan: 'false' }).toString() });
-    if (Number(result.error) === 31200) return 'already';
-    assertResponse(result);
-    const after = await get(`/japi/carnivalApi/nc/sign/getStatus?signAlias=${alias}`);
+    const result = await request('/japi/carnivalApi/sign/doSign', { method: 'POST', sameOrigin: true, data: new URLSearchParams({ csrfToken, signAlias: alias, useJiYan: 'true' }).toString() });
+    if (![0, 31200, 31015].includes(Number(result.error))) assertResponse(result);
+    const after = await readStatus();
     if (Number(after?.todaySigned) !== 1) throw new Error('官方任务中心未确认今日签到');
-    return 'signed';
+    return Number(result.error) === 31015 ? 'already' : 'signed';
   }
   async function viewRewards() {
-    const status = await post('/wgapi/activitync/gametask/viewStatus', { actAlias: '20250521OPFOY' });
-    if (!status.data?.taskList || !Number.isFinite(Number(status.data.startTime))) throw new Error('官方观时积分状态格式异常');
-    let count = 0;
-    for (const [id, task] of Object.entries(status.data.taskList)) {
+    const centerPost = async (path: string, data: Record<string, string | number> = {}) => {
+      const result = await request(path, { method: 'POST', sameOrigin: true,
+        data: new URLSearchParams({ ctn: cookie('acf_ccn') || cookie('ccn'), actAlias: '20250521OPFOY', ...Object.fromEntries(Object.entries(data).map(([key, value]) => [key, String(value)])) }).toString() });
+      assertResponse(result); return result.data;
+    };
+    const status = await centerPost('/wgapi/activitync/gametask/viewStatus');
+    if (!status?.taskList || !Number.isFinite(Number(status.startTime))) throw new Error('官方观时积分状态格式异常');
+    const claimed: string[] = [];
+    for (const [id, task] of Object.entries(status.taskList)) {
       if (Number((task as any).status) !== 2) continue;
-      await post('/wgapi/activitync/gametask/takeGift', { id, startTime: status.data.startTime, actAlias: '20250521OPFOY' });
-      count++;
+      await centerPost('/wgapi/activitync/gametask/takeGift', { id, startTime: status.startTime });
+      claimed.push(id);
     }
-    return count;
+    if (claimed.length) {
+      const after = await centerPost('/wgapi/activitync/gametask/viewStatus');
+      if (Number(after?.startTime) !== Number(status.startTime) || claimed.some(id => Number(after?.taskList?.[id]?.status) !== 3)) throw new Error('官方尚未确认全部观时积分已领取，将按最新状态重试');
+    }
+    return claimed.length;
   }
   return {
     request, get, post, followPage, followed, badges, level, posts, readPost, starConfig, starRooms, pointsSign, viewRewards,

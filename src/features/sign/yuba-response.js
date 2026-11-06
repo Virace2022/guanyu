@@ -25,3 +25,9 @@ export function SignYuba_signResult(result) {
     if (success && (!message || /^签到成功[！!。.]?$/.test(message))) return "signed";
     throw new Error(SignYuba_responseError(result, "接口未确认签到成功"));
 }
+
+export function SignYuba_supplementComplete(result) {
+    const message = SignYuba_message(result);
+    return Number(result.status_code) === 1001
+        || /(?:今天|今日).*(?:已|已经).*签到|(?:已|已经)签到|无需补签|无须补签|没有.*(?:补签|漏签)|请勿重复签到/.test(message);
+}

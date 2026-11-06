@@ -3,6 +3,7 @@ import type { PlayerStore } from '../../adapters/douyu/player';
 import { mountRoomPage } from '../../adapters/douyu/room-page';
 import { RoomApi } from '../../adapters/douyu/rooms';
 import { createState } from '../../core/state';
+import { unsafeWindow } from '$';
 
 export function createRoomPage(settings: SettingsStore, player: PlayerStore) {
   const view = createState<{ error: string; roomId: string | null; live: boolean | null }>({ error: '', roomId: null, live: null }), dom = mountRoomPage(), api = new RoomApi();
@@ -16,9 +17,11 @@ export function createRoomPage(settings: SettingsStore, player: PlayerStore) {
       if (stopped || player.value.roomId !== id) return;
       if (!result.room) throw new Error('房间信息格式异常');
       const data = result.room;
+      const page = unsafeWindow as Window & { $ROOM?: { room_id?: string | number; clubOrgName?: string } };
+      const guild = !page.$ROOM?.room_id || String(page.$ROOM.room_id) === id ? page.$ROOM?.clubOrgName ?? data.room_biz_all?.clubOrgName : data.room_biz_all?.clubOrgName;
       const live = Number(data.show_status) === 1 && Number(data.videoLoop) !== 1;
       dom.update({ live, start: Number(data.show_time) * 1000,
-        now: Number(data.nowtime) * 1000 || Date.now(), received: Date.now(), guild: String(data.room_biz_all?.clubOrgName || '') });
+        now: Number(data.nowtime) * 1000 || Date.now(), received: Date.now(), guild: String(guild || '').trim() });
       view.set({ error: '', roomId: id, live });
     } catch (cause) { if (!stopped && player.value.roomId === id) { dom.update(); view.set({ error: cause instanceof Error ? cause.message : String(cause), roomId: id, live: null }); } }
     finally { busy = false; nextAt = player.value.roomId === id ? Date.now() + 60000 : 0; }

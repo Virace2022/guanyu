@@ -1,6 +1,6 @@
 import type { BarrageOptions } from '../../config/options';
 
-const markSelectors: Record<Exclude<keyof BarrageOptions, 'linked'>, string[]> = {
+const markSelectors: Record<Exclude<keyof BarrageOptions, 'linked' | 'enter'>, string[]> = {
   fans: ['.FansMedal', '.FansMedalWrap:not(:has(dy-fan-medal))'],
   diamond: [],
   noble: ['.Barrage-noble', '.Barrage-nobleImg', 'picture:has(.SupremeRightIconJSX)', '.SupremeRightIconJSX', '.Barrage-supremeName--prefix', '.Barrage-supremeName--suffix'],
@@ -139,6 +139,7 @@ export function mountBarrage(page: DouyuBarragePage) {
       const selectors = (Object.keys(markSelectors) as (keyof typeof markSelectors)[])
         .filter(key => value[key]).flatMap(key => markSelectors[key].map(selector => `.Barrage-listItem ${selector}`));
       selectors.push('.Barrage-listItem .FansMedalWrap:has(> dy-fan-medal[data-guanyu-hide-fans]:is([data-guanyu-hide-diamond], :not([data-hassuffix="true"])))');
+      if (value.enter) selectors.push('#js-barrage-extend-container', '.Barrage-listItem:has(.Barrage-userEnter)');
       if (value.linked) selectors.push('.Barrage-listItem:has(.Barrage-content.js-barrage-activity-link, .Barrage-content.is-link, .Barrage-content a[href], .Barrage-content.js-open-diamondfans-panel, .Barrage-content.js-barrage-suffix[data-btype]:not([data-btype=""]), .Barrage-devideAdIcon.is-link[data-url]:not([data-url=""]), .Barrage-devideAdText.is-link[data-url]:not([data-url=""]))');
       style.textContent = `${selectors.join(',')}{display:none !important;}`;
       document.querySelectorAll<HTMLElement>('.Barrage-listItem dy-fan-medal').forEach(syncMedal);

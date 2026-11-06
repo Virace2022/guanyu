@@ -3,6 +3,6 @@ import type { SettingsStore } from '../../config/settings';
 
 export function createBarrage(settings: SettingsStore, page: Window) {
   const barrage = mountBarrage(page);
-  const stop = settings.subscribe(value => barrage.apply(value.barrage));
+  const stop = settings.runtime.subscribe(value => barrage.apply(value.barrage));
   return { dispose() { stop(); barrage.dispose(); } };
 }

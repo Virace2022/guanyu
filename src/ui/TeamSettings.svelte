@@ -2,14 +2,12 @@
   import { onMount, untrack } from 'svelte';
   import type { TeamOptions } from '../config/team';
   import type { TeamController } from '../features/team-live/controller';
-  import { confirmAction } from './confirm';
+  import { toggleTeamPreview } from './team-preview';
   let { value = $bindable(), team, openEditor, roomId }: { value: TeamOptions; team: TeamController; openEditor: () => void; roomId: string } = $props();
   let runtime = $state(untrack(() => team.value));
   onMount(() => team.subscribe(next => { runtime = next; }));
   async function preview() {
-    const count = team.previewCount(false, roomId);
-    if (!runtime.preview && count > 50 && !await confirmAction('预览数量较多', `即将开启 ${count} 个预览窗口，浏览器可能卡顿，是否继续？`, '开启预览')) return;
-    team.setPreview(!runtime.preview, false);
+    await toggleTeamPreview(team, roomId, openEditor);
   }
 </script>
 <h1>团播</h1><p class="intro">按活动组织名单，按需开启静音预览。</p>
@@ -23,7 +21,9 @@
     {#if runtime.statusError}<p class="error" role="status">{runtime.statusError}</p>{:else if runtime.lastRefresh}<p class="status">开播状态更新于 {new Date(runtime.lastRefresh).toLocaleTimeString()}</p>{/if}
   {:else}<p class="help">当前页面尚未出现活动房间卡片。发现卡片后自动接入，无需页面标题包含“团播”。</p>{/if}
 </section>
-<section><h2>布局</h2><label class="setting-row" for="team-columns"><span>队伍列数</span><select id="team-columns" bind:value={value.teamColumns}><option value={0}>自动适应</option>{#each [1,2,3,4,5,6] as count}<option value={count}>{count} 列</option>{/each}</select></label>
+<section><h2>布局与入口</h2>
+<label class="option-row"><span><strong>显示右侧团播工具条</strong><small>点击小鱼展开，按住小鱼可沿右侧上下拖动；隐藏后仍可从设置打开名单。</small></span><input type="checkbox" bind:checked={value.showToolbar} /></label>
+<label class="setting-row" for="team-columns"><span>队伍列数</span><select id="team-columns" bind:value={value.teamColumns}><option value={0}>自动适应</option>{#each [1,2,3,4,5,6] as count}<option value={count}>{count} 列</option>{/each}</select></label>
 <label class="setting-row" for="member-columns"><span>队内人数列数</span><select id="member-columns" bind:value={value.columns}>{#each [1,2,3,4,5,6,8,10,12] as count}<option value={count}>{count} 列</option>{/each}</select></label>
 <label class="setting-row" for="team-alignment"><span>排列对齐</span><select id="team-alignment" bind:value={value.alignment}><option value="left">靠左</option><option value="center">居中</option><option value="right">靠右</option></select></label>
 <p class="help">顶部大图使用“优化 → 隐藏顶部大图”，同时覆盖团播和普通活动。</p>
@@ -33,4 +33,4 @@
 <label class="setting-row" for="preview-source"><span>预览来源</span><select id="preview-source" bind:value={value.previewSource}><option value="lowest">优先最低画质，失败回退原生</option><option value="native">原生预览</option></select></label>
 <label class="setting-row" for="preview-retry"><span>失败自动重试</span><select id="preview-retry" bind:value={value.previewRetrySeconds}>{#each [0,30,60,120,300] as seconds}<option value={seconds}>{seconds ? `${seconds} 秒` : '关闭'}</option>{/each}</select></label>
 <label class="option-row"><span><strong>放大时切换高清原声</strong><small>仅放大的画面尝试原声，失败回退静音，还原后立即静音。</small></span><input type="checkbox" bind:checked={value.previewFocusOriginal} /></label>
-<p class="help">预览属于娱乐功能。双击放大或还原，各队互不影响；后台和全屏会暂停并释放资源。以上偏好保存后生效，预览开关仅本页有效。</p></section>
+<p class="help">预览属于娱乐功能。少于 50 个预览窗口直接开启，50 个及以上需确认。双击放大或还原，各队互不影响；后台和全屏会暂停并释放资源。布局与入口立即预览，刷新和画质偏好保存后生效；预览开关仅本页有效。</p></section>

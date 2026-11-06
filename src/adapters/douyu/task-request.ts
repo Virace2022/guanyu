@@ -35,7 +35,7 @@ export function confirmedResult(result: any): 'signed' | 'already' {
 
 interface RequestOptions {
   method?: string; data?: string; headers?: Record<string, string>; attempt?: number;
-  groupId?: string; mobile?: boolean; yuba?: boolean; text?: boolean;
+  groupId?: string; mobile?: boolean; yuba?: boolean; text?: boolean; sameOrigin?: boolean;
 }
 
 export function createTaskRequest(storage: Storage = localStorage) {
@@ -64,14 +64,14 @@ export function createTaskRequest(storage: Storage = localStorage) {
       storage.setItem(key, String(Date.now() + timeout + taskGap()));
       try {
         return await new Promise((resolve, reject) => {
-          let handle: ReturnType<typeof GM_xmlhttpRequest> | undefined, settled = false;
+          let cancelRequest = () => {}, settled = false;
           const finish = (error?: Error, result?: unknown) => {
             if (settled) return;
             settled = true; clearTimeout(timer); abort.signal.removeEventListener('abort', stop);
             if (error) reject(error); else resolve(result);
           };
-          const stop = () => { finish(interrupted()); handle?.abort(); };
-          const timer = setTimeout(() => { finish(new Error(`请求超过 ${timeout / 1000} 秒未响应`)); handle?.abort(); }, timeout);
+          const stop = () => { finish(interrupted()); cancelRequest(); };
+          const timer = setTimeout(() => { finish(new Error(`请求超过 ${timeout / 1000} 秒未响应`)); cancelRequest(); }, timeout);
           abort.signal.addEventListener('abort', stop, { once: true });
           const headers: Record<string, string> = { 'Content-Type': 'application/x-www-form-urlencoded', ...options.headers };
           if (options.mobile) { headers.client = 'android'; headers.token = accountToken(); }
@@ -80,23 +80,32 @@ export function createTaskRequest(storage: Storage = localStorage) {
           }
           if (options.groupId) headers.Referer = `https://yuba.douyu.com/group/${options.groupId}`;
           const url = path.startsWith('https://') ? path : `${options.yuba || path.startsWith('/wbapi') || path.startsWith('/ybapi') ? 'https://yuba.douyu.com' : 'https://www.douyu.com'}${path}`;
+          const receive = (response: { status: number; response?: unknown; responseText: string }) => {
+            try {
+              check(uid);
+              let result = options.text ? response.responseText : response.response;
+              if (!options.text && (!result || typeof result !== 'object')) result = JSON.parse(response.responseText);
+              if (response.status < 200 || response.status >= 300) throw new Error(`接口 HTTP ${response.status}${!options.text && result ? `：${responseError(result)}` : ''}`);
+              if (!options.text && (!result || typeof result !== 'object' || Array.isArray(result))) throw new Error('接口没有返回有效 JSON');
+              finish(undefined, result);
+            } catch (error) { finish(error as Error); }
+          };
           try {
-            handle = GM_xmlhttpRequest({ method: options.method || 'GET', url, headers, data: options.data,
+            if (options.sameOrigin) {
+              const controller = new AbortController(); cancelRequest = () => controller.abort();
+              void fetch(url, { method: options.method || 'GET', headers, body: options.data, credentials: 'include', signal: controller.signal })
+                .then(async response => receive({ status: response.status, responseText: await response.text() }))
+                .catch(error => finish(error));
+              return;
+            }
+            const handle = GM_xmlhttpRequest({ method: options.method || 'GET', url, headers, data: options.data,
               timeout, responseType: options.text ? 'text' : 'json',
-              onload(response) {
-                try {
-                  check(uid);
-                  let result = options.text ? response.responseText : response.response;
-                  if (!options.text && (!result || typeof result !== 'object')) result = JSON.parse(response.responseText);
-                  if (response.status < 200 || response.status >= 300) throw new Error(`接口 HTTP ${response.status}${!options.text && result ? `：${responseError(result)}` : ''}`);
-                  if (!options.text && (!result || typeof result !== 'object' || Array.isArray(result))) throw new Error('接口没有返回有效 JSON');
-                  finish(undefined, result);
-                } catch (error) { finish(error as Error); }
-              },
+              onload: receive,
               onerror: () => finish(new Error('网络请求失败')),
               ontimeout: () => finish(new Error(`请求超过 ${timeout / 1000} 秒未响应`)),
               onabort: () => finish(interrupted()),
             });
+            cancelRequest = () => handle.abort();
           } catch (error) { finish(error as Error); }
         });
       } finally {

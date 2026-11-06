@@ -1,5 +1,5 @@
 import { accountId } from '../../adapters/douyu/task-request';
-import { SignYuba_timeout, SignYuba_assertResponse, SignYuba_signResult } from './yuba-response';
+import { SignYuba_timeout, SignYuba_assertResponse, SignYuba_signResult, SignYuba_supplementComplete } from './yuba-response';
 
 function SignYuba_day(now = Date.now()) {
     return new Date(now + 8 * 3600000).toISOString().slice(0, 10);
@@ -25,8 +25,9 @@ function SignYuba_complete(state) {
 }
 
 export class SignYubaController {
-    constructor(settings, api, report, notify, reminder) {
+    constructor(settings, api, report, notify, reminder, runner) {
         this.settings = settings; this.api = api; this.report = report; this.notify = notify; this.reminder = reminder;
+        this.runner = runner;
         this.listeners = [];
         this.running = false;
         this.timer = null;
@@ -43,7 +44,7 @@ export class SignYubaController {
             this.listeners.push(() => target.removeEventListener(type, run));
         };
         listen(window, "storage", event => {
-            if (!event.key || event.key === "guanyu:settings:v1" || event.key === this.key) void this.wake();
+            if (!event.key || event.key === "guanyu:settings:v1" || event.key === this.key || this.runner.matches(event.key)) void this.wake();
         });
         listen(document, "visibilitychange", () => { if (!document.hidden) void this.wake(); });
         listen(document, "fullscreenchange", () => { if (!document.fullscreenElement) void this.wake(); });
@@ -86,11 +87,13 @@ export class SignYubaController {
             this.key = `guanyu:yuba:v1:${this.uid}`;
             if (!navigator.locks) throw new Error("鱼吧签到需要 HTTPS 页面和支持 Web Locks 的新版浏览器");
             await this.remind();
+            if (!await this.runner.claim(this.uid)) { this.waitForOtherPage(manual); return; }
             const run = async () => {
                 this.load();
+                if (this.runner.take('yuba')) manual = true;
                 if (manual) {
                     this.retryNow();
-                    this.notify("【鱼吧】已检查今日进度，未完成项会按间隔处理；详情见设置中的鱼吧签到", "info");
+                    this.notify(SignYuba_complete(this.state) ? "【鱼吧】今日已签到" : "【鱼吧】已检查今日进度，未完成项会按间隔处理", "info");
                 }
                 await this.run();
             };
@@ -131,6 +134,12 @@ export class SignYubaController {
         let saved;
         try { saved = raw && JSON.parse(raw); } catch {}
         this.state = saved?.day === day && saved.list && saved.groups ? saved : SignYuba_newState(day);
+        for (const group of Object.values(this.state.groups)) {
+            if (group.status !== 'pending' && /status_code=1001|今日已签到|今天已签到/.test(group.supplementError || '')) {
+                group.supplemented = true;
+                group.supplementError = '';
+            }
+        }
         if (save) this.persist();
     }
 
@@ -155,9 +164,7 @@ export class SignYubaController {
     }
 
     retryNow() {
-        if (SignYuba_complete(this.state)) {
-            this.state.list = SignYuba_newState(this.state.day).list;
-        } else {
+        if (!SignYuba_complete(this.state)) {
             this.state.list.nextAt = 0;
             for (const group of Object.values(this.state.groups)) if (group.status === "pending") group.nextAt = 0;
         }
@@ -287,6 +294,12 @@ export class SignYubaController {
         try {
             const result = await this.request("https://mapi-yuba.douyu.com/wb/v3/supplement", { method: "POST", data: `group_id=${encodeURIComponent(group.id)}`, groupId: group.id, mobile: true });
             this.current();
+            if (SignYuba_supplementComplete(result)) {
+                group.supplemented = true; group.supplementError = '';
+                this.persist();
+                this.log("今日已签到，无需继续补签", { groupId: group.id, name: group.name });
+                return;
+            }
             SignYuba_assertResponse(result);
             group.supplementRemaining = group.supplementRemaining == null
                 ? Math.max(0, Number(result.data?.supplementary_cards) || 0)
@@ -296,6 +309,7 @@ export class SignYubaController {
             this.log(group.supplemented ? "补签处理完成" : "补签等待下一轮", { groupId: group.id, name: group.name, remaining: group.supplementRemaining });
         } catch (error) {
             if (error.interrupted || error.storage) throw error;
+            this.current();
             group.supplemented = true;
             group.supplementError = error.message;
             this.persist();

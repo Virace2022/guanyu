@@ -6,13 +6,13 @@
 .guanyu-multi-chips { display: flex; flex: 1; min-width: 0; align-items: center; gap: 6px; overflow-x: auto; overscroll-behavior: contain; }
 .guanyu-multi-chip { display: inline-flex; flex: none; align-items: center; gap: 4px; height: 26px; padding: 0 4px 0 7px; border: 1px solid rgb(255 255 255 / 35%); border-radius: 4px; background: rgb(255 255 255 / 10%); white-space: nowrap; }
 .guanyu-multi-chip > span { max-width: 86px; overflow: hidden; text-overflow: ellipsis; }
-.guanyu-multi-chip > small { color: var(--guanyu-page-accent, #76c5a6); font-size: 11px; }
+.guanyu-multi-chip > small { color: var(--guanyu-page-accent, #ff5d23); font-size: 11px; }
 .guanyu-multi-chip > button, .guanyu-multi-add-button { box-sizing: border-box; color: #fff; font: inherit; cursor: pointer; }
 .guanyu-multi-chip > button { width: 22px; height: 24px; padding: 0; border: 0; background: transparent; font-size: 18px; line-height: 24px; }
-.guanyu-multi-chip > button:hover { color: var(--guanyu-page-accent, #76c5a6); }
+.guanyu-multi-chip > button:hover { color: var(--guanyu-page-accent, #ff5d23); }
 .guanyu-multi-add-button { flex: none; height: 28px; padding: 0 8px; border: 1px solid rgb(255 255 255 / 45%); border-radius: 4px; background: rgb(0 0 0 / 25%); }
-.guanyu-multi-add-button:hover { border-color: var(--guanyu-page-accent, #76c5a6); color: var(--guanyu-page-accent, #76c5a6); }
-.guanyu-multi-editor :is(button, [role="checkbox"]):focus-visible { outline: 2px solid var(--guanyu-page-accent, #76c5a6); outline-offset: -2px; }
+.guanyu-multi-add-button:hover { border-color: var(--guanyu-page-accent, #ff5d23); color: var(--guanyu-page-accent, #ff5d23); }
+.guanyu-multi-editor :is(button, [role="checkbox"]):focus-visible { outline: 2px solid var(--guanyu-page-accent, #ff5d23); outline-offset: -2px; }
 .guanyu-multi-editor.guanyu-multi-compact > [class*="listPanel-"] { box-sizing: border-box; flex: 1; width: 100%; min-height: 0; height: var(--guanyu-multi-list-height) !important; padding: 0 16px 8px; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; }
 .guanyu-multi-compact > [class*="listPanel-"] > [class*="leftIcon-"], .guanyu-multi-compact > [class*="listPanel-"] > [class*="rightIcon-"] { display: none !important; }
 .guanyu-multi-compact [class*="listPanel-"] > [class^="list-"] { display: grid !important; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; width: 100% !important; height: auto !important; margin: 0 !important; padding: 0 !important; transform: none !important; transition: none !important; }

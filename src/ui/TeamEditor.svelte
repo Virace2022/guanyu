@@ -1,12 +1,14 @@
 <script lang="ts">
   import { onMount, untrack } from 'svelte';
+  import { flip } from 'svelte/animate';
   import type { TeamController } from '../features/team-live/controller';
   import type { SettingsStore } from '../config/settings';
   import type { Readable } from '../core/state';
-  import { assignedRooms, copyLayout, emptyLayout, exportLayout, importLayout } from '../features/team-live/layout';
+  import { assignedRooms, copyLayout, emptyLayout, exportLayout, importLayout, layoutRooms, type TeamLayout, type Person } from '../features/team-live/layout';
   import FishIcon from './FishIcon.svelte';
+  import { accentText } from './theme';
   import { animateContent } from './motion';
-  import { dragScroll } from './drag-scroll';
+  import { pointerSort } from './pointer-sort';
   import { showModal } from './modal';
 
   let { team, settings, pageTheme }: { team: TeamController; settings: SettingsStore; pageTheme: Readable<'light' | 'dark'> } = $props();
@@ -14,6 +16,7 @@
   let current = $state(untrack(() => team.value));
   let draft = $state(emptyLayout());
   let baseline = $state('');
+  let savedLayout = $state('');
   let activity = $state('');
   let selected = $state('people');
   let role = $state<'captains' | 'members'>('members');
@@ -24,28 +27,40 @@
   let share = $state('');
   let message = $state('');
   let error = $state('');
-  let dragging = $state<{ roomId?: string; teamId?: string; personId?: string; fromTeam?: string; fromRole?: 'captains' | 'members' } | undefined>();
+  type DragItem = { kind: string; id: string; roomId?: string; person?: Person; fromTeam?: string; fromRole?: 'captains' | 'members' };
+  let dragging: DragItem | undefined;
+  let dragBaseline: TeamLayout | undefined;
+  let dragSelection = '';
+  let reducedMotion = $state(false);
+  let customOpen = $state(false);
+  let customInput = $state('');
+  let customBusy = $state(false);
+  let customError = $state('');
+  let customRequest = 0;
   let savedTheme = $state(untrack(() => settings.value.theme));
   let accentColor = $state(untrack(() => settings.value.accentColor));
   let detectedTheme = $state<'light' | 'dark'>('light');
   const theme = $derived(savedTheme === 'page' ? detectedTheme : savedTheme);
   const dirty = $derived(JSON.stringify(draft) !== baseline);
   const selectedTeam = $derived(draft.teams.find(item => item.id === selected));
-  const rooms = $derived(current.source?.rooms ?? []);
+  const rooms = $derived(layoutRooms(draft, current.source?.rooms ?? [], current.statuses));
   const byId = $derived(new Map(rooms.map(room => [room.id, room])));
   const assigned = $derived(assignedRooms(draft));
   const missing = $derived([...assigned].filter(id => !byId.has(id)));
   const filtered = $derived(rooms.filter(room => (!unassignedOnly || !assigned.has(room.id))
     && (!query.trim() || `${room.name} ${room.id}`.toLowerCase().includes(query.trim().toLowerCase()))));
   const changedActivity = $derived(activity !== current.source?.activity);
-  const changedElsewhere = $derived(baseline !== JSON.stringify(current.layout));
+  const changedElsewhere = $derived(savedLayout !== JSON.stringify(current.layout));
 
   export function show() {
     if (dialog.open) { showModal(dialog); return; }
-    draft = copyLayout(team.value.layout); baseline = JSON.stringify(draft);
+    draft = copyLayout(team.value.layout); savedLayout = JSON.stringify(draft);
+    if (!draft.teams.length) addTeam();
+    baseline = JSON.stringify(draft);
     activity = team.value.source?.activity ?? '';
     selected = draft.teams[0]?.id ?? 'people';
     query = ''; error = ''; message = ''; confirming = false; shareOpen = false; share = '';
+    customRequest++; customOpen = false; customBusy = false; customInput = ''; customError = '';
     showModal(dialog);
   }
 
@@ -55,12 +70,6 @@
     while (draft.teams.some(team => team.name === `队伍 ${number}`)) number++;
     draft.teams.push({ id, name: `队伍 ${number}`, captains: [], members: [] });
     selected = id;
-  }
-
-  function deleteTeam(id: string) {
-    const index = draft.teams.findIndex(item => item.id === id);
-    draft.teams = draft.teams.filter(item => item.id !== id);
-    if (selected === id) selected = draft.teams[Math.min(index, draft.teams.length - 1)]?.id ?? 'people';
   }
 
   function addRoom(id: string) {
@@ -77,40 +86,87 @@
       : !!selectedTeam && [...selectedTeam.captains, ...selectedTeam.members].includes(id);
   }
 
-  function drop(target: string, before?: string) {
-    const item = dragging; dragging = undefined;
-    if (!item || changedActivity) return;
-    if (target === 'people' && item.personId && item.personId === before) return;
-    if (target === item.fromTeam && item.fromRole === role && item.roomId === before) return;
-    if (item.teamId) {
-      const team = draft.teams.find(team => team.id === item.teamId);
-      if (!team || item.teamId === target || target === 'people') return;
-      draft.teams = draft.teams.filter(team => team.id !== item.teamId);
-      draft.teams.splice(draft.teams.findIndex(team => team.id === target), 0, team); return;
-    }
-    if (!item.roomId) return;
-    if (target === 'people') {
-      let person = draft.people.find(person => person.id === item.personId);
-      if (person) draft.people = draft.people.filter(value => value.id !== person!.id);
-      else if (draft.people.some(person => person.roomId === item.roomId)) return;
-      person ??= { id: crypto.randomUUID(), roomId: item.roomId, name: byId.get(item.roomId)?.name ?? item.roomId, label: '' };
-      const index = before ? draft.people.findIndex(value => value.id === before) : -1;
-      draft.people.splice(index < 0 ? draft.people.length : index, 0, person);
-    } else {
-      const team = draft.teams.find(team => team.id === target); if (!team) return;
-      const from = draft.teams.find(team => team.id === item.fromTeam);
-      if ([...team.captains, ...team.members].includes(item.roomId) && !(from === team && item.fromRole === role)) return;
-      if (from && item.fromRole) from[item.fromRole] = from[item.fromRole].filter(id => id !== item.roomId);
-      const index = before ? team[role].indexOf(before) : -1;
-      team[role].splice(index < 0 ? team[role].length : index, 0, item.roomId);
-    }
-    selected = target;
+  async function addCustomRoom(event: SubmitEvent) {
+    event.preventDefault();
+    if (customBusy || changedActivity || changedElsewhere) return;
+    const request = ++customRequest, expected = activity;
+    customBusy = true; customError = '';
+    try {
+      const room = await team.resolveRoom(customInput);
+      if (request !== customRequest || !dialog.open || current.source?.activity !== expected) return;
+      if (!byId.has(room.id)) (draft.customRooms ??= []).push(room);
+      addRoom(room.id); customInput = ''; customOpen = false;
+      message = `已添加 ${room.name}，保存名单后应用`;
+    } catch (cause) { if (request === customRequest) customError = cause instanceof Error ? cause.message : String(cause); }
+    finally { if (request === customRequest) customBusy = false; }
   }
 
-  function move(list: unknown[], index: number, direction: number) {
-    const target = index + direction;
-    if (target < 0 || target >= list.length) return;
-    [list[index], list[target]] = [list[target], list[index]];
+  function startSort(node: HTMLElement) {
+    if (changedActivity || changedElsewhere) return false;
+    dragBaseline = copyLayout($state.snapshot(draft)); dragSelection = selected;
+    dragging = { kind: node.dataset.sortKind!, id: node.dataset.sortId!, roomId: node.dataset.roomId, fromTeam: node.dataset.teamId, fromRole: node.dataset.role as 'captains' | 'members' | undefined };
+    if (dragging.kind === 'team') selected = dragging.id;
+    if (dragging.kind === 'person') dragging.person = draft.people.find(person => person.id === dragging!.id);
+    return true;
+  }
+
+  function detachRoom() {
+    if (!dragging) return;
+    if (dragging.person && draft.people.some(person => person.id === dragging!.person!.id)) draft.people = draft.people.filter(person => person.id !== dragging!.person!.id);
+    const from = draft.teams.find(team => team.id === dragging!.fromTeam);
+    if (from && dragging.fromRole && from[dragging.fromRole].includes(dragging.roomId!)) from[dragging.fromRole] = from[dragging.fromRole].filter(id => id !== dragging!.roomId);
+    dragging.fromTeam = undefined; dragging.fromRole = undefined;
+  }
+
+  function sortOver(node: HTMLElement, after: boolean) {
+    const item = dragging;
+    if (!item || changedActivity || changedElsewhere) return;
+    if (item.kind === 'team') {
+      if (node.dataset.sortKind !== 'team' || item.id === node.dataset.sortId) return;
+      const from = draft.teams.findIndex(team => team.id === item.id);
+      const target = draft.teams.findIndex(team => team.id === node.dataset.sortId);
+      if (target + Number(after) - Number(from < target) === from) return;
+      const moved = draft.teams.splice(from, 1)[0]!;
+      const index = draft.teams.findIndex(team => team.id === node.dataset.sortId);
+      draft.teams.splice(index + Number(after), 0, moved); return;
+    }
+    const zone = node.closest<HTMLElement>('[data-sort-zone]');
+    if (zone?.dataset.sortZone === 'picker') { detachRoom(); return; }
+    const destination = node.dataset.sortKind === 'team' ? node.dataset.sortId : zone?.dataset.teamId;
+    const people = zone?.dataset.sortZone === 'people';
+    if (!item.roomId || (!people && !destination)) return;
+    const targetRole = (zone?.dataset.role as 'captains' | 'members' | undefined) ?? role;
+    const before = node.dataset.sortKind === 'member' || node.dataset.sortKind === 'person' ? node.dataset.sortId : undefined;
+    if (people) {
+      const existing = draft.people.find(person => person.roomId === item.roomId);
+      if (existing && (existing.id !== item.person?.id || !before || existing.id === before)) return;
+      if (existing) {
+        const from = draft.people.indexOf(existing), target = draft.people.findIndex(person => person.id === before);
+        if (target + Number(after) - Number(from < target) === from) return;
+      }
+      const person = item.person ?? { id: crypto.randomUUID(), roomId: item.roomId, name: byId.get(item.roomId)?.name ?? item.roomId, label: '' };
+      detachRoom();
+      const index = before ? draft.people.findIndex(person => person.id === before) : -1;
+      draft.people.splice(index < 0 ? draft.people.length : index + Number(after), 0, person);
+      item.person = person; selected = 'people';
+    } else {
+      const target = draft.teams.find(team => team.id === destination); if (!target) return;
+      const same = item.fromTeam === destination && item.fromRole === targetRole;
+      if ([...target.captains, ...target.members].includes(item.roomId) && (!same || !before || before === item.roomId)) return;
+      if (same && before) {
+        const from = target[targetRole].indexOf(item.roomId), to = target[targetRole].indexOf(before);
+        if (to + Number(after) - Number(from < to) === from) return;
+      }
+      detachRoom();
+      const index = before ? target[targetRole].indexOf(before) : -1;
+      target[targetRole].splice(index < 0 ? target[targetRole].length : index + Number(after), 0, item.roomId);
+      item.fromTeam = destination; item.fromRole = targetRole; selected = destination!; role = targetRole;
+    }
+  }
+
+  function finishSort(cancelled: boolean) {
+    if (cancelled && dragBaseline) { draft = dragBaseline; selected = dragSelection; }
+    dragging = undefined; dragBaseline = undefined;
   }
 
   function save(closeAfter = false) {
@@ -118,7 +174,7 @@
     try {
       if (changedElsewhere) throw new Error('名单已在其他页面更新，请关闭后重新编辑');
       team.save($state.snapshot(draft), activity);
-      baseline = JSON.stringify(draft); message = '名单已保存';
+      baseline = JSON.stringify(draft); savedLayout = JSON.stringify(team.value.layout); message = '名单已保存';
       if (closeAfter) dialog.close();
       confirming = false;
     } catch (cause) { error = String(cause instanceof Error ? cause.message : cause); confirming = false; }
@@ -131,14 +187,15 @@
 
   function exportDraft() {
     try {
-      share = exportLayout($state.snapshot(draft), activity, rooms.map(room => room.id));
+      share = exportLayout($state.snapshot(draft), activity, current.source?.rooms.map(room => room.id) ?? []);
       message = '已生成当前草稿的分享码，可复制给同活动的用户'; error = '';
     } catch (cause) { error = String(cause instanceof Error ? cause.message : cause); }
   }
 
   function importDraft() {
     try {
-      draft = importLayout(share, activity, rooms.map(room => room.id));
+      draft = importLayout(share, activity, current.source?.rooms.map(room => room.id) ?? []);
+      if (!draft.teams.length) addTeam();
       selected = draft.teams[0]?.id ?? 'people';
       message = '已导入草稿，保存名单后应用'; error = '';
     } catch (cause) { error = String(cause instanceof Error ? cause.message : cause); }
@@ -150,16 +207,25 @@
   }
 
   onMount(() => {
+    const motion = matchMedia('(prefers-reduced-motion: reduce)');
+    const updateMotion = () => { reducedMotion = motion.matches; };
+    updateMotion(); motion.addEventListener('change', updateMotion);
     const stop = team.subscribe(value => { current = value; });
-    const stopSettings = settings.subscribe(value => { savedTheme = value.theme; accentColor = value.accentColor; });
+    const stopSettings = settings.runtime.subscribe(value => { savedTheme = value.theme; accentColor = value.accentColor; });
     const stopTheme = pageTheme.subscribe(value => { detectedTheme = value; });
-    return () => { stop(); stopSettings(); stopTheme(); };
+    return () => { customRequest++; stop(); stopSettings(); stopTheme(); motion.removeEventListener('change', updateMotion); };
   });
 </script>
 
 <svelte:window onbeforeunload={leave} />
 
-<dialog bind:this={dialog} class="team-window" data-theme={theme} style:--guanyu-accent={accentColor} aria-labelledby="team-title" oncancel={event => { event.preventDefault(); if (confirming) confirming = false; else close(); }}>
+{#snippet dragHandle(label: string)}
+  <button class="drag-handle" type="button" data-drag-handle aria-label={label} title={`${label}，也可用方向键排序`}>
+    <svg viewBox="0 0 12 18" width="12" height="18" aria-hidden="true" fill="currentColor"><circle cx="3" cy="3" r="1.4" /><circle cx="9" cy="3" r="1.4" /><circle cx="3" cy="9" r="1.4" /><circle cx="9" cy="9" r="1.4" /><circle cx="3" cy="15" r="1.4" /><circle cx="9" cy="15" r="1.4" /></svg>
+  </button>
+{/snippet}
+
+<dialog bind:this={dialog} class="team-window guanyu-themed" data-theme={theme} style:--guanyu-accent={accentColor} style:--guanyu-on-accent={accentText(accentColor)} aria-labelledby="team-title" oncancel={event => { event.preventDefault(); if (confirming) confirming = false; else close(); }}>
   <header class="window-header" inert={confirming}>
     <div class="brand"><FishIcon class="brand-icon" /><strong>观鱼</strong><span class="header-divider"></span><span id="team-title">团播名单</span></div>
     <button class="icon-button" aria-label="关闭名单编辑" onclick={close}>×</button>
@@ -179,52 +245,70 @@
       <div><button class="button" onclick={exportDraft}>生成草稿分享码</button><button class="button" disabled={!share} onclick={async () => { try { await navigator.clipboard.writeText(share); message = '分享码已复制'; } catch { error = '复制未成功，请选中分享码手动复制'; } }}>复制</button><button class="button" disabled={!share || changedActivity} onclick={importDraft}>导入到草稿</button></div>
     </div>
   {/if}
-  <div class="editor-body" inert={confirming}>
+  <div class="editor-body" inert={confirming} use:pointerSort={{ start: startSort, over: sortOver, finish: finishSort }}>
     <nav class="team-nav" aria-label="名单分区">
-      <button class:chosen={selected === 'people'} aria-current={selected === 'people' ? 'page' : undefined} onclick={() => { selected = 'people'; }} ondragover={event => event.preventDefault()} ondrop={event => { event.preventDefault(); event.stopPropagation(); drop('people'); }}><span>{draft.peopleTitle}</span><small>{draft.people.length}</small></button>
-      <div class="team-nav-label">队伍<button class="text-button" aria-label="添加队伍" onclick={addTeam}>+</button></div>
-      <div class="team-list" role="list" use:dragScroll>
-        {#each draft.teams as item, index (item.id)}
-          <div class="team-entry" role="listitem" class:chosen={selected === item.id} draggable="true" ondragstart={event => { dragging = { teamId: item.id }; event.dataTransfer?.setData('text/plain', item.id); }} ondragend={() => { dragging = undefined; }} ondragover={event => event.preventDefault()} ondrop={event => { event.preventDefault(); event.stopPropagation(); drop(item.id); }}><button class="team-select" aria-current={selected === item.id ? 'page' : undefined} onclick={() => { selected = item.id; }}><span class="team-number">{index + 1}</span><span class="team-name">{item.name || '未命名队伍'}</span><small>{item.captains.length + item.members.length}</small></button><button class="team-delete" aria-label={`删除队伍 ${item.name || index + 1}`} title="删除队伍" onclick={() => deleteTeam(item.id)}>×</button></div>
+      <button class:chosen={selected === 'people'} data-sort-zone="people" aria-current={selected === 'people' ? 'page' : undefined} onclick={() => { selected = 'people'; }}><span>{draft.peopleTitle}</span><small>{draft.people.length}</small></button>
+      <div class="team-list">
+        {#each draft.teams as item (item.id)}
+          <div class="team-entry" data-sort-item data-sort-kind="team" data-sort-id={item.id} class:chosen={selected === item.id} animate:flip={{ duration: reducedMotion ? 0 : 140 }}>
+            <button class="team-select" aria-current={selected === item.id ? 'page' : undefined} onclick={() => { selected = item.id; }}><span class="team-name">{item.name || '未命名队伍'}</span><small>{item.captains.length + item.members.length}</small></button>
+            {@render dragHandle(`拖动 ${item.name || '未命名队伍'}`)}
+          </div>
         {/each}
+        <button class="add-team" onclick={addTeam}>+ 添加队伍</button>
       </div>
-      <button class="button add-team" onclick={addTeam}>+ 添加队伍</button>
     </nav>
-    <main class="team-detail" use:animateContent={`${selected}:${role}`} use:dragScroll ondragover={event => event.preventDefault()} ondrop={event => { event.preventDefault(); drop(selected); }}>
+    <main class="team-detail" data-sort-zone={selected === 'people' ? 'people' : 'team'} data-team-id={selected === 'people' ? undefined : selected} data-role={role} use:animateContent={`${selected}:${role}`}>
       {#if selected === 'people'}
         <label class="edit-title" for="people-title">区域名称<input id="people-title" maxlength="40" bind:value={draft.peopleTitle} /></label>
         <p class="help">从右侧添加人物，显示名称和身份标签由你定义。</p>
         <div class="assigned-list">
           {#each draft.people as person, index (person.id)}
-            <article class="person-row" class:missing={!byId.has(person.roomId)} draggable="true" ondragstart={event => { dragging = { roomId: person.roomId, personId: person.id }; event.dataTransfer?.setData('text/plain', person.roomId); }} ondragend={() => { dragging = undefined; }} ondragover={event => event.preventDefault()} ondrop={event => { event.preventDefault(); event.stopPropagation(); drop('people', person.id); }}>
+            <article class="person-row" class:missing={!byId.has(person.roomId)} data-sort-item data-sort-kind="person" data-sort-id={person.id} data-room-id={person.roomId} animate:flip={{ duration: reducedMotion ? 0 : 140 }}>
               <div class="person-avatar">{#if byId.get(person.roomId)?.avatar}<img src={byId.get(person.roomId)!.avatar} alt="" loading="lazy" />{:else}<span>{person.name.slice(0, 1)}</span>{/if}</div>
               <div class="person-fields"><input aria-label={`人物 ${index + 1} 显示名称`} maxlength="40" bind:value={person.name} /><input aria-label={`人物 ${index + 1} 身份标签`} maxlength="40" bind:value={person.label} placeholder="身份标签，如嘉宾" /><small>{byId.has(person.roomId) ? `房间 ${person.roomId}` : `来源已缺失 · ${person.roomId}`}</small></div>
-              <div class="row-actions"><button aria-label={`上移 ${person.name}`} disabled={index === 0} onclick={() => move(draft.people, index, -1)}>↑</button><button aria-label={`下移 ${person.name}`} disabled={index === draft.people.length - 1} onclick={() => move(draft.people, index, 1)}>↓</button><button aria-label={`移除 ${person.name}`} onclick={() => draft.people.splice(index, 1)}>×</button></div>
+              {@render dragHandle(`拖动 ${person.name}`)}
             </article>
           {:else}<p class="empty-list">添加团长、嘉宾或其他独立人物。<br />不预设身份，也不限制人数。</p>{/each}
         </div>
       {:else if selectedTeam}
         <div class="team-heading"><label class="edit-title" for="team-name">队伍名称<input id="team-name" maxlength="40" bind:value={selectedTeam.name} /></label></div>
-        <div class="team-order"><button class="text-button" disabled={draft.teams[0]?.id === selected} onclick={() => move(draft.teams, draft.teams.findIndex(item => item.id === selected), -1)}>↑ 队伍前移</button><button class="text-button" disabled={draft.teams.at(-1)?.id === selected} onclick={() => move(draft.teams, draft.teams.findIndex(item => item.id === selected), 1)}>↓ 队伍后移</button></div>
-        <div class="role-tabs" role="group" aria-label="添加成员的位置"><button aria-pressed={role === 'captains'} onclick={() => { role = 'captains'; }}>队长 · {selectedTeam.captains.length}</button><button aria-pressed={role === 'members'} onclick={() => { role = 'members'; }}>队员 · {selectedTeam.members.length}</button></div>
-        <p class="help">点击右侧 + 加入{role === 'captains' ? '队长' : '队员'}；同一人物可以编入不同队伍。</p>
+        <div class="role-tabs" role="group" aria-label="添加成员的位置"><button data-sort-zone="team" data-team-id={selected} data-role="captains" aria-pressed={role === 'captains'} onclick={() => { role = 'captains'; }}>队长 · {selectedTeam.captains.length}</button><button data-sort-zone="team" data-team-id={selected} data-role="members" aria-pressed={role === 'members'} onclick={() => { role = 'members'; }}>队员 · {selectedTeam.members.length}</button></div>
+        <p class="help">点击右侧头像添加；拖动手柄排序或换队，拖回右侧取消编排。</p>
         <div class="assigned-list">
-          {#each selectedTeam[role] as id, index (`${selected}-${role}-${id}`)}
+          {#each selectedTeam[role] as id (`${selected}-${role}-${id}`)}
             {@const room = byId.get(id)}
-            <article class="member-row" class:missing={!room} draggable="true" ondragstart={event => { dragging = { roomId: id, fromTeam: selected, fromRole: role }; event.dataTransfer?.setData('text/plain', id); }} ondragend={() => { dragging = undefined; }} ondragover={event => event.preventDefault()} ondrop={event => { event.preventDefault(); event.stopPropagation(); drop(selected, id); }}>
+            <article class="member-row" class:missing={!room} data-sort-item data-sort-kind="member" data-sort-id={id} data-room-id={id} data-team-id={selected} data-role={role} animate:flip={{ duration: reducedMotion ? 0 : 140 }}>
               <div class="person-avatar">{#if room?.avatar}<img src={room.avatar} alt="" loading="lazy" />{:else}<span>{room?.name.slice(0, 1) ?? '?'}</span>{/if}</div>
               <div class="member-name"><strong>{room?.name ?? `房间 ${id}`}</strong><small>{room ? `${room.live ? '直播中' : '未开播'} · ${id}` : '来源已缺失，位置保留'}</small></div>
-              <div class="row-actions"><button aria-label={`上移 ${room?.name ?? id}`} disabled={index === 0} onclick={() => { if (selectedTeam) move(selectedTeam[role], index, -1); }}>↑</button><button aria-label={`下移 ${room?.name ?? id}`} disabled={index === selectedTeam[role].length - 1} onclick={() => { if (selectedTeam) move(selectedTeam[role], index, 1); }}>↓</button><button aria-label={`移除 ${room?.name ?? id}`} onclick={() => selectedTeam?.[role].splice(index, 1)}>×</button></div>
+              {@render dragHandle(`拖动 ${room?.name ?? id}`)}
             </article>
-          {:else}<p class="empty-list">这一组还没有{role === 'captains' ? '队长' : '队员'}。<br />从右侧名单点击 + 添加。</p>{/each}
+          {:else}<p class="empty-list">这一组还没有{role === 'captains' ? '队长' : '队员'}。<br />点击右侧成员头像添加。</p>{/each}
         </div>
       {/if}
     </main>
-    <aside class="room-picker" aria-label="选择成员">
-      <div class="picker-header"><h2>活动成员 <small>{filtered.length}</small></h2><input type="search" aria-label="搜索活动成员" placeholder="搜索昵称或房间号" bind:value={query} /><label class="filter"><input type="checkbox" bind:checked={unassignedOnly} />只看未分配</label></div>
-      <div class="picker-list" role="list" use:dragScroll>
+    <aside class="room-picker" aria-label="选择成员" data-sort-zone="picker">
+      <div class="picker-header">
+        <div class="picker-title"><h2>活动成员 <small>{filtered.length}</small></h2><button class="text-button custom-room-toggle" aria-expanded={customOpen} onclick={() => { customOpen = !customOpen; customError = ''; }}>添加自定义直播间</button></div>
+        {#if customOpen}
+          <form class="custom-room-form" onsubmit={addCustomRoom}>
+            <label for="custom-room">房间号或直播间链接</label><input id="custom-room" bind:value={customInput} placeholder="如 71415 或斗鱼直播间链接" required />
+            <div><small>添加后加入当前分区</small><button class="button" disabled={customBusy || !customInput.trim() || changedActivity || changedElsewhere}>{customBusy ? '查询中…' : '添加'}</button></div>
+            {#if customError}<p role="alert">{customError}</p>{/if}
+          </form>
+        {/if}
+        <input type="search" aria-label="搜索活动成员" placeholder="搜索昵称或房间号" bind:value={query} /><label class="filter"><input type="checkbox" bind:checked={unassignedOnly} />只看未分配</label>
+      </div>
+      <div class="picker-list">
         {#each filtered as room (room.id)}
-          <div class="picker-row" role="listitem" draggable="true" ondragstart={event => { dragging = { roomId: room.id }; event.dataTransfer?.setData('text/plain', room.id); }} ondragend={() => { dragging = undefined; }}><div class="person-avatar">{#if room.avatar}<img src={room.avatar} alt="" loading="lazy" />{:else}<span>{room.name.slice(0, 1)}</span>{/if}</div><div class="member-name"><strong>{room.name}</strong><small><span class:live={room.live}>{room.live ? '直播中' : '未开播'}</span>{assigned.has(room.id) ? ' · 已编排' : ''}</small></div><button class="add-member" aria-label={`添加 ${room.name}`} disabled={alreadyAdded(room.id) || changedActivity} title={alreadyAdded(room.id) ? '已在当前分区' : '加入当前分区'} onclick={() => addRoom(room.id)}>{alreadyAdded(room.id) ? '✓' : '+'}</button></div>
+          <div class="picker-row" data-sort-item data-sort-kind="picker" data-sort-id={room.id} data-room-id={room.id}>
+            <button class="person-avatar picker-avatar" type="button" aria-label={`添加 ${room.name}`} disabled={alreadyAdded(room.id) || changedActivity || changedElsewhere} title={alreadyAdded(room.id) ? '已在当前分区' : '加入当前分区'} onclick={() => addRoom(room.id)}>
+              {#if room.avatar}<img src={room.avatar} alt="" loading="lazy" draggable="false" />{:else}<span>{room.name.slice(0, 1)}</span>{/if}
+              <span class="avatar-add" aria-hidden="true">{alreadyAdded(room.id) ? '✓' : '+'}</span>
+            </button>
+            <div class="member-name"><strong>{room.name}</strong><small><span class:live={room.live}>{room.live ? '直播中' : '未开播'}</span>{assigned.has(room.id) ? ' · 已编排' : ''}</small></div>
+            {@render dragHandle(`拖动 ${room.name}`)}
+          </div>
         {:else}<p class="empty-list">没有符合条件的成员。</p>{/each}
       </div>
     </aside>

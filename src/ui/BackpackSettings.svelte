@@ -5,12 +5,12 @@
   let { value = $bindable(), backpack }: { value: BackpackOptions; backpack: BackpackController } = $props();
   let runtime = $state(untrack(() => backpack.value));
   const choices: { key: Exclude<keyof BackpackOptions, 'glowCount'>; label: string; hint: string }[] = [
-    { key: 'details', label: '背包详情', hint: '在原生背包显示到期天数和总价值，总亲密度显示在鱼丸左侧。' },
+    { key: 'details', label: '背包详情', hint: '在原生背包显示到期天数、总价值和道具总亲密度。' },
     { key: 'monthCost', label: '月消费统计', hint: '在鱼丸左侧显示本月消费，读取个人中心真实数据，按账号每日缓存汇总。' },
     { key: 'vipExpiry', label: '房间 VIP 到期提示', hint: '显示当前房间 VIP 剩余天数。' },
-    { key: 'badgeDays', label: '粉丝牌持有天数', hint: '读取真实粉丝牌获得时间，在下方名单与个人中心牌表显示。' },
+    { key: 'badgeDays', label: '粉丝牌持有天数', hint: '在聊天工具栏显示本房牌龄，名单中保留获得日期，满 300 天突出显示。' },
     { key: 'pocket', label: '主播口袋', hint: '显示主播当前生效的口袋道具，并补充到原生粉丝牌面板。' },
-    { key: 'glow', label: '荧光棒续牌', hint: '从背包选择荧光棒，生成完整计划后手动确认赠送。' },
+    { key: 'glow', label: '荧光棒续牌', hint: '充值旁提供快捷入口，从背包生成完整计划后手动确认赠送。' },
   ];
   onMount(() => backpack.subscribe(next => { runtime = next; }));
 </script>
@@ -28,4 +28,3 @@
 {#if runtime.plan}<p>{runtime.plan.name}，库存 {runtime.plan.available} 根；每房 {runtime.plan.each} 根，共 {runtime.plan.rooms.length} 个房间，合计 {runtime.plan.total} 根。</p><p class="help">目标：{runtime.plan.rooms.map(room => `${room.name}（${room.id}）`).join('、')}</p>{/if}
 {#if runtime.sending}<p class="status" role="status">正在按计划赠送…</p>{/if}{#if runtime.results.length}<ul>{#each runtime.results as result}<li>{result}</li>{/each}</ul>{/if}
 </section>
-<style>.data-scroll{overflow-x:auto;margin-top:12px}table{width:100%;border-collapse:collapse;font-size:12px;text-align:left}th,td{padding:8px;border-bottom:1px solid var(--border,#ddd);white-space:nowrap}a{color:var(--accent,#21815f)}</style>

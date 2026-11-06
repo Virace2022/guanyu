@@ -24,7 +24,12 @@ export default defineConfig(({ command }) => {
           author: 'Virace2022',
           description: '原生优先的斗鱼网页看播增强：音量增益、团播、官方多屏、签到与每日任务。',
           icon: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(readFileSync(new URL('./assets/brand/guanyu.svg', import.meta.url), 'utf8'))}`,
-          match: ['https://www.douyu.com/*'],
+          match: [
+            ...Array.from({ length: 10 }, (_, digit) => `https://www.douyu.com/${digit}*`),
+            'https://www.douyu.com/beta/*',
+            'https://www.douyu.com/topic/*',
+            'https://www.douyu.com/member/cp/getFansBadgeList',
+          ],
           'run-at': 'document-idle',
           noframes: true,
           connect: ['douyu.com', 'douyucdn.cn'],

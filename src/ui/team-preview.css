@@ -1,5 +1,5 @@
 .guanyu-preview { margin-top: 16px; }
-.guanyu-preview-heading { margin: 0 0 8px; color: #fff; font-size: 15px; font-weight: 600; text-align: center; }
+.guanyu-preview-heading { margin: 0 0 8px; font-size: 15px; font-weight: 600; text-align: center; }
 .guanyu-preview-teams { display: grid; align-items: start; gap: 2px; }
 .guanyu-preview-team { min-width: 0; }
 .guanyu-preview-row { display: flex; flex-wrap: wrap; justify-content: var(--guanyu-team-align, center); gap: 2px; }
@@ -23,6 +23,7 @@
 .guanyu-preview-retry:focus-visible { outline: 2px solid #fff; outline-offset: -2px; }
 .guanyu-preview [hidden] { display: none !important; }
 .guanyu-preview-empty .guanyu-preview-screen { display: flex; align-items: center; justify-content: center; color: #ccc; font-size: 12px; }
-.guanyu-preview-heading, .guanyu-preview-group-title { color: var(--front-color, #254d3f); }
-.guanyu-preview-group-title { margin: 4px 0; font: 600 13px/1.6 system-ui; }
-.guanyu-preview-empty-note { margin: 12px 0; color: inherit; font: 13px/1.6 system-ui; text-align: center; }
+.guanyu-preview-heading, .guanyu-preview-empty-note { color: var(--ink); background: var(--side); padding: 5px 10px; border-radius: 4px; overflow-wrap: anywhere; }
+.guanyu-preview-independent { grid-column: 1 / -1; }
+.guanyu-preview-independent .guanyu-preview-tile { flex: 0 1 160px; max-width: 100%; }
+.guanyu-preview-empty-note { margin: 12px 0; font: 13px/1.6 system-ui; text-align: center; }

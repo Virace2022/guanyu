@@ -1,5 +1,6 @@
 import type { SettingsStore } from '../../config/settings';
 import type { TeamController } from '../../features/team-live/controller';
+import { readRoomLayout } from './room-layout';
 
 export function mountTopBanner(settings: SettingsStore, team: TeamController) {
   const saved = new Map<HTMLElement, Map<string, string>>();
@@ -16,20 +17,26 @@ export function mountTopBanner(settings: SettingsStore, team: TeamController) {
     saved.clear();
   }
   let signature = '';
+  let previous: HTMLElement[] = [];
   function sync() {
-    const enabled = settings.value.optimization.hideTopBanner;
-    const candidates = [...document.querySelectorAll<HTMLElement>('.wm-general, [id^="bc"][style*="background-image"]')]
+    const enabled = settings.runtime.value.optimization.hideTopBanner;
+    const layout = readRoomLayout();
+    if (!layout) { restore(); signature = ''; previous = []; return; }
+    const candidates = [...document.querySelectorAll<HTMLElement>('.bacpCommonHeader.is-innerRoom, .wm-general, [id^="bc"][style*="background-image"]')]
       .filter(node => {
+        if (!layout.root.contains(node) || layout.section.contains(node)
+          || !(node.compareDocumentPosition(layout.section) & Node.DOCUMENT_POSITION_FOLLOWING)) return false;
         const outer = node.closest('.bc-wrapper') || node;
         if (team.value.source && outer.contains(team.value.source.native)) return false;
         const rect = node.getBoundingClientRect();
         return (saved.has(node) || rect.width >= 600 && rect.height >= 180) && !node.closest('#js-player-main');
       });
     const next = JSON.stringify([enabled, candidates.map(node => node.id || node.className), team.value.source?.activity]);
-    if (next === signature) return;
-    restore(); signature = next;
+    if (next === signature && candidates.every((node, index) => node === previous[index])) return;
+    restore(); signature = next; previous = candidates;
     if (!enabled) return;
     for (const node of candidates) {
+      if (node.matches('.bacpCommonHeader')) { set(node, 'display', 'none'); continue; }
       const outer = node.closest<HTMLElement>('.bc-wrapper') || node;
       // Butterfly 图片层与房间按钮层分开，不能连带删除可点击内容。
       const content = outer.querySelector<HTMLElement>('.room-info, .wm-pc-room-button')?.parentElement;
@@ -42,6 +49,6 @@ export function mountTopBanner(settings: SettingsStore, team: TeamController) {
     }
     window.dispatchEvent(new Event('resize'));
   }
-  const stop = settings.subscribe(sync), stopTeam = team.subscribe(() => { signature = ''; sync(); }), timer = setInterval(sync, 1200);
+  const stop = settings.runtime.subscribe(sync), stopTeam = team.subscribe(() => { signature = ''; sync(); }), timer = setInterval(sync, 1200);
   return () => { stop(); stopTeam(); clearInterval(timer); restore(); window.dispatchEvent(new Event('resize')); };
 }

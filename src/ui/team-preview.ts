@@ -17,8 +17,7 @@ export async function toggleTeamPreview(team: TeamController, roomId: string, op
       return;
     }
     const scope = grouped ? showMembers ? '分组中的独立人物、队长和队员' : '分组中的独立人物和队长' : '全部活动成员';
-    const message = `本次预览${scope}，共 ${count} 个预览窗口（不含本直播间）。${count > 50 ? '超过建议的 50 个，浏览器可能卡顿。' : ''}是否开启？`;
-    if (!await confirmAction(count > 50 ? '预览数量较多' : '开启预览', message, '开启预览')) return;
+    if (count >= 50 && !await confirmAction('预览数量较多', `本次预览${scope}，共 ${count} 个预览窗口（不含本直播间），浏览器可能卡顿。是否开启？`, '开启预览')) return;
   }
   if (team.value.source?.activity === expected && team.value.layout === layout && team.value.grouped === grouped
     && team.value.source.rooms.map(room => room.id).join(',') === rooms) team.setPreview(enabled, showMembers);
