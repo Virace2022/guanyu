@@ -1,6 +1,6 @@
 # 工程架构
 
-观鱼构建为单个用户脚本，使用斗鱼原生播放器、页面和服务承载直播功能。功能契约见 [FEATURES](FEATURES.md)，界面约定见 [UI](UI.md)，运行命令见 [README](../README.md)。
+观鱼构建为单个用户脚本，使用斗鱼原生播放器、页面和服务承载直播功能。功能契约见 [FEATURES](FEATURES.md)，界面约定见 [UI](UI.md)，运行与检查命令见 [开发说明](DEVELOPMENT.md)。
 
 ## 工程与入口
 
@@ -121,7 +121,7 @@ flv.js 1.6.2 从固定 npmmirror 地址按需加载，HLS 使用斗鱼 SDK。HLS
 
 `room-page/controller.ts` 管理直播/轮播资料与显示调度。`backpack-api.ts` 集中背包、粉丝牌、口袋、VIP、消费与赠送接口，`backpack-page.ts` 按原道具 ID 装饰页面。`backpack/controller.ts` 持有独立请求结果和待确认赠送计划；账号变化不复用旧计划，赠送失败不自动重发。
 
-`backpack-page.ts` 将道具总亲密度留在背包，分别挂载月消费显隐、独立 VIP 提示、本房聊天工具栏牌龄和充值旁续牌按钮。`GlowPrompt.svelte` 打开时调用背包控制器准备计划，数量变化只重算本地计划；设置页使用同一窗口入口。逐房赠送状态按房间 ID 保存在控制器，成功后保留计划与状态供头像回显，账号/房间变化清空，迟到响应不写入新账号。`RoomAvatar.svelte` 与显式导入的 `avatar-grid.css` 复用头像、加号、描边勾和进度展示，分别用于续牌与多屏选房。`ui/icons.ts` 显式区分实心钱包、显隐眼睛与其他线形图标，避免原生 SVG 样式覆盖图标。
+`backpack-page.ts` 将道具总亲密度留在背包，分别挂载月消费显隐、独立 VIP 提示、本房聊天工具栏牌龄和充值旁续牌按钮。`GlowPrompt.svelte` 打开时调用背包控制器准备计划，数量变化只重算本地计划；设置页使用同一窗口入口。控制器分别保存本轮逐房状态 `deliveries` 与本页累计确认数量 `sent`，准备新计划及显示设置变化保留累计记录，手动再次确认允许重新赠送。资料刷新不重置赠送队列，账号变化才取消请求并清空赠送状态，迟到响应不写入新账号。`RoomAvatar.svelte` 与显式导入的 `avatar-grid.css` 复用头像、加号、描边勾和进度展示，分别用于续牌与多屏选房。`ui/icons.ts` 显式区分实心钱包、显隐眼睛与其他线形图标，避免原生 SVG 样式覆盖图标。
 
 ## 签到调度
 
@@ -135,6 +135,8 @@ flv.js 1.6.2 从固定 npmmirror 地址按需加载，HLS 使用斗鱼 SDK。HLS
 
 自有窗口使用 Shadow DOM + dialog/popover，原生增强使用限定宿主的 CSS。样式通过 `?style` 显式导入，Svelte 使用 `emitCss: false`。页面宽度、状态刷新和布局调整不应重建播放实例。
 
+`ui/modal.ts` 在自有窗口的 ShadowRoot 统一隔离 keydown、keypress 与 keyup，避免官方快捷键把经 Shadow DOM 重定向的宿主当成非输入区域；窗口释放时移除监听，不写入官方快捷键配置。`SettingsIcon.svelte` 统一分类导航的线形图标，文字主题色通过 `--accent-text` 随浅深主题适配，品牌图形继续使用原始主题色。
+
 ## 构建与分发
 
 - 入口显式导入依赖，构建单个 `dist/douyu.guanyu.js`，不整份嵌入仓库文档。
@@ -142,4 +144,4 @@ flv.js 1.6.2 从固定 npmmirror 地址按需加载，HLS 使用斗鱼 SDK。HLS
 - `scripts/licenses.mjs` 注入项目 MIT 正文及 Svelte 必要声明；`scripts/build.mjs` 检查产物语法与许可，全部成功后更新 `version.json`。
 - 版本采用北京时间 `YYYY.MM.DD.N`；开发服务以“开发 · ”区分安装项，生产更新地址尚未配置。
 - `assets/brand/guanyu.svg` 为唯一运行图标，由 `FishIcon.svelte` 和用户脚本元数据复用，当前内嵌。历史 PNG、设计稿与完整说明不进入运行包。
-- `package.json` 当前为 `private: true`。后续 npm/OIDC 发布及固定版本 CDN 分发在发布任务中接入，不作为运行依赖。
+- `package.json` 为 `private: true`。正式产物计划由 CI 构建并上传至 GitHub Release，不提交到源码仓库；发布工作流尚未接入。
