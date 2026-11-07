@@ -15,7 +15,7 @@ npm run build
 
 完整脚本为 `dist/douyu.guanyu.user.js`，更新元数据为 `dist/douyu.guanyu.meta.js`；构建同时生成精简 npm 压缩包与 `SHA256SUMS`。通过用户脚本管理器导入完整脚本；管理器不支持文件导入时，可新建脚本，将完整产物粘贴进去并保存。启用后重新打开斗鱼直播间。
 
-生产元数据已配置 npmmirror 的更新和下载入口；正式包首次发布前，远程更新尚不可用。开发服务使用独立安装项，具体地址与发布流程见[发布说明](RELEASING.md)。
+生产元数据使用 npm 包 `guanyu-douyu` 在 npmmirror 的更新和下载入口，远程更新依赖正式版本发布与镜像同步。开发服务使用独立安装项，具体地址与发布流程见[发布说明](RELEASING.md)。
 
 ## 开发调试
 
