@@ -97,7 +97,7 @@
 | `stream-source.js` | 原生 HLS、低画质 FLV、原声来源、签名与地址续期 |
 | `libraries.js` | 延迟加载 flv.js |
 
-flv.js 1.6.2 从固定 npmmirror 地址按需加载，HLS 使用斗鱼 SDK。HLS 提前续期，连续 FLV 不周期重连；后台、全屏、屏幕外或收起时按槽位释放/恢复。
+flv.js 1.6.2 从固定 jsDelivr npm 地址按需加载，HLS 使用斗鱼 SDK。HLS 提前续期，连续 FLV 不周期重连；后台、全屏、屏幕外或收起时按槽位释放/恢复。
 
 ## 官方多屏与菜单
 
@@ -144,8 +144,8 @@ flv.js 1.6.2 从固定 npmmirror 地址按需加载，HLS 使用斗鱼 SDK。HLS
 ## 构建与分发
 
 - 入口显式导入依赖，构建 `dist/douyu.guanyu.user.js` 与只含元数据的 `dist/douyu.guanyu.meta.js`，不整份嵌入仓库文档。
-- Vite 使用 Oxc 的 compress/mangle，`codegen.removeWhitespace: false` 保留换行和缩进，CSS 使用 Lightning CSS。不启用属性重命名、unsafe 或 eval 解包。
+- Vite 使用 Oxc 的 compress，构建脚本用 esbuild 缩短变量名、压缩空白并按约 200 字节限制代码行长，保留原始元数据头和必要许可；CSS 使用 Lightning CSS。不启用属性重命名、unsafe 或 eval 解包。
 - `scripts/licenses.mjs` 注入项目 MIT 正文及 Svelte 必要声明；`scripts/build.mjs` 检查完整脚本、元数据、语法与许可，再由 `scripts/package.mjs` 生成精简 npm 包及校验和，并核对实际打包文件。
-- `version.json` 是生产版本来源，格式为 `YYYY.<月×100+日>.N`；`scripts/version.mjs` 提供公历校验、北京时间下一版与 tag 核对。构建不递增版本。`scripts/release-config.mjs` 集中版本、仓库、文件名和 npmmirror 更新/下载入口；开发服务以“开发 · ”区分安装项，不接入生产更新地址。
+- `version.json` 是生产版本来源，格式为 `YYYY.<月×100+日>.N`；`scripts/version.mjs` 提供公历校验、北京时间下一版与 tag 核对。构建不递增版本。`scripts/release-config.mjs` 集中版本、仓库、文件名和 jsDelivr npm 更新/下载入口；开发服务以“开发 · ”区分安装项，不接入生产更新地址。
 - `assets/brand/guanyu.svg` 为唯一运行图标，由 `FishIcon.svelte` 和用户脚本元数据复用，当前内嵌。历史 PNG、设计稿与完整说明不进入运行包。
 - 根 `package.json` 保持 `private: true`；`dist/npm/` 持有无运行依赖的公开发布清单。tag 工作流通过 OIDC 发包，`scripts/publish.mjs` 用 npm integrity 核对重跑内容，先准备 GitHub Release 草稿和附件，npm 成功后公开；已公开的附件按摘要核对，不覆盖。普通 CI 只检查和构建，产物不提交到源码仓库。首次建包与 Trusted Publisher 仍需在正式发布前配置，操作见[发布说明](RELEASING.md)。

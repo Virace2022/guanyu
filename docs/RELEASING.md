@@ -23,19 +23,19 @@
 首次安装链接使用具体版本，例如：
 
 ```text
-https://registry.npmmirror.com/guanyu-douyu/2026.1108.6/files/dist/douyu.guanyu.user.js
+https://cdn.jsdelivr.net/npm/guanyu-douyu@2026.1108.7/dist/douyu.guanyu.user.js
 ```
 
 生产脚本和元数据包含固定入口：
 
 ```js
-// @updateURL   https://registry.npmmirror.com/guanyu-douyu/latest/files/dist/douyu.guanyu.meta.js
-// @downloadURL https://registry.npmmirror.com/guanyu-douyu/latest/files/dist/douyu.guanyu.user.js
+// @updateURL   https://cdn.jsdelivr.net/npm/guanyu-douyu@latest/dist/douyu.guanyu.meta.js
+// @downloadURL https://cdn.jsdelivr.net/npm/guanyu-douyu@latest/dist/douyu.guanyu.user.js
 ```
 
-管理器读取元数据中的新版本，再下载完整脚本。`latest` 由镜像重定向到具体版本路径；具体版本可长期缓存，不覆盖旧版本内容。镜像同步、入口缓存和管理器检查周期会影响更新出现的时间，不承诺即时更新。开发服务不使用生产更新地址。
+管理器读取元数据中的新版本，再下载完整脚本。具体版本路径可长期缓存，不覆盖旧版本内容；`@latest` 由 jsDelivr 解析，[别名缓存](https://github.com/jsdelivr/jsdelivr#caching)可持续 7 天，更新受缓存与管理器检查周期影响。工作流只向官方 npm 发包，不调用其他镜像同步或 CDN purge 服务。开发服务不使用生产更新地址。
 
-首次正式发布还需在实际国内网络核对安装与旧版升级。GitHub Release 可直接下载同版完整脚本，npm 发布成功不等于国内镜像已同步。
+国内实际网络的安装与旧版升级需分别验收。GitHub Release 可直接下载同版完整脚本；原来使用旧更新地址的 `.6` 及更早版本需重新安装一次，才能切换到 jsDelivr。
 
 ## 一次性配置
 
