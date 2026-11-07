@@ -1,6 +1,6 @@
 # 发布说明
 
-正式分发使用 npm 包 `guanyu`，GitHub Release 保存同版附件。工作流已配置，当前尚未正式发布；功能完成并确认发布后再执行首次建包、可信发布绑定和 tag 推送。
+正式分发使用 npm 包 `guanyu-douyu`，源码仓库为 `Virace2022/guanyu`，GitHub Release 保存同版附件。工作流由版本 tag 触发；发布完成以 npm 正式版本可读取、对应 GitHub Release 已公开为准。
 
 ## 版本与产物
 
@@ -12,7 +12,7 @@
 | --- | --- |
 | `dist/douyu.guanyu.user.js` | 完整安装脚本 |
 | `dist/douyu.guanyu.meta.js` | 仅含用户脚本元数据，供管理器检查更新 |
-| `dist/guanyu-<版本>.tgz` | 精简 npm 包，只有当版脚本、元数据、发布清单、README 和 LICENSE |
+| `dist/guanyu-douyu-<版本>.tgz` | 精简 npm 包，只有当版脚本、元数据、发布清单、README 和 LICENSE |
 | `dist/SHA256SUMS` | 上述三个文件的 SHA-256 |
 | `dist/npm/` | npm 打包的生成目录，不是源码包 |
 
@@ -23,14 +23,14 @@
 首次安装链接使用具体版本，例如：
 
 ```text
-https://registry.npmmirror.com/guanyu/2026.1108.3/files/dist/douyu.guanyu.user.js
+https://registry.npmmirror.com/guanyu-douyu/2026.1108.6/files/dist/douyu.guanyu.user.js
 ```
 
 生产脚本和元数据包含固定入口：
 
 ```js
-// @updateURL   https://registry.npmmirror.com/guanyu/latest/files/dist/douyu.guanyu.meta.js
-// @downloadURL https://registry.npmmirror.com/guanyu/latest/files/dist/douyu.guanyu.user.js
+// @updateURL   https://registry.npmmirror.com/guanyu-douyu/latest/files/dist/douyu.guanyu.meta.js
+// @downloadURL https://registry.npmmirror.com/guanyu-douyu/latest/files/dist/douyu.guanyu.user.js
 ```
 
 管理器读取元数据中的新版本，再下载完整脚本。`latest` 由镜像重定向到具体版本路径；具体版本可长期缓存，不覆盖旧版本内容。镜像同步、入口缓存和管理器检查周期会影响更新出现的时间，不承诺即时更新。开发服务不使用生产更新地址。
@@ -40,11 +40,13 @@ https://registry.npmmirror.com/guanyu/2026.1108.3/files/dist/douyu.guanyu.user.j
 ## 一次性配置
 
 1. 用有权发布该包的 npm 账号登录官方 registry，完成邮箱验证和发布所需的 2FA。
-2. 首次建包需要维护者以 npm 登录态完成。新包也可按 npm 的 staged publishing 流程创建引导版本；引导操作留到正式首发时处理，避免占用计划发布的版本。
+2. 首次建包需要维护者以 npm 登录态完成。新包可按 npm 的 staged publishing 流程创建引导暂存包，npm 会公开 `0.0.0-stage` 占位版本。**首个正式版本发布成功前保留引导 stage**；此时拒绝唯一的 stage 会取消整个包的发布，并触发 24 小时同名发布限制。
 3. 包建立后，在 npm 包 Settings 的 Trusted Publisher 中绑定仓库 `Virace2022/guanyu`、workflow 文件名 `release.yml`，允许直接 `npm publish`。GitHub 登录账号关联不能替代该绑定。
 4. 绑定完成后，GitHub-hosted runner 使用 OIDC 和 `id-token: write` 发包，不需要在仓库保存长期 npm Access Token。工作流固定 npm 11.19.1；配置新 Trusted Publisher 后应按 npm 要求及时完成首次验证发布。
 
-当前尚未执行这些远程配置或首次发布。[npm Trusted Publisher 文档](https://docs.npmjs.com/trusted-publishers/)、[staged publishing 文档](https://docs.npmjs.com/staged-publishing/)。
+发布流程不执行 `npm stage reject` 或 `npm unpublish`；已发布版本出错时，通过新版本修复。
+
+参考 [npm Trusted Publisher 文档](https://docs.npmjs.com/trusted-publishers/)、[staged publishing 文档](https://docs.npmjs.com/staged-publishing/)。
 
 ## 日常发布
 
@@ -63,6 +65,7 @@ tag 工作流核对版本与 main 归属，运行全部现有契约检查和一�
 ## 失败与重跑
 
 - npm 尚未成功时，Release 保持草稿；修正认证或服务问题后重跑失败工作流。
+- 整包取消发布后，npm 要求等待 24 小时才能再次发布同名包。冷却结束后先恢复包并核对 Trusted Publisher，再重跑原工作流；尚未发布的正式版本无需仅因等待而递增。规则见 [npm unpublish policy](https://docs.npmjs.com/policies/unpublish/)。
 - npm 已成功时，重跑核对 registry 的 `dist.integrity` 与当前 tgz；相同则跳过上传，不同则停止并要求新版本。
 - 已公开的 Release 核对四个附件的 SHA-256，不覆盖。草稿阶段可重传附件，再继续未完成步骤。
 - 错误代码通过新版本修复，不覆盖同版本，也不依靠删除 npm 历史版本来重新发布。
