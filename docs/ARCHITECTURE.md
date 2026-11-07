@@ -129,6 +129,10 @@ flv.js 1.6.2 从固定 npmmirror 地址按需加载，HLS 使用斗鱼 SDK。HLS
 
 `sign/yuba.js` 和 `yuba-response.js` 管理鱼吧调度与成功判定；`daily.ts` 管理其他任务、逐房间结果、退避、官方进度和关注恢复；`feature.ts` 合并可订阅状态。粉丝家园入口直接交由签到结果判定器处理原始响应，允许明确已签到消息先于通用错误码确认。读取同账号当天进度时，复用已签到消息判定修正旧失败记录；逐房间结果与旧记录恢复共用汇总，只有持有调度锁的页面写回修正结果。已下线的关注房间签到不进入设置定义或调度。进度按账号和北京时间保存，恢复未完成的关注还原操作优先于新增任务。
 
+`sign/fan-chat.ts` 在已有账号调度页内每批处理两个持牌房间，逐房保存完成与退避状态。`tasks.ts` 读取官方 `fans/userTaskList` 的每日弹幕任务；发送前和恢复时先查状态，发送一条 `.` 后再确认。官方接收回包先保存到 `submitted`，进度延迟时不重发；确认完成后写入 `results`。全部完成后自动调度、手动检查与刷新均不再读取名单或查询进度，北京时间换日时创建新任务，不沿用昨日记录。
+
+`chat-runtime.ts` 从本页官方 Webpack/DLL 运行时按特征发现 SocketCore 和 DataCenter，收集其依赖闭包，保留官方协议、加密和心跳实现。个人中心可用缓存的公开共享库 URL 重建运行时；资源清单使用 `guanyu:chat-runtime:v1`，不保存凭据或模块编号。`chat-session.ts` 为每个房间创建隔离 iframe，仅注入该闭包与官方 polyfill，CSP 禁止图片、媒体和页面子框架。等待网关登录、初始化及签名鉴权，再在 iframe 内创建消息对象，避免官方 STT 编码器拒绝跨 realm 对象；发送确认后销毁网关、Worker 和 iframe。关闭任务、页面释放或账号变化时取消会话。 当前主房间通过现有网关发送，在页面 realm 内创建协议对象并单独释放本次响应订阅，不创建同房 iframe，也不销毁原连接。
+
 ## 生命周期与样式
 
 每项功能明确启动、配置变化、宿主重建和释放路径。后台业务与窗口生命周期分离；播放器与请求按功能自身的暂停/恢复契约组织，不全局伪造页面可见性。
@@ -139,9 +143,9 @@ flv.js 1.6.2 从固定 npmmirror 地址按需加载，HLS 使用斗鱼 SDK。HLS
 
 ## 构建与分发
 
-- 入口显式导入依赖，构建单个 `dist/douyu.guanyu.js`，不整份嵌入仓库文档。
+- 入口显式导入依赖，构建 `dist/douyu.guanyu.user.js` 与只含元数据的 `dist/douyu.guanyu.meta.js`，不整份嵌入仓库文档。
 - Vite 使用 Oxc 的 compress/mangle，`codegen.removeWhitespace: false` 保留换行和缩进，CSS 使用 Lightning CSS。不启用属性重命名、unsafe 或 eval 解包。
-- `scripts/licenses.mjs` 注入项目 MIT 正文及 Svelte 必要声明；`scripts/build.mjs` 检查产物语法与许可，全部成功后更新 `version.json`。
-- 版本采用北京时间 `YYYY.MM.DD.N`；开发服务以“开发 · ”区分安装项，生产更新地址尚未配置。
+- `scripts/licenses.mjs` 注入项目 MIT 正文及 Svelte 必要声明；`scripts/build.mjs` 检查完整脚本、元数据、语法与许可，再由 `scripts/package.mjs` 生成精简 npm 包及校验和，并核对实际打包文件。
+- `version.json` 是生产版本来源，格式为 `YYYY.<月×100+日>.N`；`scripts/version.mjs` 提供公历校验、北京时间下一版与 tag 核对。构建不递增版本。`scripts/release-config.mjs` 集中版本、仓库、文件名和 npmmirror 更新/下载入口；开发服务以“开发 · ”区分安装项，不接入生产更新地址。
 - `assets/brand/guanyu.svg` 为唯一运行图标，由 `FishIcon.svelte` 和用户脚本元数据复用，当前内嵌。历史 PNG、设计稿与完整说明不进入运行包。
-- `package.json` 为 `private: true`。正式产物计划由 CI 构建并上传至 GitHub Release，不提交到源码仓库；发布工作流尚未接入。
+- 根 `package.json` 保持 `private: true`；`dist/npm/` 持有无运行依赖的公开发布清单。tag 工作流通过 OIDC 发包，`scripts/publish.mjs` 用 npm integrity 核对重跑内容，先准备 GitHub Release 草稿和附件，npm 成功后公开；已公开的附件按摘要核对，不覆盖。普通 CI 只检查和构建，产物不提交到源码仓库。首次建包与 Trusted Publisher 仍需在正式发布前配置，操作见[发布说明](RELEASING.md)。

@@ -13,9 +13,9 @@ npm ci
 npm run build
 ```
 
-构建产物为 `dist/douyu.guanyu.js`。通过用户脚本管理器导入该文件；管理器不支持文件导入时，可新建脚本，将产物完整内容粘贴进去并保存。启用后重新打开斗鱼直播间。
+完整脚本为 `dist/douyu.guanyu.user.js`，更新元数据为 `dist/douyu.guanyu.meta.js`；构建同时生成精简 npm 压缩包与 `SHA256SUMS`。通过用户脚本管理器导入完整脚本；管理器不支持文件导入时，可新建脚本，将完整产物粘贴进去并保存。启用后重新打开斗鱼直播间。
 
-当前未配置正式下载、`@downloadURL` 或 `@updateURL`。本地重新构建后需手动更新已安装脚本。
+生产元数据已配置 npmmirror 的更新和下载入口；正式包首次发布前，远程更新尚不可用。开发服务使用独立安装项，具体地址与发布流程见[发布说明](RELEASING.md)。
 
 ## 开发调试
 
@@ -35,7 +35,10 @@ npm run dev
 | `npm run test:sign` | 鱼吧、共享调度、粉丝家园与任务中心契约 |
 | `npm run test:settings` | 设置预览、保存、放弃恢复与预览人数确认边界 |
 | `npm run test:backpack` | 续牌数量、逐房赠送状态与账号切换隔离 |
-| `npm run build` | 类型检查、生产打包、产物语法及必要许可 |
+| `npm run test:release` | 日期版本、公历校验、北京时间日界线与 tag 一致性 |
+| `npm run build` | 类型检查、生产打包、元数据一致性、语法、许可及实际 npm 包清单 |
+| `npm run version:next` | 按北京时间准备下一版并写入 `version.json` |
+| `npm run release:check` | 在发布工作流中核对 tag 与版本文件 |
 
 源码或依赖改动运行 `npm run check`；构建配置、入口、权限和分发改动运行 `npm run build`。根据受影响的功能运行对应契约检查。文档与截图修改核对内容、链接和图像即可。
 
@@ -43,7 +46,9 @@ npm run dev
 
 ## 版本与产物
 
-生产版本使用北京时间 `YYYY.MM.DD.N`，保存在 `version.json`。构建先生成待验证版本，类型、打包、语法与许可检查全部成功后才写回版本；仅检查时使用 `npm run check`，避免为重复验证递增版本。
+生产版本保存在 `version.json`，格式为 `YYYY.<月×100+日>.N`：例如 `2026.1108.3` 表示 2026 年 11 月 8 日第 3 版，1 月 8 日使用 `108`，不保留前导零。该格式同时用于 npm、用户脚本和 GitHub tag。准备新版本时执行 `npm run version:next`；北京时间同日递增序号，跨日从 1 开始，日期不能倒退。普通构建始终使用已保存版本，不写回版本文件。
+
+`dist/npm/` 是 npm 发布包的生成目录，只有完整脚本、元数据、精简 README、LICENSE 和发布清单，不含工程依赖、截图、源码或历史版本。根 `package.json` 保持 `private: true` 和开发工程版本，生产包的版本来自 `version.json`。这些构建产物均不提交到 Git。
 
 生产脚本使用 Oxc 压缩，保留元数据、换行、缩进及必要许可，不启用属性重命名、unsafe 压缩或 eval 解包。唯一运行图标为 `assets/brand/guanyu.svg`，仓库文档、截图和历史设计稿不进入运行包。
 

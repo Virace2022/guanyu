@@ -1,13 +1,11 @@
 import { defineConfig } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import monkey from 'vite-plugin-monkey';
-import versionState from './version.json' with { type: 'json' };
 import { readFileSync } from 'node:fs';
 import { licenseBanner } from './scripts/licenses.mjs';
+import { downloadURL, metaFile, scriptFile, updateURL, version } from './scripts/release-config.mjs';
 
 export default defineConfig(({ command }) => {
-  const version = process.env.GUANYU_BUILD_VERSION ?? versionState.version;
-
   return {
     define: {
       __GUANYU_VERSION__: JSON.stringify(command === 'serve' ? `${version}-dev` : version),
@@ -34,13 +32,15 @@ export default defineConfig(({ command }) => {
           noframes: true,
           connect: ['douyu.com', 'douyucdn.cn'],
           license: 'MIT',
+          ...(command === 'build' ? { updateURL, downloadURL } : {}),
         },
         server: {
           open: false,
           prefix: (name) => `开发 · ${name}`,
         },
         build: {
-          fileName: 'douyu.guanyu.js',
+          fileName: scriptFile,
+          metaFileName: metaFile,
         },
       }),
     ],

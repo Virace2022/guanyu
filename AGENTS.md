@@ -5,7 +5,7 @@
 - 先阅读 [README](README.md)、[功能说明](docs/FEATURES.md) 和 [工程架构](docs/ARCHITECTURE.md)；界面改动再阅读 [UI 规范](docs/UI.md)。
 - 产品名称为“观鱼”，工程标识为 `guanyu`。技术栈为 Vite、vite-plugin-monkey、TypeScript 和 Svelte 5。
 - 当前已实现十一类设置、增益、页面与弹幕整理、团播、官方多屏、右键菜单、播放偏好、房间资料、背包增强和签到任务。后续功能按功能文档和当前授权确定。
-- 实际命令：安装 `npm ci`，开发 `npm run dev`，类型检查 `npm run check`，鱼吧检查 `npm run test:sign`，构建 `npm run build`。
+- 实际命令：安装 `npm ci`，开发 `npm run dev`，类型检查 `npm run check`，鱼吧检查 `npm run test:sign`，版本检查 `npm run test:release`，构建 `npm run build`；其余检查见[开发说明](docs/DEVELOPMENT.md)。
 
 ## 实现原则
 
@@ -36,6 +36,7 @@
 - 浏览器验收只使用内置浏览器中的真实斗鱼页面，允许直接注入。播放器相关交互在网页全屏下验证，不使用自建页面替代适配验收，不操作外部浏览器或用户脚本管理页。
 - 类型检查、契约检查、真实 DOM/接口、实际播放和人工听感分别记录证据。新增测试应有独立预期和现有验证缺口，不为覆盖率改动验收标准。
 - 生产 JS 使用 Oxc 压缩并保留换行、缩进、元数据与必要许可；不启用属性重命名或 unsafe 压缩，不将仓库文档打入脚本。
+- 生产版本以 `version.json` 为唯一来源，采用 `YYYY.<月×100+日>.N`；只在准备新版本时递增，构建不改版本。完整脚本、元数据、npm 包和 tag 保持同版，产物不提交到 Git；发布操作见[发布说明](docs/RELEASING.md)，不因工作流存在而自动获得推送或发布授权。
 - 自有小鱼以 `assets/brand/guanyu.svg` 为唯一运行来源，经 `FishIcon.svelte` 复用；历史图片和设计稿保留为参考，不进入运行包。
 - 开发分支为 `main`。提交、推送、PR 和发布分别遵守当前用户授权，不切换全局认证身份，不把本机账号路由写入公开文档。
 
