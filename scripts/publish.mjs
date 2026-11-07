@@ -66,7 +66,7 @@ if (previousRelease && !previousRelease.draft) {
 }
 
 if (!npmPublished) {
-  execFileSync(process.execPath, [npm, 'publish', `dist/${tarballFile}`, '--access', 'public',
+  execFileSync(process.execPath, [npm, 'publish', fileURLToPath(new URL(`dist/${tarballFile}`, root)), '--access', 'public',
     '--registry', registry], { cwd: fileURLToPath(root), stdio: 'inherit' });
 } else {
   console.info(`[观鱼] npm 已存在相同发布包，跳过重复上传：${packageName}@${version}`);
