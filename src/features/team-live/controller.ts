@@ -2,7 +2,7 @@ import type { TeamSource, TeamSourceStore } from '../../adapters/douyu/team';
 import { RoomApi } from '../../adapters/douyu/rooms';
 import type { SettingsStore } from '../../config/settings';
 import { createState } from '../../core/state';
-import { copyLayout, emptyLayout, layoutRooms, validateLayout, type TeamLayout, type CustomRoom } from './layout';
+import { copyLayout, emptyLayout, layoutRooms, previewGroups, validateLayout, type TeamLayout, type CustomRoom } from './layout';
 
 const prefix = 'guanyu:team:layout:v1:';
 const preferencesKey = 'guanyu:team:preferences:v1';
@@ -10,24 +10,24 @@ type Detection = 'auto' | 'include' | 'exclude';
 
 export function createTeam(source: TeamSourceStore, storage: Storage, events: Window, settings: SettingsStore) {
   const api = new RoomApi();
-  let modes: Record<string, Detection> = {}, grouped = false, activity = '', released = false, preferenceError = '';
+  let modes: Record<string, Detection> = {}, grouped = false, showRoomIds = false, activity = '', released = false, preferenceError = '';
   let timer: ReturnType<typeof setInterval> | undefined;
   let pending: Promise<void> | null = null;
   const statuses = new Map<string, boolean>();
   function readPreferences() {
     const value = JSON.parse(storage.getItem(preferencesKey) ?? 'null');
-    grouped = value?.grouped === true; modes = value?.modes ?? {};
+    grouped = value?.grouped === true; showRoomIds = value?.showRoomIds === true; modes = value?.modes ?? {};
   }
   try { readPreferences(); } catch (cause) { preferenceError = `团播偏好读取失败：${String(cause)}`; }
   function accepted(value: TeamSource | null) { return !!value && (modes[value.activity] === 'include' || (modes[value.activity] !== 'exclude' && !value.streamPromotion)); }
-  const state = createState({ source: null as TeamSource | null, candidate: source.value, layout: emptyLayout(), grouped, error: preferenceError,
+  const state = createState({ source: null as TeamSource | null, candidate: source.value, layout: emptyLayout(), grouped, showRoomIds, error: preferenceError,
     detection: 'auto' as Detection, preview: false, previewMembers: false, refreshing: false, lastRefresh: 0, statusError: '', options: { ...settings.value.team, hideBanner: settings.value.optimization.hideTopBanner }, statuses });
 
   function updateSource() {
     const candidate = source.value;
     const rooms = candidate?.rooms.map(room => ({ ...room, live: statuses.get(room.id) ?? room.live }));
     state.set({ ...state.value, candidate, source: accepted(candidate) && candidate ? { ...candidate, rooms: rooms! } : null,
-      grouped, detection: modes[candidate?.activity ?? ''] ?? 'auto' });
+      grouped, showRoomIds, detection: modes[candidate?.activity ?? ''] ?? 'auto' });
   }
   function read() {
     let layout = emptyLayout(), error = '';
@@ -77,7 +77,11 @@ export function createTeam(source: TeamSourceStore, storage: Storage, events: Wi
     await task;
     if (pending === task) pending = null;
   }
-  function savePreferences() { storage.setItem(preferencesKey, JSON.stringify({ grouped, modes })); }
+  function savePreferences() { storage.setItem(preferencesKey, JSON.stringify({ grouped, modes, showRoomIds })); }
+  function setShowRoomIds(next: boolean) {
+    storage.setItem(preferencesKey, JSON.stringify({ grouped, modes, showRoomIds: next }));
+    showRoomIds = next; state.set({ ...state.value, showRoomIds });
+  }
   function save(layout: TeamLayout, expectedActivity: string) {
     if (!activity || activity !== expectedActivity) throw new Error('活动已变化，请关闭编辑器后重新打开');
     const next = validateLayout(layout); storage.setItem(prefix + activity, JSON.stringify(next));
@@ -99,7 +103,7 @@ export function createTeam(source: TeamSourceStore, storage: Storage, events: Wi
   }
   function previewCount(members: boolean, currentRoom: string) {
     const value = state.value;
-    const ids = value.grouped ? [...value.layout.people.map(person => person.roomId), ...value.layout.teams.flatMap(team => [...team.captains, ...(members ? team.members : [])])]
+    const ids = value.grouped ? previewGroups(value.layout, currentRoom).flatMap(group => [...group.initial, ...(members ? group.remaining : [])])
       : value.source?.rooms.map(room => room.id) ?? [];
     return ids.filter(id => id !== currentRoom).length;
   }
@@ -110,12 +114,17 @@ export function createTeam(source: TeamSourceStore, storage: Storage, events: Wi
   function onStorage(event: StorageEvent) {
     if (event.key === prefix + activity || event.key === null) read();
     if (event.key === preferencesKey || event.key === null) {
-      try { readPreferences(); state.set({ ...state.value, preview: false, previewMembers: false }); updateSource(); schedule(); }
+      try {
+        const previousGrouped = grouped, previousMode = modes[activity];
+        readPreferences();
+        const changed = previousGrouped !== grouped || previousMode !== modes[activity];
+        state.set({ ...state.value, showRoomIds, ...(changed ? { preview: false, previewMembers: false } : {}) }); updateSource(); schedule();
+      }
       catch (cause) { state.set({ ...state.value, error: `团播偏好读取失败：${String(cause)}` }); }
     }
   }
   events.addEventListener('storage', onStorage);
-  return { subscribe: state.subscribe, get value() { return state.value; }, save, setGrouped, setDetection, setPreview, previewCount, refreshStatus, resolveRoom, refresh: source.refresh,
+  return { subscribe: state.subscribe, get value() { return state.value; }, save, setGrouped, setDetection, setShowRoomIds, setPreview, previewCount, refreshStatus, resolveRoom, refresh: source.refresh,
     dispose() { released = true; clearInterval(timer); api.close(); stop(); stopSettings(); events.removeEventListener('storage', onStorage); } };
 }
 export type TeamController = ReturnType<typeof createTeam>;

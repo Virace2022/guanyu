@@ -78,9 +78,9 @@ section + section { border-top: 1px solid var(--line); padding-top: 26px; }
 .stepper { display: flex; align-items: center; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; height: 38px; }
 .stepper button { color: var(--accent); background: transparent; border: 0; padding: 0; width: 36px; height: 36px; font-size: 22px; }
 .stepper button:hover { background: var(--tint); }
-.stepper input { width: 56px; height: 34px; border: 0; color: var(--ink); background: transparent; text-align: right; appearance: textfield; -moz-appearance: textfield; outline-offset: -2px; }
+.stepper-value { display: flex; align-items: center; justify-content: center; gap: 4px; width: 64px; }
+.stepper input { width: 3ch; min-width: 0; height: 34px; padding: 0; border: 0; color: var(--ink); background: transparent; text-align: center; font-variant-numeric: tabular-nums; appearance: textfield; -moz-appearance: textfield; outline-offset: -2px; }
 .stepper input::-webkit-inner-spin-button { appearance: none; }
-.stepper > span { padding: 0 9px 0 2px; }
 select { appearance: none; min-width: 160px; color: var(--ink); background-color: var(--surface); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%2365766c' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; background-size: 16px 16px; border: 1px solid var(--line); padding: 8px 36px 8px 12px; border-radius: 6px; }
 .settings-content .setting-row > :is(label, span:first-child) { flex: 0 0 128px; min-width: 0; }
 .settings-content .setting-row > select { flex: 1 1 180px; width: auto; min-width: 0; min-height: 40px; }
@@ -103,8 +103,10 @@ input[type="range"] { width: 100%; margin: 0; height: 32px; accent-color: var(--
 .gain-value { color: var(--accent); min-width: 54px; font-size: 18px; font-weight: 600; line-height: 32px; font-variant-numeric: tabular-nums; }
 .button { display: inline-flex; align-items: center; justify-content: center; min-height: 36px; padding: 7px 16px; border: 1px solid var(--line); border-radius: 6px; color: var(--ink); background: var(--surface); white-space: nowrap; }
 .button:hover:not(:disabled) { background: var(--tint); }
-.button.primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); font-weight: 600; }
-.button.primary:hover:not(:disabled) { background: var(--accent); color: var(--on-accent); border-color: var(--accent); filter: brightness(0.93); }
+.button.primary { background: var(--action); color: var(--on-accent); border-color: var(--action); font-weight: 600; }
+.button.primary:hover:not(:disabled) { background: var(--action); color: var(--on-accent); border-color: var(--action); filter: brightness(0.93); }
+.compact-category { display: none; }
+[aria-invalid="true"] { outline: 2px solid var(--danger); outline-offset: 2px; }
 .status { margin-top: 12px; font-size: 12px; }
 .error { color: var(--danger); font-size: 13px; margin-top: 12px; overflow-wrap: anywhere; }
 .window-footer { flex: none; min-height: 70px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border-top: 1px solid var(--line); padding: 14px 28px; }
@@ -116,6 +118,9 @@ input[type="range"] { width: 100%; margin: 0; height: 32px; accent-color: var(--
 .confirm-panel p { color: var(--muted); }
 .confirm-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; margin-top: 24px; }
 @media (max-width: 680px) {
+  .settings-window .compact-category { display: flex; align-items: center; gap: 10px; font-size: 12px; }
+  .settings-window .compact-category select { flex: 1; min-width: 0; min-height: 34px; padding-block: 5px; }
+  .settings-window .nav-items { display: none; }
   dialog { width: calc(100vw - 20px); height: calc(100dvh - 28px); }
   .window-header { height: 60px; padding: 0 18px; }
   .brand { font-size: 18px; }
@@ -134,14 +139,23 @@ input[type="range"] { width: 100%; margin: 0; height: 32px; accent-color: var(--
 }
 @media (prefers-reduced-motion: reduce) { .switch span { transition: none; } }
 .color-row { margin-top: 22px; flex-wrap: wrap; }
-.accent-picker { min-width: 0; margin: 0; padding: 0; border: 0; }
-.accent-picker legend { margin-bottom: 10px; padding: 0; font-size: 14px; }
-.accent-options { display: flex; flex-wrap: wrap; gap: 8px; }
-.accent-option { display: inline-flex; align-items: center; gap: 7px; min-height: 36px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink); font-size: 13px; }
+.appearance-settings > .accent-picker { margin-top: var(--field-gap); }
+.theme-picker, .accent-picker { min-width: 0; margin: 0; padding: 0; border: 0; }
+.theme-picker legend, .accent-picker legend { margin-bottom: 10px; padding: 0; font-size: 14px; }
+.theme-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.theme-option { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 8px; border: 1px solid var(--line); border-radius: 6px; cursor: pointer; font-size: 13px; }
+.theme-option input { flex: none; width: 14px; height: 14px; margin: 0; accent-color: var(--accent); cursor: pointer; }
+.theme-option:hover { background: var(--tint); }
+.theme-option:has(input:checked) { border-color: var(--accent); background: var(--tint); }
+.accent-options { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.accent-option { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-width: 0; min-height: 40px; padding: 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink); font-size: 13px; }
 .accent-option[aria-pressed="true"] { border-color: var(--accent); background: var(--tint); }
 .accent-option:hover { background: var(--tint); }
 .accent-swatch { display: grid; place-items: center; flex: none; width: 16px; height: 16px; border-radius: 50%; }
 .accent-swatch { background: var(--swatch); }
+@media (max-width: 600px) {
+  .accent-option { flex-direction: column; gap: 6px; min-height: 64px; padding: 8px 4px; }
+}
 .data-scroll { overflow-x: auto; margin-top: 12px; }
 .data-scroll table { width: 100%; border-collapse: collapse; font-size: 12px; text-align: left; }
 .data-scroll th, .data-scroll td { padding: 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }

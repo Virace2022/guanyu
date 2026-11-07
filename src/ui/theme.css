@@ -6,6 +6,7 @@
   --line: oklch(0.86 0 0);
   --accent: var(--guanyu-accent, #ff5d23);
   --on-accent: #fff;
+  --action: var(--guanyu-action, #cc4a1c);
   --tint: color-mix(in oklab, var(--accent) 14%, var(--surface));
   --danger: oklch(0.45 0.15 28);
   color-scheme: light;

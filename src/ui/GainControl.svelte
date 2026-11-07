@@ -68,10 +68,10 @@
 </button>
 
 <div bind:this={panel} id="guanyu-gain-popup" style:--accent={appearance.accentColor} popover="auto" role="dialog" aria-label="音量增益" tabindex="-1" onpointerenter={() => clearTimeout(timer)} onpointerleave={leave} onfocusout={leave} ontoggle={event => { if (event.newState === 'closed') { open = false; onOpen(false); } }} onkeydown={event => { event.stopPropagation(); if (event.key === 'Escape') { event.preventDefault(); hide(); trigger.focus({ preventScroll: true }); } }}>
-  <div class="heading"><span>额外增益</span><output>{value.amount - 100}% · {(value.amount / 100).toFixed(2)} 倍</output></div>
-  <input bind:this={slider} type="range" aria-label="额外音量增益" aria-valuetext={`额外 ${value.amount - 100}%，${(value.amount / 100).toFixed(2)} 倍原声`} min="0" max={value.maxAmount - 100} step="1" value={value.amount - 100} disabled={!value.available || value.maxAmount === 100} oninput={event => gain.setAmount(Number(event.currentTarget.value) + 100)} />
+  <div class="heading"><span>额外增益</span><output>{value.amount > 100 ? '+' : ''}{value.amount - 100}% · +{((value.amount - 100) / 100).toFixed(2)} 倍</output></div>
+  <input bind:this={slider} type="range" aria-label="额外音量增益" aria-valuetext={`额外增加 ${value.amount - 100}%，加 ${((value.amount - 100) / 100).toFixed(2)} 倍原声`} min="0" max={value.maxAmount - 100} step="1" value={value.amount - 100} disabled={!value.available || value.maxAmount === 100} oninput={event => gain.setAmount(Number(event.currentTarget.value) + 100)} />
   <div class="scale"><span>0%（原声）</span><span>+{value.maxAmount - 100}%</span></div>
-  <div class="presets" role="group" aria-label="常用增益档位">{#each appearance.gainPresets as extra (extra)}<button aria-pressed={value.amount === extra + 100} disabled={!value.available || extra + 100 > value.maxAmount} title={extra + 100 > value.maxAmount ? '超出增益上限，可在声音设置中调整' : `${(1 + extra / 100).toFixed(2)} 倍原声`} onclick={() => gain.setAmount(extra + 100)}>{extra === 0 ? '原声' : `+${extra}%`}</button>{/each}</div>
+  <div class="presets" role="group" aria-label="常用增益档位">{#each appearance.gainPresets as extra (extra)}<button aria-pressed={value.amount === extra + 100} disabled={!value.available || extra + 100 > value.maxAmount} title={extra + 100 > value.maxAmount ? `超出当前 +${value.maxAmount - 100}% 的增益上限，可在声音设置中调整` : extra === 0 ? '恢复原声' : `额外增加 ${(extra / 100).toFixed(2)} 倍原声`} onclick={() => gain.setAmount(extra + 100)}>{extra === 0 ? '原声' : `+${extra}%`}</button>{/each}</div>
   {#if !appearance.gainPresets.includes(0)}<div class="actions"><button onclick={() => gain.setAmount(100)}>恢复原声</button></div>{/if}
   <p role="status">{value.error || value.status}</p>
 </div>

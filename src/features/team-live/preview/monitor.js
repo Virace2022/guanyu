@@ -29,11 +29,11 @@ export class TeamLiveMonitor {
     }
 
     previewTeams(layout) {
-        return layout.enabled ? layout.previewGroups : [{ name: "全部成员", captains: Array.from(this.page.rooms.keys()), members: [] }];
+        return layout.enabled ? layout.previewGroups : [{ name: "全部成员", initial: Array.from(this.page.rooms.keys()), remaining: [] }];
     }
 
     previewIds(layout) {
-        return this.previewTeams(layout).flatMap(team => [...team.captains, ...(layout.enabled && layout.previewMembers ? team.members : [])]).filter(Boolean);
+        return this.previewTeams(layout).flatMap(team => [...team.initial, ...(layout.enabled && layout.previewMembers ? team.remaining : [])]).filter(Boolean);
     }
 
     mount(container, layout) {
@@ -50,15 +50,19 @@ export class TeamLiveMonitor {
 
     mountTeam(team, layout) {
         const group = TeamLive_element("div", `guanyu-preview-team${team.independent ? ' guanyu-preview-independent' : ''}`);
-        if (team.name) group.appendChild(TeamLive_element("h4", "guanyu-preview-group-title", team.name));
-        this.mountRow(group, team.captains, "captains", layout);
-        if (layout.enabled && layout.previewMembers) this.mountRow(group, team.members, "members", layout);
+        if (team.name) {
+            const heading = TeamLive_element("h4", "guanyu-preview-group-title", team.name);
+            if (team.color) { heading.classList.add("guanyu-team-colored-title"); heading.style.setProperty("--guanyu-team-color", team.color); }
+            group.appendChild(heading);
+        }
+        this.mountRow(group, team.initial, "captains", layout);
+        if (layout.enabled && layout.previewMembers && team.remaining.length) this.mountRow(group, team.remaining, "members", layout);
         this.groups.appendChild(group);
     }
 
     mountRow(group, slots, role, layout) {
         const row = TeamLive_element("div", "guanyu-preview-row"); row.dataset.role = role;
-        const total = role === "members" && layout.keepEmpty ? Math.ceil(slots.length / layout.columns) * layout.columns : slots.length;
+        const total = role === "members" && layout.keepEmpty && layout.columns ? Math.ceil(slots.length / layout.columns) * layout.columns : slots.length;
         for (let index = 0; index < total; index++) {
             const id = slots[index];
             if (id) row.appendChild(this.createTile(id, row));
@@ -81,7 +85,7 @@ export class TeamLiveMonitor {
                     this.release(tile); this.visibility.unobserve(tile.node); this.tileNodes.delete(tile.node); this.tiles.delete(tile);
                 }
                 row.remove();
-            } else if (layout.previewMembers && !row) this.mountRow(group, this.previewTeams(layout)[index].members, "members", layout);
+            } else if (layout.previewMembers && !row && this.previewTeams(layout)[index].remaining.length) this.mountRow(group, this.previewTeams(layout)[index].remaining, "members", layout);
         });
         this.queue = this.queue.filter(({ tile }) => this.tiles.has(tile));
         this.arrange(layout); this.sync();
@@ -94,7 +98,7 @@ export class TeamLiveMonitor {
         this.groups.style.gridTemplateColumns = `repeat(${columns}, minmax(0, 1fr))`;
         Array.from(this.groups.children).forEach((group, index) => {
             const available = group.clientWidth || width / columns;
-            const preferred = layout.enabled ? layout.previewMembers ? layout.columns : Math.max(1, teams[index]?.captains.length || 1) : Math.floor(available / 130);
+            const preferred = layout.enabled ? layout.previewMembers ? layout.columns || Math.floor(available / 100) : Math.max(1, teams[index]?.initial.length || 1) : Math.floor(available / 130);
             group.style.setProperty("--guanyu-preview-columns", String(Math.max(1, Math.min(preferred, Math.floor(available / 100) || 1))));
         });
     }

@@ -13,6 +13,7 @@ interface Label {
   slider: HTMLInputElement; output: HTMLOutputElement; fill: HTMLElement; thumb: HTMLElement;
   offset: { left: number; bottom: number }; reveal: (duration: number) => void; dispose: () => void;
   openMenu: (x: number, y: number, keyboard?: boolean) => void;
+  leavePage: () => void;
 }
 
 export function mountMultiscreenLabels(getNative: () => MultiScreenNative, audio: MultiAudio, quality: MultiQuality,
@@ -21,7 +22,7 @@ export function mountMultiscreenLabels(getNative: () => MultiScreenNative, audio
   const labels = new Map<HTMLElement, Label>(), menu = createMultiscreenMenu(quality, replace);
   let layer: HTMLElement | null = null, container: HTMLElement | null = null;
   let enabled = true, centered = true, display: LabelDisplay = 'always', frame = 0, syncing = false, session = false, hintTimer = 0;
-  let hint: HTMLElement | null = null, introduced = false;
+  let hint: HTMLElement | null = null, introduced = false, pointerInput = false;
   const hintKey = 'guanyu:multi:label-menu-hint:v1';
   const schedule = () => { if (!frame) frame = requestAnimationFrame(sync); };
   const observer = new MutationObserver(schedule), resize = new ResizeObserver(schedule);
@@ -50,7 +51,8 @@ export function mountMultiscreenLabels(getNative: () => MultiScreenNative, audio
     } };
     name.onclick = navigate; name.onkeydown = event => { if (event.key === 'Enter') { event.preventDefault(); navigate(event); } };
     const button = document.createElement('button'); button.type = 'button'; button.className = 'guanyu-audio-switch'; button.setAttribute('aria-haspopup', 'menu');
-    button.onclick = event => { event.stopPropagation(); audio.select(id); };
+    button.onmousedown = event => { if (event.button === 0) event.preventDefault(); };
+    button.onclick = event => { event.stopPropagation(); audio.select(id); releasePointerFocus(); };
     const panel = document.createElement('div'); panel.className = 'guanyu-audio-panel'; panel.setAttribute('role', 'dialog');
     const track = document.createElement('div'); track.className = 'guanyu-audio-track';
     const back = document.createElement('div'), fill = document.createElement('div'), thumb = document.createElement('div');
@@ -58,16 +60,22 @@ export function mountMultiscreenLabels(getNative: () => MultiScreenNative, audio
     const slider = document.createElement('input'); slider.type = 'range'; slider.min = '0'; slider.max = '100'; slider.step = '1'; slider.setAttribute('aria-orientation', 'vertical');
     const output = document.createElement('output'); track.append(back, fill, thumb, slider); panel.append(track, output); node.append(button, panel);
     anchor.append(hotspot, node); layer!.append(anchor);
-    let timer = 0, revealTimer = 0, menuOpen = false, dragging = false, visible = false;
+    let timer = 0, revealTimer = 0, menuOpen = false, dragging = false, visible = false, hovered = false;
     function show() {
       clearTimeout(timer); visible = true; anchor.dataset.expanded = 'true'; name.tabIndex = main ? -1 : 0;
     }
     function leave() {
       clearTimeout(timer);
-      if (menuOpen || dragging || anchor.matches(':hover, :focus-within')) return;
+      if (menuOpen || dragging || hovered) return;
+      releasePointerFocus();
+      if (anchor.matches(':focus-within')) return;
       timer = window.setTimeout(() => {
         visible = false; anchor.dataset.expanded = 'false'; if (display !== 'always') name.tabIndex = -1;
       }, 600);
+    }
+    function releasePointerFocus() {
+      const focused = document.activeElement;
+      if (pointerInput && focused instanceof HTMLElement && anchor.contains(focused)) focused.blur();
     }
     const lock = (open: boolean) => { menuOpen = open; node.classList.toggle('guanyu-audio-menu-open', open); if (open) { show(); if (hint) hint.remove(); } else leave(); };
     const openMenu = (x: number, y: number, keyboard = false) => {
@@ -75,7 +83,9 @@ export function mountMultiscreenLabels(getNative: () => MultiScreenNative, audio
       nativeMenu?.hideMenu({ which: 1, target: button });
       show(); menu.open({ id, name: name.textContent || `房间 ${id}`, main, anchor, slot, lock }, x, y, keyboard);
     };
-    anchor.onpointerenter = () => { node.classList.remove('guanyu-audio-dismissed'); show(); }; anchor.onpointerleave = leave;
+    anchor.onpointerenter = () => { hovered = true; node.classList.remove('guanyu-audio-dismissed'); show(); };
+    anchor.onpointerleave = () => { hovered = false; leave(); };
+    anchor.onpointerdown = () => { pointerInput = true; node.classList.remove('guanyu-audio-keyboard'); };
     button.onpointerenter = () => node.classList.remove('guanyu-audio-dismissed');
     anchor.addEventListener('focusin', show); anchor.addEventListener('focusout', () => queueMicrotask(() => {
       if (!anchor.contains(document.activeElement)) node.classList.remove('guanyu-audio-keyboard');
@@ -90,7 +100,7 @@ export function mountMultiscreenLabels(getNative: () => MultiScreenNative, audio
     };
     slider.oninput = () => audio.setLevel(id, Number(slider.value) / 100);
     slider.onpointerdown = event => { dragging = true; slider.setPointerCapture(event.pointerId); show(); };
-    const release = () => { dragging = false; leave(); }; slider.onpointerup = release; slider.onpointercancel = release; slider.onlostpointercapture = release;
+    const release = () => { dragging = false; releasePointerFocus(); leave(); }; slider.onpointerup = release; slider.onpointercancel = release; slider.onlostpointercapture = release;
     const wheel = (event: WheelEvent) => {
       if (!audio.value.independent || event.ctrlKey || !event.deltaY) return;
       event.preventDefault(); event.stopPropagation(); audio.setLevel(id, (audio.value.levels.get(id) ?? 0) + (event.deltaY < 0 ? .05 : -.05));
@@ -100,6 +110,7 @@ export function mountMultiscreenLabels(getNative: () => MultiScreenNative, audio
     for (const type of ['pointerdown', 'mousedown', 'mouseup', 'dblclick', 'click']) anchor.addEventListener(type, stop);
     anchor.dataset.expanded = String(visible);
     return { id, slot, anchor, node, source, name, avatar, button, panel, slider, output, fill, thumb, offset, openMenu,
+      leavePage() { hovered = false; node.classList.remove('guanyu-audio-keyboard'); node.classList.add('guanyu-audio-dismissed'); leave(); },
       reveal(duration) { show(); clearTimeout(revealTimer); revealTimer = window.setTimeout(leave, duration); },
       dispose() {
         clearTimeout(timer); clearTimeout(revealTimer);
@@ -202,6 +213,7 @@ export function mountMultiscreenLabels(getNative: () => MultiScreenNative, audio
     [...labels.values()].find(label => label.anchor === anchor)?.openMenu(event.clientX, event.clientY);
   };
   const keyboard = (event: KeyboardEvent) => {
+    if (event.type === 'keydown') pointerInput = false;
     const anchor = (event.target as Element)?.closest<HTMLElement>('.guanyu-label-anchor');
     const inMenu = menu.node.contains(event.target as Node);
     if (!inMenu && (!anchor || !layer?.contains(anchor))) return;
@@ -210,14 +222,19 @@ export function mountMultiscreenLabels(getNative: () => MultiScreenNative, audio
     if (event.type === 'keyup') { event.preventDefault(); return; }
     if (inMenu) menu.keydown(event); else anchor?.onkeydown?.call(anchor, event);
   };
+  const leavePage = (event: Event) => {
+    if (event.type === 'pointerout' && (event as PointerEvent).relatedTarget) return;
+    for (const label of labels.values()) label.leavePage();
+  };
   window.addEventListener('contextmenu', context, true);
   window.addEventListener('keydown', keyboard, true); window.addEventListener('keyup', keyboard, true);
+  window.addEventListener('pointerout', leavePage, true); window.addEventListener('blur', leavePage);
   const stop = audio.subscribe(paint), timer = setInterval(sync, 500);
   return {
     apply(options: { enabled: boolean; centerLabels: boolean; labelDisplay: LabelDisplay }) {
       const changed = display !== options.labelDisplay; enabled = options.enabled; centered = options.centerLabels; display = options.labelDisplay;
       sync(); if (changed && session) for (const label of labels.values()) label.reveal(1500);
     },
-    dispose() { clearInterval(timer); cancelAnimationFrame(frame); detach(true); stop(); menu.dispose(); window.removeEventListener('contextmenu', context, true); window.removeEventListener('keydown', keyboard, true); window.removeEventListener('keyup', keyboard, true); sheets.forEach(sheet => sheet.parentNode?.removeChild(sheet)); },
+    dispose() { clearInterval(timer); cancelAnimationFrame(frame); detach(true); stop(); menu.dispose(); window.removeEventListener('contextmenu', context, true); window.removeEventListener('keydown', keyboard, true); window.removeEventListener('keyup', keyboard, true); window.removeEventListener('pointerout', leavePage, true); window.removeEventListener('blur', leavePage); sheets.forEach(sheet => sheet.parentNode?.removeChild(sheet)); },
   };
 }

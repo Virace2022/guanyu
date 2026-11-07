@@ -12,11 +12,11 @@ export async function toggleTeamPreview(team: TeamController, roomId: string, op
   const opening = enabled && (!team.value.preview || showMembers && !team.value.previewMembers);
   if (opening) {
     if (!count) {
-      const message = grouped ? '分组预览先显示独立人物和队长。当前没有可预览成员，请先编排名单，或切回原始布局预览全部成员。' : '当前名单中没有其他可预览房间。';
+      const message = grouped ? '当前分组中没有其他可预览房间。请添加成员，或切回原始布局预览活动成员。' : '当前名单中没有其他可预览房间。';
       if (await confirmAction('暂无可预览成员', message, '打开名单')) openEditor();
       return;
     }
-    const scope = grouped ? showMembers ? '分组中的独立人物、队长和队员' : '分组中的独立人物和队长' : '全部活动成员';
+    const scope = grouped ? showMembers ? '分组中的全部成员' : '分组中的首批成员（优先队长，无可预览队长时直接显示队员）' : '全部活动成员';
     if (count >= 50 && !await confirmAction('预览数量较多', `本次预览${scope}，共 ${count} 个预览窗口（不含本直播间），浏览器可能卡顿。是否开启？`, '开启预览')) return;
   }
   if (team.value.source?.activity === expected && team.value.layout === layout && team.value.grouped === grouped

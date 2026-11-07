@@ -15,7 +15,7 @@ export interface GainState {
 
 export function createGain(player: PlayerStore, settings: SettingsStore, storage: Storage, events: Window) {
   const state = createState<GainState>({ roomId: null, available: false, amount: 100,
-    maxAmount: settings.value.maxMultiplier * 100, status: '等待播放器加载', error: '' });
+    maxAmount: Math.round((1 + settings.value.maxMultiplier) * 100), status: '等待播放器加载', error: '' });
   let lastAmount = 120;
   const clamp = (value: number) => Math.round(Math.min(state.value.maxAmount, Math.max(100, value)));
   const audio = new GainAudio(status => state.set({ ...state.value, status }));
@@ -53,7 +53,7 @@ export function createGain(player: PlayerStore, settings: SettingsStore, storage
     audio.setMedia(value.roomId ? value.video : null, state.value.amount);
   });
   const stopSettings = settings.subscribe(value => {
-    const maxAmount = Math.round(value.maxMultiplier * 100);
+    const maxAmount = Math.round((1 + value.maxMultiplier) * 100);
     const lowered = maxAmount < state.value.maxAmount;
     state.set({ ...state.value, maxAmount, amount: Math.min(state.value.amount, maxAmount) });
     lastAmount = Math.min(lastAmount, maxAmount);

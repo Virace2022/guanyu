@@ -2,10 +2,11 @@
   import { onMount, untrack } from 'svelte';
   import { signTasks, type SignOptions } from '../config/sign';
   import type { SignController } from '../features/sign/feature';
-  let { value = $bindable(), sign }: { value: SignOptions; sign: SignController } = $props();
+  let { value = $bindable(), sign, saved }: { value: SignOptions; sign: SignController; saved: SignOptions } = $props();
   let runtime = $state(untrack(() => sign.value));
   onMount(() => sign.subscribe(next => { runtime = next; }));
   const statusName = { pending: '等待', done: '完成', waiting: '待检查', error: '重试中', disabled: '已关闭' };
+  const unsaved = $derived(JSON.stringify(value) !== JSON.stringify(saved));
 </script>
 
 <h1>签到</h1>
@@ -34,7 +35,8 @@
 <section>
   <h2>今日进度</h2>
   <p class="help">{runtime.uid ? `账号 ${runtime.uid} · 北京时间 ${runtime.day}` : '登录斗鱼后自动读取进度。'}</p>
-  <div class="inline-actions"><button class="button" disabled={!runtime.uid || runtime.running} onclick={() => { void sign.run(); }}>{runtime.running ? '正在处理…' : '立即检查与重试'}</button><a class="button" href="https://www.douyu.com/pages/ord-task-center?clientType=web" target="_blank" rel="noreferrer">打开官方任务中心</a></div>
+  <div class="inline-actions"><button class="button" disabled={!runtime.uid || runtime.running || !saved.enabled || unsaved} onclick={() => { void sign.run(); }}>{runtime.running ? '正在处理…' : '检查已开启任务'}</button><a class="button" href="https://www.douyu.com/pages/ord-task-center?clientType=web" target="_blank" rel="noreferrer">打开官方任务中心</a></div>
+  {#if unsaved}<p class="help">签到选项有未保存修改，请先保存全部，再检查已开启的任务。</p>{:else if !saved.enabled}<p class="help">签到已关闭，开启并保存后才能检查任务。</p>{/if}
   {#if runtime.notice}<p class="status" role="status">{runtime.notice}</p>{/if}
   {#if runtime.error}<p class="error" role="alert">{runtime.error}</p>{/if}
   {#if runtime.restore}<p class="error" role="alert">{runtime.restore}；恢复操作优先于其他任务。</p>{/if}

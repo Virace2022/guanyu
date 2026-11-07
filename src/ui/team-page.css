@@ -25,13 +25,17 @@
 .guanyu-team-groups[hidden] { display: none; }
 .guanyu-team-independent { grid-column: 1 / -1; }
 .guanyu-team-view[hidden] { display: none; }
-.guanyu-team-view .guanyu-team-group { box-sizing: border-box; min-width: 0; flex: 1 1 290px; padding: 10px; }
+.guanyu-team-view .guanyu-team-group { box-sizing: border-box; width: 100%; min-width: 0; justify-self: var(--guanyu-team-align, center); padding: 10px; }
 .guanyu-team-view .guanyu-team-group h3, .guanyu-team-view .guanyu-preview-group-title { box-sizing: border-box; width: 100%; min-height: 32px; margin: 0 0 10px; padding: 4px 12px; border-radius: 6px; font: 600 14px/24px system-ui, "Microsoft YaHei", sans-serif; color: var(--guanyu-team-native-ink, var(--ink)); background: rgb(128 128 128 / 10%); text-align: center; overflow-wrap: anywhere; }
+.guanyu-team-view .guanyu-team-colored-title::before { content: ''; display: inline-block; width: 9px; height: 9px; margin-right: 7px; border-radius: 50%; background: var(--guanyu-team-color); vertical-align: 1px; box-shadow: inset 0 0 0 1px rgb(127 127 127 / 24%); }
 .guanyu-team-view .guanyu-team-cards { display: flex; flex-wrap: wrap; justify-content: var(--guanyu-team-align, center); gap: 8px; }
 .guanyu-team-cards:empty { display: none; }
 .guanyu-team-captains:not(:empty) + .guanyu-team-members:not(:empty) { margin-top: 16px; }
 .guanyu-team-cards > .guanyu-team-card { flex: 0 0 calc((100% - (var(--guanyu-member-columns, 3) - 1) * 8px) / var(--guanyu-member-columns, 3)); }
+.guanyu-team-auto-size > .guanyu-team-card { flex-basis: min(var(--guanyu-native-card-width, 130px), calc((100% - (var(--guanyu-member-columns, 1) - 1) * 8px) / var(--guanyu-member-columns, 1))); }
+.guanyu-team-native-size > .guanyu-team-card { flex: 0 1 var(--guanyu-native-card-width, 130px); max-width: 100%; }
 .guanyu-team-independent .guanyu-team-cards > .guanyu-team-card { flex: 0 1 var(--guanyu-native-card-width, 130px); max-width: 100%; }
+.guanyu-team-captains > .guanyu-team-card { flex: 0 1 var(--guanyu-native-card-width, 130px); max-width: 100%; }
 .guanyu-team-view .guanyu-team-card { box-sizing: border-box; min-width: 0; height: var(--guanyu-card-height, 52px); position: relative; display: block; color: inherit; text-decoration: none; }
 .guanyu-team-card-link, .guanyu-team-card > .wm-pc-room-button-dropdown, .guanyu-team-card .wm-pc-room-DropMenu-link, .guanyu-team-card .wm-pc-room-DropMenu-link > a { display: block; width: 100%; height: 100%; color: inherit; text-decoration: none; }
 .guanyu-team-card-link[hidden] { display: none; }

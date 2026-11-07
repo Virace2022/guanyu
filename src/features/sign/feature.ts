@@ -68,6 +68,7 @@ export function createSign(settings: SettingsStore, roomId: () => string,
       const uid = accountId();
       try {
         if (!uid) { notice = '请先登录斗鱼'; publish(); return; }
+        if (!settings.value.sign.enabled) { notice = '签到已关闭，请开启并保存后再检查'; publish(); return; }
         runner.submit(uid);
         notice = '已提交检查请求，未完成任务将由当前调度页面处理'; publish();
         await Promise.all([daily.run(), yuba?.wake(true)]);

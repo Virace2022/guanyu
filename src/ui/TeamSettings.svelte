@@ -24,7 +24,9 @@
 <section><h2>布局与入口</h2>
 <label class="option-row"><span><strong>显示右侧团播工具条</strong><small>点击小鱼展开，按住小鱼可沿右侧上下拖动；隐藏后仍可从设置打开名单。</small></span><input type="checkbox" bind:checked={value.showToolbar} /></label>
 <label class="setting-row" for="team-columns"><span>队伍列数</span><select id="team-columns" bind:value={value.teamColumns}><option value={0}>自动适应</option>{#each [1,2,3,4,5,6] as count}<option value={count}>{count} 列</option>{/each}</select></label>
-<label class="setting-row" for="member-columns"><span>队内人数列数</span><select id="member-columns" bind:value={value.columns}>{#each [1,2,3,4,5,6,8,10,12] as count}<option value={count}>{count} 列</option>{/each}</select></label>
+<label class="setting-row" for="team-member-layout"><span>队员卡片布局</span><select id="team-member-layout" bind:value={value.columnsMode} onchange={event => { value.columns = event.currentTarget.value === 'fixed' ? value.columns || 3 : 0; }}><option value="auto">按人数自动编排</option><option value="native">保留原卡片尺寸</option><option value="fixed">固定队员列数</option></select></label>
+{#if value.columnsMode === 'fixed'}<label class="setting-row" for="member-columns"><span>队员列数</span><select id="member-columns" bind:value={value.columns}>{#each [1,2,3,4,5,6,8,10,12] as count}<option value={count}>{count} 列</option>{/each}</select></label>{/if}
+<p class="help">自动编排同时考虑队伍数、人数和宽度：少队横向展开，多队少人并排，多队多人纵向展开。原尺寸模式只在放不下时换行，队长独立显示。</p>
 <label class="setting-row" for="team-alignment"><span>排列对齐</span><select id="team-alignment" bind:value={value.alignment}><option value="left">靠左</option><option value="center">居中</option><option value="right">靠右</option></select></label>
 <p class="help">顶部大图使用“优化 → 隐藏顶部大图”，同时覆盖团播和普通活动。</p>
 <label class="option-row"><span><strong>跟随播放器与聊天区宽度</strong><small>使用原生播放器和聊天区的公共容器宽度。</small></span><input type="checkbox" bind:checked={value.originalWidth} /></label></section>

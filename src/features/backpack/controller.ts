@@ -61,7 +61,8 @@ export function createBackpack(settings: SettingsStore, player: PlayerStore, ope
     if (current()) { publish({ loading: false, error: errors.join('；') }); nextAt = Date.now() + 60000; }
   }
   async function prepare(each = settings.value.backpack.glowCount) {
-    if (!settings.value.backpack.glow || stopped || state.value.sending || state.value.preparing) return;
+    if (stopped || state.value.sending || state.value.preparing) return;
+    if (!settings.value.backpack.glow) { publish({ plan: null, glowError: '荧光棒续牌已关闭，请在背包设置中开启并保存' }); return; }
     const uid = accountId(), room = player.value.roomId, revision = generation;
     if (!uid || !room) { publish({ glowError: '请先登录并进入真实直播间' }); return; }
     publish({ preparing: true, glowError: '', plan: null, deliveries: {} });

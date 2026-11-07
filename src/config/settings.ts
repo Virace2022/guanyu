@@ -9,7 +9,7 @@ import { playbackDefaults, roomDefaults, backpackDefaults, readPlayback, readRoo
 export type Theme = 'page' | 'light' | 'dark';
 export type SettingsPreview = Pick<Settings, 'theme' | 'accentColor' | 'optimization' | 'nativeShield'> & {
   barrage: Omit<BarrageOptions, 'linked'>;
-  team: Pick<TeamOptions, 'showToolbar' | 'columns' | 'teamColumns' | 'alignment' | 'originalWidth'>;
+  team: Pick<TeamOptions, 'showToolbar' | 'columns' | 'columnsMode' | 'teamColumns' | 'alignment' | 'originalWidth'>;
   multi: Pick<MultiOptions, 'labelDisplay'>;
 };
 export interface Settings {
@@ -37,8 +37,8 @@ export const defaults: Settings = { theme: 'page', accentColor: '#ff5d23', maxMu
 
 export function validatePresets(value: unknown): number[] {
   if (!Array.isArray(value) || value.length > 8
-    || value.some(extra => !Number.isInteger(extra) || extra < 0 || extra > 400)
-    || new Set(value).size !== value.length) throw new Error('常用档位最多 8 个，使用不重复的 0～400% 整数');
+    || value.some(extra => !Number.isInteger(extra) || extra < 0 || extra > 500)
+    || new Set(value).size !== value.length) throw new Error('常用档位最多 8 个，使用不重复的 0～500% 整数');
   return [...value].sort((a, b) => a - b);
 }
 
@@ -47,7 +47,7 @@ function validate(value: Settings): Settings {
     throw new Error('主题或主题色格式无效');
   }
   if (!Number.isFinite(value.maxMultiplier) || value.maxMultiplier < 1 || value.maxMultiplier > 5) {
-    throw new Error('最大倍率应为 1.0～5.0 倍');
+    throw new Error('额外倍率上限应为 1.0～5.0 倍');
   }
   return { ...value, maxMultiplier: Math.round(value.maxMultiplier * 10) / 10, gainPresets: validatePresets(value.gainPresets),
     optimization: readOptions(value.optimization, optimizationDefaults), barrage: readOptions(value.barrage, barrageDefaults),

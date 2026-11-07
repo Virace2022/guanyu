@@ -31,6 +31,7 @@
     <form onsubmit={event => { event.preventDefault(); void backpack.send(); }}>
       <div class="glow-count-row"><label for="glow-count">每个房间赠送</label><div class="glow-count-field"><input id="glow-count" type="number" min="0" max="100000" step="1" value={count ?? ''} oninput={changeCount} aria-describedby="glow-count-help" disabled={runtime.preparing || runtime.sending || started} /><span>根</span></div><button class="button primary" disabled={!plan || count === undefined || !!runtime.glowError || runtime.preparing || runtime.sending || started}>{runtime.sending ? '正在赠送…' : finished ? '已全部赠送' : started ? '赠送已停止' : '确认赠送'}</button></div>
       <p class="help" id="glow-count-help">填 0 平均分配，仅使用背包道具。</p>
+      {#if runtime.sending}<p class="status" role="status">关闭窗口后仍会继续赠送，可重新打开查看进度。</p>{/if}
     </form>
     {#if runtime.glowError}<p class="error" role="alert">{runtime.glowError}</p>{/if}
     {#if plan}

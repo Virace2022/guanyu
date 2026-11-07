@@ -1,5 +1,5 @@
 import type { TeamController } from '../../features/team-live/controller';
-import { assignedRooms, layoutRooms, visibleTeams, teamColumns, type CustomRoom } from '../../features/team-live/layout';
+import { assignedRooms, layoutRooms, previewGroups, visibleTeams, teamGrid, type CustomRoom } from '../../features/team-live/layout';
 import type { TeamRoom, TeamSource } from './team';
 import type { PlayerStore } from './player';
 import { isPlayerFullscreen } from './player';
@@ -36,9 +36,8 @@ export function mountTeamLayout(team: TeamController, openEditor: () => void, pl
     get fullscreen() { return isPlayerFullscreen(); },
     owner: { get layout() {
       const value = team.value;
-      const people = value.layout.people.map(person => person.roomId);
       return { ...value.options, enabled: value.grouped, allPreview: value.preview, previewMembers: value.previewMembers, keepEmpty: false,
-        previewGroups: [...(people.length ? [{ name: value.layout.peopleTitle, captains: people, members: [], independent: true }] : []), ...visibleTeams(value.layout)] };
+        previewGroups: previewGroups(value.layout, player.value.roomId || '') };
     } },
     updateHeight() { reflow(); },
   };
@@ -109,9 +108,18 @@ export function mountTeamLayout(team: TeamController, openEditor: () => void, pl
       }
     }
     const width = cards.clientWidth || host.clientWidth;
-    const columns = teamColumns(visibleTeams(team.value.layout).length, width, options.teamColumns);
-    cards.style.setProperty('--guanyu-team-columns', String(columns));
-    for (const list of cards.querySelectorAll<HTMLElement>('.guanyu-team-cards')) list.style.setProperty('--guanyu-member-columns', String(Math.max(1, Math.min(options.columns, Math.floor(list.clientWidth / 90) || 1))));
+    const teams = visibleTeams(team.value.layout);
+    const grid = teamGrid(teams, width, options.teamColumns, options.columnsMode, options.columns);
+    cards.style.setProperty('--guanyu-team-columns', String(grid.columns));
+    for (const list of cards.querySelectorAll<HTMLElement>('.guanyu-team-members')) {
+      const section = list.parentElement!;
+      const columns = grid.members.get(section.dataset.teamId!) ?? 1;
+      list.style.setProperty('--guanyu-member-columns', String(columns));
+      list.classList.toggle('guanyu-team-native-size', options.columnsMode === 'native');
+      list.classList.toggle('guanyu-team-auto-size', options.columnsMode === 'auto');
+      const nativeWidth = Math.max(90, ...[...list.children].map(node => parseFloat((node as HTMLElement).style.getPropertyValue('--guanyu-native-card-width')) || 130));
+      section.style.maxWidth = options.columnsMode === 'auto' && list.childElementCount ? `${columns * nativeWidth + (columns - 1) * 8 + 20}px` : '';
+    }
     cards.style.justifyContent = options.alignment;
     view.style.setProperty('--guanyu-team-align', options.alignment);
   }
@@ -141,10 +149,11 @@ export function mountTeamLayout(team: TeamController, openEditor: () => void, pl
     if (label) { const badge = document.createElement('span'); badge.className = 'guanyu-team-label'; badge.textContent = label; wrapper.append(badge); }
     return wrapper;
   }
-  function group(title: string, independent = false) {
+  function group(title: string, independent = false, color?: string) {
     const section = document.createElement('section'); section.className = 'guanyu-team-group';
     if (independent) section.classList.add('guanyu-team-independent');
     const heading = document.createElement('h3'); heading.textContent = title;
+    if (color) { heading.classList.add('guanyu-team-colored-title'); heading.style.setProperty('--guanyu-team-color', color); }
     const list = document.createElement('div'); list.className = 'guanyu-team-cards'; section.append(heading, list); cards!.append(section); return list;
   }
   async function togglePreview(members = false) {
@@ -227,7 +236,7 @@ export function mountTeamLayout(team: TeamController, openEditor: () => void, pl
     toolbar!.hidden = bridge.fullscreen || !value.options.showToolbar;
     controls.layout.textContent = value.grouped ? '原始布局' : '分组布局';
     controls.preview.textContent = value.preview ? '关闭预览' : '开启预览';
-    controls.members.hidden = !value.grouped || !value.preview;
+    controls.members.hidden = !value.grouped || !value.preview || !bridge.owner.layout.previewGroups.some(group => group.remaining.some(id => id !== player.value.roomId));
     controls.members.textContent = value.previewMembers ? '收起队员' : '展开队员';
     controls.refresh.disabled = value.refreshing;
     controls.status.textContent = value.statusError || (value.refreshing ? '刷新中…' : value.lastRefresh ? `更新于 ${new Date(value.lastRefresh).toLocaleTimeString()}` : `${source.rooms.length} 人`);
@@ -272,7 +281,8 @@ export function mountTeamLayout(team: TeamController, openEditor: () => void, pl
         const rooms = new Map(available.map(room => [room.id, room]));
         if (value.layout.people.length) { const list = group(value.layout.peopleTitle, true); for (const person of value.layout.people) list.append(card(rooms.get(person.roomId), person.roomId, person.name, person.label)); }
         for (const item of visibleTeams(value.layout)) {
-          const section = group(item.name).parentElement!;
+          const section = group(item.name, false, item.color).parentElement!;
+          section.dataset.teamId = item.id;
           const captains = section.querySelector<HTMLElement>('.guanyu-team-cards')!; captains.classList.add('guanyu-team-captains'); captains.setAttribute('aria-label', `${item.name}队长`);
           for (const id of item.captains) captains.append(card(rooms.get(id), id, undefined, '队长'));
           const members = document.createElement('div'); members.className = 'guanyu-team-cards guanyu-team-members'; members.setAttribute('aria-label', `${item.name}队员`);
