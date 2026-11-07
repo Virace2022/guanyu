@@ -15,9 +15,11 @@ import type { SignController } from '../features/sign/feature';
 import type { BackpackController } from '../features/backpack/controller';
 import type { PlaybackController } from '../features/playback/controller';
 import type { RoomPageController } from '../features/room-page/controller';
+import { isolateKeyboard } from './modal';
 
 export function createSettingsWindow(settings: SettingsStore, gain: GainController, pageTheme: Readable<'light' | 'dark'>, tools: PageTools, team: TeamController, multi: MultiscreenController, sign: SignController, backpack: BackpackController, playback: PlaybackController, roomPage: RoomPageController, openTeam: () => void) {
   let host: HTMLDivElement | undefined;
+  let stopKeyboard: (() => void) | undefined;
   let component: ReturnType<typeof mount<{
     settings: SettingsStore; gain: GainController; pageTheme: Readable<'light' | 'dark'>; tools: PageTools; team: TeamController; multi: MultiscreenController; sign: SignController; backpack: BackpackController; playback: PlaybackController; roomPage: RoomPageController; openTeam: () => void;
   }, { show: (target?: SettingsSection) => void }>> | undefined;
@@ -27,6 +29,7 @@ export function createSettingsWindow(settings: SettingsStore, gain: GainControll
       host = document.createElement('div');
       host.id = 'guanyu-settings';
       const root = host.attachShadow({ mode: 'open' });
+      stopKeyboard = isolateKeyboard(root);
       root.append(styles.cloneNode(true), menuStyles.cloneNode(true), motionStyles.cloneNode(true), scrollbarStyles.cloneNode(true));
       document.body.append(host);
       component = mount(Settings, { target: root, props: { settings, gain, pageTheme, tools, team, multi, sign, backpack, playback, roomPage, openTeam } });
@@ -38,6 +41,7 @@ export function createSettingsWindow(settings: SettingsStore, gain: GainControll
   return {
     open,
     dispose() {
+      stopKeyboard?.(); stopKeyboard = undefined;
       if (component) void unmount(component);
       component = undefined;
       host?.remove(); host = undefined;

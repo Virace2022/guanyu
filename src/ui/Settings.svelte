@@ -5,6 +5,7 @@
   import type { GainController } from '../features/volume-gain/controller';
   import type { Readable } from '../core/state';
   import FishIcon from './FishIcon.svelte';
+  import SettingsIcon from './SettingsIcon.svelte';
   import AccentPicker from './AccentPicker.svelte';
   import { version } from '../core/version';
   import type { PageTools } from '../features/page-tools/controller';
@@ -242,21 +243,21 @@
       <label class="compact-category">当前分类<select aria-label="选择设置分类" bind:value={section}>{#each [['general', '通用'], ['sound', '声音'], ['optimization', '优化'], ['playback', '播放'], ['room', '房间页面'], ['backpack', '背包'], ['barrage', '弹幕'], ['team', '团播'], ['multi', '多屏'], ['menu', '右键菜单'], ['sign', '签到']] as item}<option value={item[0]}>{item[1]}</option>{/each}</select></label>
       <div class="nav-items">
         <button class:current={section === 'general'} aria-current={section === 'general' ? 'page' : undefined} onclick={() => { section = 'general'; }}>
-          <span aria-hidden="true">⚙</span><span>通用</span>{#if generalDirty}<small>未保存</small>{/if}
+          <SettingsIcon name="general" /><span>通用</span>{#if generalDirty}<small>未保存</small>{/if}
         </button>
         <button class:current={section === 'sound'} aria-current={section === 'sound' ? 'page' : undefined} onclick={() => { section = 'sound'; }}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M3 9h4l5-4v14l-5-4H3zM16 8a6 6 0 0 1 0 8M19 5a10 10 0 0 1 0 14" /></svg>
+          <SettingsIcon name="sound" />
           <span>声音</span>{#if soundDirty}<small>未保存</small>{/if}
         </button>
-        <button class:current={section === 'optimization'} aria-current={section === 'optimization' ? 'page' : undefined} onclick={() => { section = 'optimization'; }}><span aria-hidden="true">☷</span><span>优化</span>{#if optimizationDirty}<small>未保存</small>{/if}</button>
-        <button class:current={section === 'playback'} aria-current={section === 'playback' ? 'page' : undefined} onclick={() => { section = 'playback'; }}><span aria-hidden="true">▷</span><span>播放</span>{#if playbackDirty}<small>未保存</small>{/if}</button>
-        <button class:current={section === 'room'} aria-current={section === 'room' ? 'page' : undefined} onclick={() => { section = 'room'; }}><span aria-hidden="true">⌂</span><span>房间页面</span>{#if roomDirty}<small>未保存</small>{/if}</button>
-        <button class:current={section === 'backpack'} aria-current={section === 'backpack' ? 'page' : undefined} onclick={() => { section = 'backpack'; }}><span aria-hidden="true">▣</span><span>背包</span>{#if backpackDirty}<small>未保存</small>{/if}</button>
-        <button class:current={section === 'barrage'} aria-current={section === 'barrage' ? 'page' : undefined} onclick={() => { section = 'barrage'; }}><span aria-hidden="true">☰</span><span>弹幕</span>{#if barrageDirty}<small>未保存</small>{/if}</button>
-        <button class:current={section === 'team'} aria-current={section === 'team' ? 'page' : undefined} onclick={() => { section = 'team'; }}><span aria-hidden="true">♧</span><span>团播</span>{#if teamDirty}<small>未保存</small>{/if}</button>
-        <button class:current={section === 'multi'} aria-current={section === 'multi' ? 'page' : undefined} onclick={() => { section = 'multi'; }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></svg><span>多屏</span>{#if multiDirty}<small>未保存</small>{/if}</button>
-        <button class:current={section === 'menu'} aria-current={section === 'menu' ? 'page' : undefined} onclick={() => { section = 'menu'; }}><span aria-hidden="true">☰</span><span>右键菜单</span>{#if menuDirty}<small>未保存</small>{/if}</button>
-        <button class:current={section === 'sign'} aria-current={section === 'sign' ? 'page' : undefined} onclick={() => { section = 'sign'; }}><span aria-hidden="true">✓</span><span>签到</span>{#if signDirty}<small>未保存</small>{/if}</button>
+        <button class:current={section === 'optimization'} aria-current={section === 'optimization' ? 'page' : undefined} onclick={() => { section = 'optimization'; }}><SettingsIcon name="optimization" /><span>优化</span>{#if optimizationDirty}<small>未保存</small>{/if}</button>
+        <button class:current={section === 'playback'} aria-current={section === 'playback' ? 'page' : undefined} onclick={() => { section = 'playback'; }}><SettingsIcon name="playback" /><span>播放</span>{#if playbackDirty}<small>未保存</small>{/if}</button>
+        <button class:current={section === 'room'} aria-current={section === 'room' ? 'page' : undefined} onclick={() => { section = 'room'; }}><SettingsIcon name="room" /><span>房间页面</span>{#if roomDirty}<small>未保存</small>{/if}</button>
+        <button class:current={section === 'backpack'} aria-current={section === 'backpack' ? 'page' : undefined} onclick={() => { section = 'backpack'; }}><SettingsIcon name="backpack" /><span>背包</span>{#if backpackDirty}<small>未保存</small>{/if}</button>
+        <button class:current={section === 'barrage'} aria-current={section === 'barrage' ? 'page' : undefined} onclick={() => { section = 'barrage'; }}><SettingsIcon name="barrage" /><span>弹幕</span>{#if barrageDirty}<small>未保存</small>{/if}</button>
+        <button class:current={section === 'team'} aria-current={section === 'team' ? 'page' : undefined} onclick={() => { section = 'team'; }}><SettingsIcon name="team" /><span>团播</span>{#if teamDirty}<small>未保存</small>{/if}</button>
+        <button class:current={section === 'multi'} aria-current={section === 'multi' ? 'page' : undefined} onclick={() => { section = 'multi'; }}><SettingsIcon name="multi" /><span>多屏</span>{#if multiDirty}<small>未保存</small>{/if}</button>
+        <button class:current={section === 'menu'} aria-current={section === 'menu' ? 'page' : undefined} onclick={() => { section = 'menu'; }}><SettingsIcon name="menu" /><span>右键菜单</span>{#if menuDirty}<small>未保存</small>{/if}</button>
+        <button class:current={section === 'sign'} aria-current={section === 'sign' ? 'page' : undefined} onclick={() => { section = 'sign'; }}><SettingsIcon name="sign" /><span>签到</span>{#if signDirty}<small>未保存</small>{/if}</button>
       </div>
       <p class="nav-version">观鱼 {version}</p>
     </nav>

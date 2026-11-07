@@ -44,7 +44,7 @@ async function session(donate = async () => {}) {
   const backpack = createBackpack(settings, player, () => {}, () => {});
   await flush();
   await backpack.prepare(2);
-  return { backpack, donations, changeAccount() { uid = 'second'; player.set({ roomId: '100' }); } };
+  return { backpack, donations, settings, changeAccount() { uid = 'second'; player.set({ roomId: '100' }); } };
 }
 
 test('数量修改更新已展示的计划，0 根按库存平均分配', async () => {
@@ -57,7 +57,7 @@ test('数量修改更新已展示的计划，0 根按库存平均分配', async 
   backpack.dispose();
 });
 
-test('成功响应后才标记对应主播，后续失败保留成功勾且不重复赠送', async () => {
+test('成功响应后记录已送数量，后续失败保留记录且允许再次手动赠送', async () => {
   let finishFirst;
   const first = new Promise(resolve => { finishFirst = resolve; });
   const { backpack, donations } = await session(async room => {
@@ -73,12 +73,42 @@ test('成功响应后才标记对应主播，后续失败保留成功勾且不�
   assert.equal(backpack.value.deliveries['1'].status, 'sent');
   assert.equal(backpack.value.deliveries['2'].status, 'failed');
   assert.ok(backpack.value.plan);
-  assert.match(backpack.value.glowError, /已停止后续赠送/);
-  backpack.setGlowCount(3);
-  assert.equal(backpack.value.plan.each, 2);
-  assert.equal(backpack.value.deliveries['1'].status, 'sent');
+  assert.match(backpack.value.sendError, /已停止后续赠送/);
+  assert.equal(backpack.value.sent['1'], 2);
   await backpack.send();
-  assert.equal(donations.length, 2);
+  assert.equal(donations.length, 4);
+  assert.equal(backpack.value.sent['1'], 4);
+  backpack.setGlowCount(3);
+  assert.equal(backpack.value.plan.each, 3);
+  assert.equal(backpack.value.sent['1'], 4);
+  await backpack.send();
+  assert.equal(donations.length, 6);
+  assert.equal(backpack.value.sent['1'], 7);
+  backpack.dispose();
+});
+
+test('修改背包显示设置不打断赠送，新计划和再次赠送均保留已送记录', async () => {
+  let finishSecond;
+  const second = new Promise(resolve => { finishSecond = resolve; });
+  const { backpack, donations, settings } = await session(room => room === '2' ? second : undefined);
+  const sending = backpack.send();
+  await flush();
+  assert.equal(backpack.value.sent['1'], 2);
+  assert.equal(backpack.value.deliveries['2'].status, 'sending');
+  settings.set({ backpack: { ...settings.value.backpack, details: true } });
+  assert.equal(backpack.value.sending, true);
+  assert.equal(backpack.value.sent['1'], 2);
+  assert.equal(backpack.value.deliveries['2'].status, 'sending');
+  finishSecond();
+  await sending;
+  assert.equal(backpack.value.sent['2'], 2);
+  await backpack.prepare(1);
+  assert.equal(backpack.value.sent['1'], 2);
+  assert.equal(backpack.value.sent['2'], 2);
+  await backpack.send();
+  assert.equal(donations.length, 4);
+  assert.equal(backpack.value.sent['1'], 3);
+  assert.equal(backpack.value.sent['2'], 3);
   backpack.dispose();
 });
 
@@ -93,6 +123,7 @@ test('账号变化后，迟到的赠送响应不写入新账号头像状态', as
   await sending;
   assert.equal(backpack.value.plan, null);
   assert.equal(Object.keys(backpack.value.deliveries).length, 0);
+  assert.equal(Object.keys(backpack.value.sent).length, 0);
   assert.equal(donations.length, 1);
   backpack.dispose();
 });

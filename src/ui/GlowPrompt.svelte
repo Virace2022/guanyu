@@ -29,17 +29,19 @@
   <header class="window-header"><h2 id="glow-title">荧光棒续牌</h2><button class="icon-button" aria-label="关闭荧光棒续牌" onclick={() => dialog.close()}>×</button></header>
   <main class="glow-content">
     <form onsubmit={event => { event.preventDefault(); void backpack.send(); }}>
-      <div class="glow-count-row"><label for="glow-count">每个房间赠送</label><div class="glow-count-field"><input id="glow-count" type="number" min="0" max="100000" step="1" value={count ?? ''} oninput={changeCount} aria-describedby="glow-count-help" disabled={runtime.preparing || runtime.sending || started} /><span>根</span></div><button class="button primary" disabled={!plan || count === undefined || !!runtime.glowError || runtime.preparing || runtime.sending || started}>{runtime.sending ? '正在赠送…' : finished ? '已全部赠送' : started ? '赠送已停止' : '确认赠送'}</button></div>
+      <div class="glow-count-row"><label for="glow-count">每个房间赠送</label><div class="glow-count-field"><input id="glow-count" type="number" min="0" max="100000" step="1" value={count ?? ''} oninput={changeCount} aria-describedby="glow-count-help" disabled={runtime.preparing || runtime.sending} /><span>根</span></div><button class="button primary" disabled={!plan || count === undefined || !!runtime.glowError || runtime.preparing || runtime.sending}>{runtime.sending ? '正在赠送…' : started ? '再次赠送' : '确认赠送'}</button></div>
       <p class="help" id="glow-count-help">填 0 平均分配，仅使用背包道具。</p>
+      {#if Object.keys(runtime.sent).length}<p class="help">已送记录仅作提示，每次确认都会再向全部目标房间赠送。</p>{/if}
       {#if runtime.sending}<p class="status" role="status">关闭窗口后仍会继续赠送，可重新打开查看进度。</p>{/if}
     </form>
     {#if runtime.glowError}<p class="error" role="alert">{runtime.glowError}</p>{/if}
+    {#if runtime.sendError}<p class="error" role="alert">{runtime.sendError}</p>{/if}
     {#if plan}
       <section class="glow-plan" aria-labelledby="glow-plan-title">
         <h3 id="glow-plan-title">赠送计划 <span>· {plan.name}</span></h3>
         <dl class="glow-totals"><div><dt>背包库存</dt><dd>{plan.available} 根</dd></div><div><dt>每房赠送</dt><dd>{plan.each} 根</dd></div><div><dt>合计赠送</dt><dd>{plan.total} 根</dd></div></dl>
         <div class="glow-room-heading"><h4>目标房间</h4><span>{plan.rooms.length} 个</span></div>
-        <ul class="room-grid glow-rooms">{#each plan.rooms as room (room.id)}{@const delivery = runtime.deliveries[room.id]}<li class="room-tile" data-status={delivery?.status} title={`${room.name}（${room.id}）${delivery?.status === 'sent' ? ' · 已赠送' : delivery?.error ? ` · ${delivery.error}` : ''}`}><RoomAvatar name={room.name} src={room.avatar} mark={delivery?.status === 'sent' ? 'done' : delivery?.status === 'sending' ? 'busy' : delivery?.status === 'failed' ? 'failed' : undefined} /><span class="room-name">{room.name}</span><span class="visually-hidden">房间 {room.id}{delivery?.status === 'sent' ? '，已赠送' : delivery?.status === 'sending' ? '，正在赠送' : delivery?.status === 'failed' ? '，赠送失败' : ''}</span></li>{/each}</ul>
+        <ul class="room-grid glow-rooms">{#each plan.rooms as room (room.id)}{@const delivery = runtime.deliveries[room.id]}{@const sent = runtime.sent[room.id] || 0}<li class="room-tile" data-status={delivery?.status} title={`${room.name}（${room.id}）${sent ? ` · 本页已送 ${sent} 根` : ''}${delivery?.error ? ` · ${delivery.error}` : ''}`}><RoomAvatar name={room.name} src={room.avatar} mark={delivery?.status === 'sending' ? 'busy' : delivery?.status === 'failed' ? 'failed' : sent ? 'done' : undefined} /><span class="room-name">{room.name}</span>{#if sent}<small class="room-detail">已送 {sent} 根</small>{/if}<span class="visually-hidden">房间 {room.id}{delivery?.status === 'sending' ? '，正在赠送' : delivery?.status === 'failed' ? '，本次赠送失败' : ''}</span></li>{/each}</ul>
         {#if plan.avatarError}<p class="help">{plan.avatarError}</p>{/if}
       </section>
     {:else if runtime.preparing}<p class="glow-loading" role="status">正在读取库存与目标房间…</p>{/if}

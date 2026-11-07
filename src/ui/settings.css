@@ -43,7 +43,7 @@ nav { width: 184px; flex: none; background: var(--side); border-right: 1px solid
 .nav-items { display: flex; flex: 1; flex-direction: column; gap: 4px; min-height: 0; overflow-y: auto; padding-right: 4px; }
 .nav-items button { display: flex; flex: none; align-items: center; gap: 10px; min-height: 42px; padding: 8px 12px; border: 0; border-radius: 7px; background: transparent; color: var(--ink); text-align: start; font-size: 14px; }
 .nav-items button:hover { background: var(--tint); }
-.nav-items button.current { background: var(--tint); color: var(--accent); font-weight: 600; }
+.nav-items button.current { background: var(--tint); color: var(--accent-text); font-weight: 600; }
 .nav-items svg, .nav-items button > span:first-child { width: 20px; height: 20px; font-size: 20px; line-height: 1; flex: none; }
 .nav-items small { font-size: 11px; font-weight: 400; margin-left: auto; white-space: nowrap; }
 .nav-version { margin-top: auto; padding: 20px 14px 0; color: var(--muted); font-size: 11px; overflow-wrap: anywhere; }
@@ -76,7 +76,7 @@ section + section { border-top: 1px solid var(--line); padding-top: 26px; }
 .setting-row { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
 .setting-row > label, .setting-row > span:first-child { min-width: 92px; font-size: 15px; }
 .stepper { display: flex; align-items: center; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; height: 38px; }
-.stepper button { color: var(--accent); background: transparent; border: 0; padding: 0; width: 36px; height: 36px; font-size: 22px; }
+.stepper button { color: var(--accent-text); background: transparent; border: 0; padding: 0; width: 36px; height: 36px; font-size: 22px; }
 .stepper button:hover { background: var(--tint); }
 .stepper-value { display: flex; align-items: center; justify-content: center; gap: 4px; width: 64px; }
 .stepper input { width: 3ch; min-width: 0; height: 34px; padding: 0; border: 0; color: var(--ink); background: transparent; text-align: center; font-variant-numeric: tabular-nums; appearance: textfield; -moz-appearance: textfield; outline-offset: -2px; }
@@ -100,7 +100,7 @@ dialog[data-theme="dark"] select { background-image: url("data:image/svg+xml,%3C
 .range-block { min-width: 90px; flex: 1; }
 input[type="range"] { width: 100%; margin: 0; height: 32px; accent-color: var(--accent); }
 .range-scale { display: flex; justify-content: space-between; color: var(--muted); font-size: 12px; }
-.gain-value { color: var(--accent); min-width: 54px; font-size: 18px; font-weight: 600; line-height: 32px; font-variant-numeric: tabular-nums; }
+.gain-value { color: var(--accent-text); min-width: 54px; font-size: 18px; font-weight: 600; line-height: 32px; font-variant-numeric: tabular-nums; }
 .button { display: inline-flex; align-items: center; justify-content: center; min-height: 36px; padding: 7px 16px; border: 1px solid var(--line); border-radius: 6px; color: var(--ink); background: var(--surface); white-space: nowrap; }
 .button:hover:not(:disabled) { background: var(--tint); }
 .button.primary { background: var(--action); color: var(--on-accent); border-color: var(--action); font-weight: 600; }
@@ -159,7 +159,7 @@ input[type="range"] { width: 100%; margin: 0; height: 32px; accent-color: var(--
 .data-scroll { overflow-x: auto; margin-top: 12px; }
 .data-scroll table { width: 100%; border-collapse: collapse; font-size: 12px; text-align: left; }
 .data-scroll th, .data-scroll td { padding: 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
-.data-scroll a { color: var(--accent); }
+.data-scroll a { color: var(--accent-text); }
 .preset-settings h2 small { color: var(--muted); font-size: 12px; font-weight: 400; margin-left: 10px; }
 .preset-editor { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 14px; }
 .preset-chip { justify-content: space-between; gap: 6px; padding: 7px 12px; }
@@ -215,7 +215,7 @@ input[type="range"] { width: 100%; margin: 0; height: 32px; accent-color: var(--
 .multi-candidates > .help { grid-column: 1 / -1; margin: 0; padding: 8px 0; font-size: 12px; }
 .candidate-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 0; border: 0; border-bottom: 1px solid var(--line); background: transparent; color: var(--ink); text-align: left; }
 .candidate-row small { color: var(--muted); flex: none; }
-.candidate-row:hover { color: var(--accent); }
+.candidate-row:hover { color: var(--accent-text); }
 @media(max-width: 680px) { .menu-editor { grid-template-columns: 1fr; gap: 12px; } .setting-row { flex-wrap: wrap; } .multi-prompt main { padding: 16px; } }
 @media (max-width: 1100px), (max-height: 800px) {
   .settings-window .window-header { height: 52px; padding-inline: 20px; }

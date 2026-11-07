@@ -7,9 +7,11 @@ import styles from './settings.css?style';
 import editorStyles from './team-editor.css?style';
 import motionStyles from './motion.css?style';
 import scrollbarStyles from './scrollbars.css?style';
+import { isolateKeyboard } from './modal';
 
 export function createTeamEditor(team: TeamController, settings: SettingsStore, pageTheme: Readable<'light' | 'dark'>) {
   let host: HTMLDivElement | undefined;
+  let stopKeyboard: (() => void) | undefined;
   let component: ReturnType<typeof mount<{
     team: TeamController; settings: SettingsStore; pageTheme: Readable<'light' | 'dark'>;
   }, { show: () => void }>> | undefined;
@@ -19,6 +21,7 @@ export function createTeamEditor(team: TeamController, settings: SettingsStore, 
     if (!host || !component) {
       host = document.createElement('div'); host.id = 'guanyu-team-editor';
       const root = host.attachShadow({ mode: 'open' });
+      stopKeyboard = isolateKeyboard(root);
       root.append(styles.cloneNode(true), editorStyles.cloneNode(true), motionStyles.cloneNode(true), scrollbarStyles.cloneNode(true));
       document.body.append(host);
       component = mount(TeamEditor, { target: root, props: { team, settings, pageTheme } });
@@ -27,5 +30,5 @@ export function createTeamEditor(team: TeamController, settings: SettingsStore, 
     component.show();
   }
 
-  return { open, dispose() { if (component) void unmount(component); component = undefined; host?.remove(); host = undefined; } };
+  return { open, dispose() { stopKeyboard?.(); stopKeyboard = undefined; if (component) void unmount(component); component = undefined; host?.remove(); host = undefined; } };
 }

@@ -266,7 +266,9 @@
     if (people) {
       const existing = draft.people.find(person => person.roomId === item.roomId);
       if (existing && existing.id !== item.person?.id) {
-        detachRoom(); item.person = existing; selected = 'people'; return;
+        detachRoom();
+        if (item.kind !== 'picker') item.person = existing;
+        selected = 'people'; return;
       }
       if (existing && (!before || existing.id === before)) return;
       if (existing) {
@@ -281,6 +283,9 @@
     } else {
       const target = draft.teams.find(team => team.id === destination); if (!target) return;
       const same = item.fromTeam === destination && item.fromRole === targetRole;
+      if (item.kind === 'picker' && !same && [...target.captains, ...target.members].includes(item.roomId)) {
+        detachRoom(); selected = destination!; return;
+      }
       if (same && (!before || before === item.roomId)) return;
       if (same && before) {
         const from = target[targetRole].indexOf(item.roomId), to = target[targetRole].indexOf(before);
@@ -446,16 +451,16 @@
         {#each filtered as room, index (room.id)}
           {#if index === 0 || assigned.has(room.id) !== assigned.has(filtered[index - 1]!.id)}<h3 class="assignment-heading">{assigned.has(room.id) ? '已分配' : '未分配'}</h3>{/if}
           <div class="picker-row" class:allocated={assigned.has(room.id)} data-sort-item data-drag-handle data-sort-kind="picker" data-sort-id={room.id} data-room-id={room.id}>
-            <button class="person-avatar picker-avatar" data-card-focus type="button" aria-label={`${alreadyAdded(room.id) ? '已在当前分区' : assigned.has(room.id) ? '移动或复用' : '添加'} ${room.name}`} disabled={alreadyAdded(room.id) || changedActivity || changedElsewhere} title={alreadyAdded(room.id) ? '已在当前分区' : assigned.has(room.id) ? '点击选择移动或复用；拖入分区保留其他归属' : '点击添加，或拖入目标分区'} onclick={event => assigned.has(room.id) ? openActions(event) : addRoom(room.id)}>
-              {#if room.avatar}<img src={room.avatar} alt="" loading="lazy" draggable="false" />{:else}<span>{room.name.slice(0, 1)}</span>{/if}
-              {#if !assigned.has(room.id)}<span class="avatar-add" aria-hidden="true">+</span>{/if}
-            </button>
-            <div class="member-name"><div class="picker-name-line" title={[room.name, ...references(room.id).map(location)].join('；')}><strong>{room.name}</strong><span class="assignment-marks">
+            <button class="picker-select" data-card-focus type="button" aria-label={`${alreadyAdded(room.id) ? '已在当前分区' : assigned.has(room.id) ? '移动或复用' : '添加'} ${room.name}`} aria-disabled={alreadyAdded(room.id)} disabled={changedActivity || changedElsewhere} title={alreadyAdded(room.id) ? '已在当前分区，可拖入其他分区' : assigned.has(room.id) ? '点击选择移动或复用；拖入分区保留其他归属' : '点击添加，或拖入目标分区'} onclick={event => { if (!alreadyAdded(room.id)) assigned.has(room.id) ? void openActions(event) : addRoom(room.id); }}>
+              <span class="person-avatar picker-avatar">{#if room.avatar}<img src={room.avatar} alt="" loading="lazy" draggable="false" />{:else}<span>{room.name.slice(0, 1)}</span>{/if}
+              {#if !assigned.has(room.id)}<span class="avatar-add" aria-hidden="true">+</span>{/if}</span>
+            <span class="member-name"><span class="picker-name-line" title={[room.name, ...references(room.id).map(location)].join('；')}><strong>{room.name}</strong><span class="assignment-marks">
               {#each references(room.id).filter(item => item.fromTeam) as reference (`${reference.fromTeam}-${reference.fromRole}`)}
                 {@const referenceTeam = draft.teams.find(item => item.id === reference.fromTeam)}
                 <span class="assignment-mark" style:--team-color={referenceTeam?.color} role="img" aria-label={location(reference)} title={location(reference)}>{#if reference.fromRole === 'captains'}<svg viewBox="0 0 20 20" aria-hidden="true"><path d="m10 1.5 2.6 5.3 5.9.9-4.3 4.1 1 5.9-5.2-2.8-5.2 2.8 1-5.9L1.5 7.7l5.9-.9Z" /></svg>{:else}<span class="team-dot"></span>{/if}</span>
               {/each}
-            </span></div></div>
+            </span></span></span>
+            </button>
           </div>
         {:else}<p class="empty-list">没有符合条件的成员。</p>{/each}
       </div>
@@ -486,7 +491,7 @@
   {#if editingPerson}
     {@const person = draft.people.find(person => person.id === editingPerson)}
     {#if person}
-      <dialog bind:this={personDialog} class="action-dialog guanyu-themed" aria-label="编辑独立人物" onclose={() => { editingPerson = undefined; void focusRoom(person.roomId); }}><form onsubmit={event => { event.preventDefault(); personDialog!.close(); }}>
+      <dialog bind:this={personDialog} class="action-dialog person-editor guanyu-themed" data-theme={theme} aria-label="编辑独立人物" onclose={() => { editingPerson = undefined; void focusRoom(person.roomId); }}><form onsubmit={event => { event.preventDefault(); personDialog!.close(); }}>
         <h2>编辑独立人物</h2><label class="edit-title">显示名称<input maxlength="40" bind:value={person.name} required /></label><label class="edit-title">身份标签<input maxlength="40" bind:value={person.label} placeholder="如嘉宾" /></label><div class="confirm-actions"><button class="button primary">完成编辑</button></div>
       </form></dialog>
     {/if}

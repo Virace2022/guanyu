@@ -14,21 +14,21 @@
 .compact-switch { width: 30px; height: 18px; padding: 3px; }
 .compact-switch span { width: 12px; height: 12px; }
 .compact-switch[aria-checked="true"] span { transform: translateX(12px); }
-.text-button { border: 0; border-radius: 4px; background: transparent; color: var(--accent); padding: 5px; font: inherit; }
+.text-button { border: 0; border-radius: 4px; background: transparent; color: var(--accent-text); padding: 5px; font: inherit; }
 .text-button:hover:not(:disabled) { background: var(--tint); }
 .danger { color: var(--danger); }
 .editor-body { min-height: 0; flex: 1; display: grid; grid-template-columns: var(--editor-nav) minmax(0, 1fr) var(--editor-picker); }
 .team-nav { width: auto; min-width: 0; min-height: 0; padding: 14px 10px; gap: 6px; display: flex; flex-direction: column; }
 .team-nav > button, .team-select { display: flex; align-items: center; gap: 9px; padding: 11px 10px; border: 0; border-radius: 6px; background: transparent; color: var(--ink); text-align: left; font: inherit; }
 .team-nav small { color: var(--muted); margin-left: auto; font-variant-numeric: tabular-nums; }
-.team-nav .chosen { background: var(--tint); color: var(--accent); font-weight: 600; }
+.team-nav .chosen { background: var(--tint); color: var(--accent-text); font-weight: 600; }
 .team-list { min-height: 0; flex: 1; overflow: auto; padding-top: 6px; }
 .team-entry { position: relative; display: flex; align-items: center; width: 100%; margin-bottom: 3px; border-radius: 6px; }
 .team-select { min-width: 0; flex: 1; gap: 6px; }
 .team-dot { display: inline-block; flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--team-color); box-shadow: inset 0 0 0 1px rgb(127 127 127 / 24%); }
-.team-entry.chosen .team-select { color: var(--accent); font-weight: 600; }
+.team-entry.chosen .team-select { color: var(--accent-text); font-weight: 600; }
 .team-name { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.team-nav .add-team { display: block; box-sizing: border-box; width: 100%; margin-top: 6px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 5px; background: transparent; color: var(--accent); font: inherit; font-size: 12px; line-height: 1.5; text-align: center; }
+.team-nav .add-team { display: block; box-sizing: border-box; width: 100%; margin-top: 6px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 5px; background: transparent; color: var(--accent-text); font: inherit; font-size: 12px; line-height: 1.5; text-align: center; }
 .team-nav .add-team:hover { background: var(--tint); }
 .team-detail { padding: 16px; min-width: 0; min-height: 0; overflow: auto; scrollbar-gutter: stable both-edges; }
 .edit-title { display: flex; flex-direction: column; gap: 5px; color: var(--muted); font-size: 12px; min-width: 0; }
@@ -43,7 +43,7 @@
 .role-bar { display: flex; align-items: center; flex-wrap: wrap; justify-content: space-between; gap: 0 8px; border-bottom: 1px solid var(--line); margin-top: 10px; }
 .role-tabs { display: flex; gap: 16px; flex: none; }
 .role-tabs button { border: 0; border-bottom: 2px solid transparent; border-radius: 0; padding: 10px 0; background: transparent; color: var(--muted); font: inherit; }
-.role-tabs button[aria-pressed="true"] { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+.role-tabs button[aria-pressed="true"] { color: var(--accent-text); border-bottom-color: var(--accent); font-weight: 600; }
 .team-color-trigger { display: inline-flex; flex: none; align-items: center; justify-content: center; gap: 8px; min-height: 32px; padding: 4px 8px; border: 1px solid var(--line); border-radius: 5px; background: transparent; color: var(--ink); font: inherit; font-size: 12px; }
 .team-color-trigger:hover, .team-color-trigger[aria-expanded="true"] { background: var(--side); }
 .team-color-trigger .team-dot { width: 12px; height: 12px; }
@@ -74,7 +74,7 @@
 .team-entry:hover .team-select, .team-entry:focus-within .team-select { padding-left: 34px; }
 .remove-team:hover { color: var(--danger); }
 .remove-team:focus-visible { outline: 2px solid var(--accent); }
-.person-avatar { flex: none; width: 36px; height: 36px; border-radius: 50%; overflow: hidden; background: var(--tint); color: var(--accent); display: grid; place-items: center; }
+.person-avatar { flex: none; width: 36px; height: 36px; border-radius: 50%; overflow: hidden; background: var(--tint); color: var(--accent-text); display: grid; place-items: center; }
 .person-avatar img { width: 100%; height: 100%; object-fit: cover; }
 .member-row, .person-row, .picker-row { position: relative; cursor: grab; touch-action: none; user-select: none; }
 .assigned-avatar { position: relative; padding: 0; border: 0; background: transparent; font: inherit; cursor: grab; }
@@ -101,7 +101,7 @@
 .member-name small { display: block; font-size: 11px; color: var(--muted); }
 .drag-handle { display: grid; place-items: center; flex: none; width: 30px; height: 34px; padding: 0; border: 0; border-radius: 4px; background: transparent; color: var(--muted); cursor: grab; touch-action: none; }
 .drag-handle svg { pointer-events: none; }
-.drag-handle:hover, .drag-handle:focus-visible { color: var(--accent); background: var(--tint); }
+.drag-handle:hover, .drag-handle:focus-visible { color: var(--accent-text); background: var(--tint); }
 .drag-handle:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .sort-pressed { outline: 1px solid var(--accent); outline-offset: -1px; }
 .sort-placeholder { opacity: .28; outline: 1px dashed var(--accent); outline-offset: -1px; }
@@ -125,11 +125,12 @@
 .filter input { accent-color: var(--accent); }
 .picker-list { min-height: 0; overflow: auto; scrollbar-gutter: stable; padding: 0 12px 12px; flex: 1; }
 .picker-avatar { position: relative; width: 36px; height: 36px; padding: 0; border: 0; font: inherit; cursor: pointer; touch-action: none; }
-.picker-avatar:disabled { opacity: 1; cursor: default; }
-.picker-avatar:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.picker-select { display: flex; align-items: center; gap: inherit; width: 100%; min-width: 0; padding: 0; border: 0; background: transparent; color: inherit; text-align: left; font: inherit; cursor: grab; }
+.picker-select:disabled { opacity: 1; cursor: default; }
+.picker-select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
 .avatar-add { position: absolute; inset: 0; display: grid; place-items: center; border-radius: inherit; background: rgb(0 0 0 / 62%); color: #fff; font: 24px/1 system-ui; opacity: 0; pointer-events: none; transition: opacity 140ms ease-out; }
-.picker-row:hover .avatar-add, .picker-avatar:focus-visible .avatar-add { opacity: 1; }
-@media (hover: none) { .picker-avatar:not(:disabled) .avatar-add, .member-remove { opacity: 1; } .team-entry.chosen .remove-team { opacity: 1; visibility: visible; pointer-events: auto; transform: translateY(-50%); } .team-entry.chosen .team-select { padding-left: 34px; } }
+.picker-row:hover .avatar-add, .picker-select:focus-visible .avatar-add { opacity: 1; }
+@media (hover: none) { .picker-select:not(:disabled) .avatar-add, .member-remove { opacity: 1; } .team-entry.chosen .remove-team { opacity: 1; visibility: visible; pointer-events: auto; transform: translateY(-50%); } .team-entry.chosen .team-select { padding-left: 34px; } }
 @media (pointer: coarse) { .picker-avatar { width: 44px; height: 44px; } }
 .missing { color: var(--danger); }
 .team-nav > button, .team-select, .drag-handle, .role-tabs button { transition: color 140ms ease-out, background-color 140ms ease-out, border-color 140ms ease-out, padding-left 140ms ease-out; }
@@ -143,6 +144,9 @@
 .team-window .window-footer { min-height: 48px; padding: 7px 16px; gap: 10px; }
 .team-window .window-footer p { font-size: 12px; }
 .team-window .window-footer .button { min-height: 32px; padding: 5px 12px; font-size: 13px; }
+.person-editor .edit-title { display: flex; flex-direction: column; align-items: stretch; gap: 6px; }
+.person-editor .edit-title + .edit-title { margin-top: 12px; }
+.person-editor .edit-title input { min-height: 36px; font-size: 14px; font-weight: 400; }
 @media (max-width: 700px) {
   .team-window { border-radius: 8px; }
   .team-window .team-header { gap: 6px 12px; padding: 8px 12px; }
