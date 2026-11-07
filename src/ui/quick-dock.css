@@ -1,0 +1,17 @@
+:host { all: initial; display: flex; flex: none; align-self: center; align-items: center; justify-content: center; width: 28px; height: 28px; margin: 0 0 10px; font: 14px/1.5 system-ui, "Microsoft YaHei", sans-serif; }
+:host([data-floating]) { position: fixed; right: 18px; bottom: 28px; z-index: 1000; width: 40px; height: 40px; margin: 0; }
+:host([hidden]) { display: none; }
+:host([data-player-controls]) { display: inline-flex; width: 32px; height: 32px; margin: 0 4px; color: white; }
+* { box-sizing: border-box; }
+button { font: inherit; cursor: pointer; }
+.dock-trigger { appearance: none; display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; margin: 0; padding: 0; border: 0; border-radius: 0; box-shadow: none; background: transparent; color: var(--accent, #ff5d23); }
+.dock-trigger span, .dock-trigger svg { display: block; width: 28px; height: 28px; }
+.dock-trigger svg { color: inherit; }
+:host([data-player-controls]) .dock-trigger { color: white; width: 32px; height: 32px; }
+:host([data-player-controls]) .dock-trigger span, :host([data-player-controls]) .dock-trigger svg { width: 32px; height: 32px; }
+:host([data-player-controls]) .dock-trigger:hover, :host([data-player-controls]) .dock-trigger:focus-visible { color: var(--accent, #ff5d23); }
+:host([data-player-controls]) .dock-trigger:focus-visible { outline-offset: 3px; }
+:host(:not([data-player-controls])) .dock-trigger:hover { color: color-mix(in srgb, var(--accent, #ff5d23) 80%, black); }
+button:focus-visible { outline: 2px solid var(--accent, #ff5d23); outline-offset: 1px; }
+.dock-trigger { transition: color 120ms ease-out; }
+@media (prefers-reduced-motion: reduce) { .dock-trigger { transition: none; } }

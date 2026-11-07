@@ -1,0 +1,39 @@
+{
+  "name": "guanyu",
+  "private": true,
+  "version": "0.0.0",
+  "description": "观鱼：原生优先的斗鱼网页看播增强",
+  "type": "module",
+  "license": "MIT",
+  "author": "Virace2022 <Virace2022@outlook.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Virace2022/guanyu.git"
+  },
+  "engines": {
+    "node": "^20.19.0 || ^22.12.0 || >=24.0.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "check": "svelte-check --tsconfig ./tsconfig.json && tsc --project ./tsconfig.node.json",
+    "test:sign": "node --test tests/sign-yuba.test.cjs tests/task-center.test.cjs",
+    "test:settings": "node --test tests/settings-preview.test.cjs",
+    "test:backpack": "node --test tests/backpack.test.cjs",
+    "test:release": "node --test tests/release-version.test.mjs",
+    "version:next": "node scripts/version.mjs",
+    "release:check": "node scripts/version.mjs --check-tag",
+    "release:publish": "node scripts/publish.mjs",
+    "build": "npm run check && node scripts/build.mjs"
+  },
+  "dependencies": {
+    "svelte": "5.57.3"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "7.3.1",
+    "@types/node": "24.19.2",
+    "svelte-check": "4.7.8",
+    "typescript": "6.0.3",
+    "vite": "8.3.5",
+    "vite-plugin-monkey": "8.1.1"
+  }
+}

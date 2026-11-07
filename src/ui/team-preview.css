@@ -1,0 +1,29 @@
+.guanyu-preview { margin-top: 16px; }
+.guanyu-preview-heading { margin: 0 0 8px; font-size: 15px; font-weight: 600; text-align: center; }
+.guanyu-preview-teams { display: grid; align-items: start; gap: 2px; }
+.guanyu-preview-team { min-width: 0; }
+.guanyu-preview-row { display: flex; flex-wrap: wrap; justify-content: var(--guanyu-team-align, center); gap: 2px; }
+.guanyu-preview-row:empty { display: none; }
+.guanyu-preview-row:not(:empty) + .guanyu-preview-row:not(:empty) { margin-top: 2px; }
+.guanyu-preview-tile { position: relative; box-sizing: border-box; flex: 0 0 calc((100% - (var(--guanyu-preview-columns) - 1) * 2px) / var(--guanyu-preview-columns)); min-width: 0; overflow: hidden; background: #111; }
+.guanyu-preview-screen { position: relative; width: 100%; aspect-ratio: 16 / 9; background: #000; }
+.guanyu-preview-screen video { display: block; position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.guanyu-preview-zoomable:focus-visible { outline: 2px solid #fff; outline-offset: -2px; }
+.guanyu-preview-focus-spacer { flex-basis: 100%; }
+.guanyu-preview-row-focused { position: relative; }
+.guanyu-preview-row-focused > .guanyu-preview-tile:not(.guanyu-preview-focused) { visibility: hidden; pointer-events: none; }
+.guanyu-preview-row-focused > .guanyu-preview-focused { position: absolute; inset: 0; display: flex; flex-direction: column; }
+.guanyu-preview-focused .guanyu-preview-screen { flex: 1; min-height: 0; aspect-ratio: auto; }
+.guanyu-preview-focused .guanyu-preview-name { flex: 0 0 22px; }
+.guanyu-preview-name { box-sizing: border-box; height: 22px; padding: 0 4px; overflow: hidden; color: #fff; font-size: 12px; line-height: 22px; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
+.guanyu-preview-status { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 6px; color: #fff; background: rgb(0 0 0 / 55%); font-size: 12px; text-align: center; white-space: pre-line; }
+.guanyu-preview-tile:is([data-state="error"], [data-state="blocked"]) .guanyu-preview-status { padding-bottom: 30px; }
+.guanyu-preview-retry { position: absolute; left: 50%; bottom: 6px; transform: translateX(-50%); padding: 2px 10px; border: 1px solid #888; border-radius: 3px; color: #fff; background: #333; font: 12px/1.5 "Microsoft YaHei", sans-serif; cursor: pointer; }
+.guanyu-preview-retry:hover { background: #555; }
+.guanyu-preview-retry:focus-visible { outline: 2px solid #fff; outline-offset: -2px; }
+.guanyu-preview [hidden] { display: none !important; }
+.guanyu-preview-empty .guanyu-preview-screen { display: flex; align-items: center; justify-content: center; color: #ccc; font-size: 12px; }
+.guanyu-preview-heading, .guanyu-preview-empty-note { color: var(--ink); background: var(--side); padding: 5px 10px; border-radius: 4px; overflow-wrap: anywhere; }
+.guanyu-preview-independent { grid-column: 1 / -1; }
+.guanyu-preview-independent .guanyu-preview-tile { flex: 0 1 160px; max-width: 100%; }
+.guanyu-preview-empty-note { margin: 12px 0; font: 13px/1.6 system-ui; text-align: center; }

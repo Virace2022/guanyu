@@ -1,0 +1,11 @@
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--accent, #ff5d23) 48%, var(--muted, #8a9c91)) transparent;
+}
+*::-webkit-scrollbar { width: 7px; height: 7px; }
+*::-webkit-scrollbar-track, *::-webkit-scrollbar-corner { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--accent, #ff5d23) 48%, var(--muted, #8a9c91));
+  border-radius: 8px;
+}
+*::-webkit-scrollbar-thumb:hover { background: var(--accent, #ff5d23); }

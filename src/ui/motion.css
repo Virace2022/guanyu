@@ -1,0 +1,28 @@
+dialog {
+  opacity: 0;
+  transform: translateY(8px) scale(0.99);
+  pointer-events: none;
+  transition: opacity 150ms cubic-bezier(0.22, 1, 0.36, 1), transform 150ms cubic-bezier(0.22, 1, 0.36, 1), display 150ms allow-discrete, overlay 150ms allow-discrete;
+}
+dialog[open] { opacity: 1; transform: none; pointer-events: auto; transition-duration: 200ms; }
+dialog::backdrop { opacity: 0; transition: opacity 150ms ease-out, display 150ms allow-discrete, overlay 150ms allow-discrete; }
+dialog[open]::backdrop { opacity: 1; transition-duration: 200ms; }
+[popover] {
+  opacity: 0;
+  transform: translateY(6px) scale(0.985);
+  transform-origin: var(--guanyu-motion-origin, center bottom);
+  pointer-events: none;
+  transition: opacity 130ms cubic-bezier(0.22, 1, 0.36, 1), transform 130ms cubic-bezier(0.22, 1, 0.36, 1), display 130ms allow-discrete, overlay 130ms allow-discrete;
+}
+[popover]:popover-open { opacity: 1; transform: none; pointer-events: auto; transition-duration: 170ms; }
+@starting-style {
+  dialog[open] { opacity: 0; transform: translateY(8px) scale(0.99); }
+  dialog[open]::backdrop { opacity: 0; }
+  [popover]:popover-open { opacity: 0; transform: translateY(6px) scale(0.985); }
+}
+.confirm-panel { animation: guanyu-confirm-enter 170ms cubic-bezier(0.22, 1, 0.36, 1); }
+@keyframes guanyu-confirm-enter { from { opacity: 0; transform: translateY(5px) scale(0.99); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  dialog, dialog[open], dialog::backdrop, dialog[open]::backdrop, [popover], [popover]:popover-open { transition: none; }
+  .confirm-panel { animation: none; }
+}

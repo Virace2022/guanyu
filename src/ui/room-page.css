@@ -1,0 +1,38 @@
+html.guanyu-hide-unread :is(.UserInfo .Badge, .YubaMessage .Badge, .ChatLetter-PopUnread) { display: none !important; }
+.guanyu-room-duration, .guanyu-room-guild { white-space: nowrap; }
+.guanyu-room-duration svg, .guanyu-room-guild svg { display: block; width: 14px; height: 14px; }
+button.guanyu-backpack-entry { appearance: none; flex: none; min-height: 24px; margin-left: auto; border: 1px solid var(--front-border-color, #ddd); border-radius: 4px; padding: 2px 8px; background: var(--front-background-color, #fff); color: var(--text-light-color, #888); font: inherit; cursor: pointer; }
+button.guanyu-backpack-entry:hover { border-color: var(--guanyu-page-accent, #ff5d23); color: var(--guanyu-page-accent, #ff5d23); }
+button.guanyu-backpack-entry:focus-visible, .guanyu-glow-entry:focus-visible, .guanyu-month-toggle:focus-visible { outline: 2px solid var(--guanyu-page-accent, #ff5d23); outline-offset: 2px; }
+.guanyu-backpack-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 0 8px; font: inherit; color: inherit; }
+.guanyu-backpack-month { --guanyu-native-icon: #bbb; --guanyu-native-icon-detail: #ededed; white-space: nowrap; }
+[data-mantine-color-scheme=dark] .guanyu-backpack-month { --guanyu-native-icon: #595a66; --guanyu-native-icon-detail: #94959c; }
+.InteractABAd-valueInfo .guanyu-backpack-month > i.guanyu-month-icon { display: block; flex: none; top: 1px; width: 16px; height: 16px; margin-right: 2px; background: none; color: var(--guanyu-native-icon); }
+.guanyu-month-icon svg { display: block; width: 100%; height: 100%; }
+.guanyu-month-value { display: inline-flex; align-items: center; min-height: 18px; font-variant-numeric: tabular-nums; }
+.guanyu-month-toggle { appearance: none; position: relative; top: 1px; display: inline-flex; align-items: center; justify-content: center; flex: none; width: 18px; height: 18px; margin-left: 3px; padding: 1px; border: 0; background: transparent; color: var(--guanyu-native-icon); cursor: pointer; }
+.guanyu-month-toggle:hover { --guanyu-native-icon-detail: var(--guanyu-native-icon); color: var(--guanyu-native-muted, var(--text-light-color, #888)); }
+.guanyu-month-toggle svg { display: block; width: 16px; height: 16px; }
+.guanyu-backpack-vip { padding: 0 8px; white-space: nowrap; }
+.guanyu-glow-entry { appearance: none; display: inline-flex; align-items: center; justify-content: center; flex: none; width: 32px; height: 30px; margin: 0 6px; padding: 4px; border: 0; border-radius: 4px; background: transparent; color: var(--guanyu-page-accent, #ff5d23); cursor: pointer; }
+.guanyu-glow-entry svg { width: 22px; height: 22px; }
+.guanyu-glow-entry:hover { color: var(--guanyu-page-accent, #ff5d23); background: var(--front-third-background-color, #eee); }
+.guanyu-chat-badge-days { display: block; flex: 0 1 auto; min-width: 0; margin-left: auto; margin-right: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--guanyu-native-muted, var(--text-light-color, #888)); font: inherit; line-height: 24px; }
+.guanyu-badge-milestone { font-weight: 600; color: #d44a38; }
+.guanyu-badge-date { font-weight: 400; color: var(--front-color, inherit); }
+.guanyu-backpack-expiry { position: absolute; top: 2px; left: 3px; pointer-events: none; font-size: 10px; color: #d96518; }
+.guanyu-badge-days { font-size: 12px; }
+.guanyu-pocket { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding-top: 4px; }
+.guanyu-pocket img { width: 20px; height: 20px; vertical-align: middle; margin-right: 3px; }
+.room-Player.guanyu-offline-info .recommendView-3e8b62 { display: none !important; }
+.guanyu-last-live { position: absolute; inset: 0; z-index: 1; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+.guanyu-last-live-card { position: relative; max-width: calc(100% - 40px); box-sizing: border-box; padding: 28px 54px; border: 1px solid var(--line); border-radius: 12px; background: var(--side); color: var(--ink); text-align: center; pointer-events: auto; font: 14px/1.5 system-ui, 'Microsoft YaHei', sans-serif; }
+.guanyu-last-live-title { display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--muted); }
+.guanyu-last-live-title svg { width: 18px; height: 18px; }
+.guanyu-last-live-ago { margin: 8px 0; color: var(--accent); font-size: 32px; font-weight: 700; }
+.guanyu-last-live-exact { color: var(--muted); font-variant-numeric: tabular-nums; }
+.guanyu-last-live-close { position: absolute; right: 8px; top: 8px; display: grid; place-items: center; width: 28px; height: 28px; padding: 4px; border: 0; border-radius: 4px; background: transparent; color: var(--muted); cursor: pointer; }
+.guanyu-last-live-close svg { width: 20px; height: 20px; }
+.guanyu-last-live-close:hover { background: var(--tint); color: var(--ink); }
+.guanyu-last-live-close:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+@media (max-width: 600px) { .guanyu-last-live-card { padding: 24px 32px; } .guanyu-last-live-ago { font-size: 26px; } }

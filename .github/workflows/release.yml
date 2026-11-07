@@ -1,0 +1,44 @@
+name: 发布
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+      - name: 固定支持 OIDC 的 npm 版本
+        run: npm install --global npm@11.19.1
+      - name: 核对版本与 main 归属
+        run: |
+          npm run release:check
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+      - run: npm ci
+      - run: npm run test:release
+      - run: npm run test:sign
+      - run: npm run test:settings
+      - run: npm run test:backpack
+      - run: npm run build
+      - name: 发布 npm 与 GitHub Release
+        run: npm run release:publish
+        env:
+          GH_TOKEN: ${{ github.token }}

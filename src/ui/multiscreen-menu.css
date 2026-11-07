@@ -1,0 +1,9 @@
+.guanyu-label-menu { position: absolute; z-index: 2; min-width: 190px; max-width: min(300px, 90%); padding: 4px 0; color: var(--front-color, #fff); background: var(--front-background-color, #252525); border: 1px solid var(--front-third-background-color, #555); box-shadow: 2px 2px 8px #333; font: 12px/1.8 system-ui, 'Microsoft YaHei', sans-serif; pointer-events: auto; }
+.guanyu-label-menu [hidden], .guanyu-label-menu[hidden] { display: none !important; }
+.guanyu-label-menu-title { padding: 4px 14px 6px; opacity: .7; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.guanyu-label-menu .guanyu-label-menu-item { display: block; box-sizing: border-box; width: 100%; padding: 5px 14px; border: 0; border-radius: 0; background: transparent; color: inherit; font: inherit; text-align: left; white-space: nowrap; cursor: pointer; }
+.guanyu-label-menu-item:hover, .guanyu-label-menu-item:focus-visible { background: var(--front-third-background-color, #444); outline: none; }
+.guanyu-label-menu-item:focus-visible { box-shadow: inset 0 0 0 1px currentColor; }
+.guanyu-label-menu-item:disabled { opacity: .5; cursor: wait; }
+.guanyu-label-menu-rates { position: absolute; min-width: 160px; max-height: min(320px, 70vh); overflow-y: auto; padding: 4px 0; border: 1px solid var(--front-third-background-color, #555); background: var(--front-background-color, #252525); }
+.guanyu-label-menu-status { max-width: 240px; padding: 5px 14px; white-space: normal; overflow-wrap: anywhere; color: var(--guanyu-page-accent, #ff5d23); }

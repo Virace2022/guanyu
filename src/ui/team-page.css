@@ -1,0 +1,47 @@
+@import './theme.css';
+
+.guanyu-team-native-hidden { display: none !important; }
+.guanyu-team-banner-hidden { display: none !important; }
+.guanyu-team-host-enhanced { box-sizing: border-box; max-width: 100%; height: auto !important; }
+.guanyu-team-host-enhanced.guanyu-team-narrow { max-width: calc(100vw - 32px); left: 0 !important; margin-left: 16px !important; margin-right: 16px !important; }
+.guanyu-team-toolbar[hidden], .guanyu-team-toolbar [hidden] { display: none !important; }
+[data-guanyu-live="false"] :is(img[alt="直播中"], img.room-info-live) { display: none !important; }
+.guanyu-team-toolbar { position: fixed; z-index: 40; right: 0; top: 32%; box-sizing: border-box; width: 144px; overflow: hidden; pointer-events: none; color: var(--ink); font: 12px/1.5 system-ui, "Microsoft YaHei", sans-serif; }
+.guanyu-team-drawer { display: flex; align-items: flex-start; width: 144px; transform: translateX(108px); transition: transform 180ms ease-out; }
+.guanyu-team-tools { box-sizing: border-box; flex: none; width: 108px; max-height: calc(100dvh - 16px); overflow-y: auto; display: flex; flex-direction: column; align-items: stretch; gap: 5px; padding: 6px; background: var(--side); border: 1px solid var(--line); border-radius: 0 0 0 8px; pointer-events: auto; }
+.guanyu-team-toolbar[data-expanded="true"] .guanyu-team-drawer { transform: none; }
+.guanyu-team-toolbar:not([data-expanded="true"]) .guanyu-team-tools { pointer-events: none; }
+.guanyu-team-toolbar button { appearance: none; box-sizing: border-box; margin: 0; padding: 6px 12px; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); color: var(--ink); font: inherit; cursor: pointer; }
+.guanyu-team-tools button { padding-inline: 4px; }
+.guanyu-team-toolbar button:hover { background: var(--tint); }
+.guanyu-team-toolbar button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.guanyu-team-toolbar span { font-size: 10px; overflow-wrap: anywhere; text-align: center; }
+.guanyu-team-toolbar .guanyu-team-handle { flex: none; display: grid; place-items: center; width: 36px; height: 44px; padding: 5px; border-right: 0; border-radius: 8px 0 0 8px; background: var(--side); color: var(--accent); pointer-events: auto; touch-action: none; user-select: none; cursor: pointer; }
+.guanyu-team-fish, .guanyu-team-fish svg { display: block; width: 24px; height: 24px; color: inherit; pointer-events: none; }
+.guanyu-team-toolbar[data-dragging="true"] .guanyu-team-handle { cursor: grabbing; }
+@media (prefers-reduced-motion: reduce) { .guanyu-team-drawer { transition: none; } }
+.guanyu-team-view { box-sizing: border-box; width: 100%; padding-bottom: 14px; color: var(--ink); }
+.guanyu-team-groups { display: grid; grid-template-columns: repeat(var(--guanyu-team-columns, 3), minmax(min(200px, 100%), 1fr)); align-items: start; gap: 12px; }
+.guanyu-team-groups[hidden] { display: none; }
+.guanyu-team-independent { grid-column: 1 / -1; }
+.guanyu-team-view[hidden] { display: none; }
+.guanyu-team-view .guanyu-team-group { box-sizing: border-box; width: 100%; min-width: 0; justify-self: var(--guanyu-team-align, center); padding: 10px; }
+.guanyu-team-view .guanyu-team-group h3, .guanyu-team-view .guanyu-preview-group-title { box-sizing: border-box; width: 100%; min-height: 32px; margin: 0 0 10px; padding: 4px 12px; border-radius: 6px; font: 600 14px/24px system-ui, "Microsoft YaHei", sans-serif; color: var(--guanyu-team-native-ink, var(--ink)); background: rgb(128 128 128 / 10%); text-align: center; overflow-wrap: anywhere; }
+.guanyu-team-view .guanyu-team-colored-title::before { content: ''; display: inline-block; width: 9px; height: 9px; margin-right: 7px; border-radius: 50%; background: var(--guanyu-team-color); vertical-align: 1px; box-shadow: inset 0 0 0 1px rgb(127 127 127 / 24%); }
+.guanyu-team-view .guanyu-team-cards { display: flex; flex-wrap: wrap; justify-content: var(--guanyu-team-align, center); gap: 8px; }
+.guanyu-team-cards:empty { display: none; }
+.guanyu-team-captains:not(:empty) + .guanyu-team-members:not(:empty) { margin-top: 16px; }
+.guanyu-team-cards > .guanyu-team-card { flex: 0 0 calc((100% - (var(--guanyu-member-columns, 3) - 1) * 8px) / var(--guanyu-member-columns, 3)); }
+.guanyu-team-auto-size > .guanyu-team-card { flex-basis: min(var(--guanyu-native-card-width, 130px), calc((100% - (var(--guanyu-member-columns, 1) - 1) * 8px) / var(--guanyu-member-columns, 1))); }
+.guanyu-team-native-size > .guanyu-team-card { flex: 0 1 var(--guanyu-native-card-width, 130px); max-width: 100%; }
+.guanyu-team-independent .guanyu-team-cards > .guanyu-team-card { flex: 0 1 var(--guanyu-native-card-width, 130px); max-width: 100%; }
+.guanyu-team-captains > .guanyu-team-card { flex: 0 1 var(--guanyu-native-card-width, 130px); max-width: 100%; }
+.guanyu-team-view .guanyu-team-card { box-sizing: border-box; min-width: 0; height: var(--guanyu-card-height, 52px); position: relative; display: block; color: inherit; text-decoration: none; }
+.guanyu-team-card-link, .guanyu-team-card > .wm-pc-room-button-dropdown, .guanyu-team-card .wm-pc-room-DropMenu-link, .guanyu-team-card .wm-pc-room-DropMenu-link > a { display: block; width: 100%; height: 100%; color: inherit; text-decoration: none; }
+.guanyu-team-card-link[hidden] { display: none; }
+.guanyu-team-preview-active { z-index: 2; }
+.guanyu-team-card > [data-guanyu-borrowed-card] { position: relative !important; box-sizing: border-box; display: block !important; width: 100% !important; height: 100% !important; top: auto !important; left: auto !important; margin: 0 !important; }
+.guanyu-team-view .guanyu-team-card :is(.room-info-btn, .wm-pc-room-button) { box-sizing: border-box; position: relative; display: flex; align-items: center; justify-content: center; width: 100% !important; height: 100% !important; min-width: 0; margin: 0 !important; padding: 4px 6px; left: auto !important; top: auto !important; }
+.guanyu-team-view .room-info-text, .guanyu-team-view .wm-pc-room-button-text { position: static !important; width: 100%; height: auto !important; margin: 0 !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: clamp(12px, 1.3vw, 18px) !important; line-height: 1.4 !important; }
+.guanyu-team-view .guanyu-team-label { position: absolute; bottom: 0; left: 0; color: inherit; font: 11px/1.4 system-ui, sans-serif; padding: 0 4px; pointer-events: none; }
+.guanyu-team-view .guanyu-team-missing { padding: 14px 8px; border: 1px dashed currentColor; border-radius: 5px; color: inherit; font: 12px/1.5 system-ui, sans-serif; }
