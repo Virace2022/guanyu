@@ -2,6 +2,7 @@ export const signTasks = [
   { id: 'yuba', label: '鱼吧签到', help: '全部关注鱼吧，包含补签与失败重试。' },
   { id: 'client', label: '客户端签到', help: '领取客户端每日签到奖励。' },
   { id: 'fansHome', label: '粉丝家园签到', help: '读取真实粉丝牌名单，逐房间处理。' },
+  { id: 'fanChat', label: '粉丝牌弹幕任务', help: '向未完成任务的持牌房间发送一条“.”；最多两路静默处理，完成后当天不再查询，北京时间零点后重新开始。' },
   { id: 'points', label: '任务中心积分', help: '顶部任务中心每日签到、领取已完成的观时积分。' },
   { id: 'level', label: '等级任务领奖', help: '只领取官方已确认完成的等级任务奖励。' },
   { id: 'readPosts', label: '随机阅读鱼吧帖子', help: '从真实鱼吧内容随机选择不同帖子，按等级任务剩余数量处理。' },
@@ -13,7 +14,7 @@ export type SignOptions = Record<SignTask, boolean> & {
   enabled: boolean; reminderEnabled: boolean; reminderTime: string;
 };
 export const signDefaults: SignOptions = {
-  enabled: true, yuba: true, client: true, fansHome: true,
+  enabled: true, yuba: true, client: true, fansHome: true, fanChat: true,
   points: true, level: true, readPosts: true, follow: true, star: true,
   reminderEnabled: true, reminderTime: '23:50',
 };

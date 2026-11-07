@@ -20,6 +20,7 @@ function load(file, globals = {}, imports = {}) {
 const requestHelpers = load('src/adapters/douyu/task-request.ts', {}, { $: {} });
 const { createDouyuTasks } = load('src/adapters/douyu/tasks.ts', {}, { './task-request': requestHelpers });
 const { checkPoints } = load('src/features/sign/points.ts');
+const { runFanChat } = load('src/features/sign/fan-chat.ts', {}, { '../../adapters/douyu/task-request': requestHelpers });
 const signed = value => ({ error: 0, data: { todaySigned: value, todayTaskFinished: 1 } });
 const view = tasks => ({ error: 0, data: { startTime: 1793894400, taskList: tasks } });
 
@@ -58,6 +59,8 @@ async function restoreFansHome(error) {
       createTaskRequest: () => ({ async request(url) { requests.push(url); throw new Error('本场景不应重新请求签到'); }, dispose() {} }) },
     '../../adapters/douyu/tasks': { createDouyuTasks },
     './points': { checkPoints },
+    './fan-chat': { runFanChat },
+    '../../adapters/douyu/chat-session': { rememberChatRuntime() {}, createChatSessions: () => ({ cancel() {}, dispose() {}, send() { assert.fail('粉丝家园恢复不应发送弹幕'); } }) },
   });
   const daily = createDailyTasks(core.createState({ sign: { enabled: true, fansHome: true } }), () => '71415',
     { claim: async () => true, room: () => '71415', take: () => false });
@@ -168,4 +171,147 @@ test('任务中心请求使用携带浏览器 Cookie 的同源 fetch', async () 
   assert.equal(requested, true);
   assert.equal(response.data.taskList[1].status, 2);
   http.dispose();
+});
+
+// 字段与 0/1、1/1 计数来自真实 userTaskList；不以此模拟官方鉴权或网络兼容。
+test('粉丝牌任务读取官方每日弹幕计数，不将周任务当作每日完成', async () => {
+  const responses = [0, 1];
+  const api = createDouyuTasks({ async request(url, options) {
+    assert.ok(url.includes('/fans/userTaskList?rid=80432&uid=test-account'));
+    assert.equal(options.sameOrigin, true);
+    return { error: 0, data: { dayTasks: [{ taskId: 66379, taskType: 1, taskTotal: 1, taskNum: responses.shift() }],
+      weekTasks: [{ taskType: 1, taskTotal: 4, taskNum: 4 }] } };
+  } });
+  assert.equal((await api.fanChatTask('80432')).done, false);
+  assert.equal((await api.fanChatTask('80432')).done, true);
+});
+
+function chatLane(ids) {
+  return { id: 'fanChat', label: '粉丝牌弹幕任务', status: 'pending', detail: '', nextAt: 0, attempts: 0,
+    targets: ids.map(id => ({ id, name: id, live: false })), results: {}, failures: {} };
+}
+
+test('已由其他页面完成的弹幕任务只核对，不重发', async () => {
+  const lane = chatLane(['84452', '80432']);
+  lane.results['84452'] = 'sent';
+  const reads = [];
+  await runFanChat(lane, { async fanChatTask(id) { reads.push(id); return { cur: 1, max: 1, done: true }; } },
+    { send() { assert.fail('官方已完成时不应发送'); } }, 'test-account', () => {}, () => {});
+  assert.deepEqual(reads, ['80432']);
+  assert.equal(lane.status, 'done');
+  assert.equal(lane.results['80432'], 'already');
+});
+
+test('弹幕最多两路运行，逐房落盘后恢复只处理剩余房间', async () => {
+  const lane = chatLane(['84452', '74751', '80432']);
+  const completed = new Set(), release = new Map(), sent = [];
+  let active = 0, peak = 0, saved;
+  const api = { async fanChatTask(id) { return { cur: completed.has(id) ? 1 : 0, max: 1, done: completed.has(id) }; } };
+  const sessions = { async send(id, text) {
+    assert.equal(text, '.');
+    sent.push(id); active++; peak = Math.max(peak, active);
+    await new Promise(resolve => release.set(id, resolve)); completed.add(id); active--;
+  } };
+  const running = runFanChat(lane, api, sessions, 'test-account', () => {}, () => { saved = JSON.stringify(lane); });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(active, 2); assert.equal(peak, 2); assert.equal(sent.length, 2);
+  release.get('84452')();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(JSON.parse(saved).results['84452'], 'sent');
+  assert.equal(JSON.parse(saved).results['74751'], undefined);
+  release.get('74751')(); await running;
+  const restored = JSON.parse(saved);
+  await runFanChat(restored, api, { async send(id) { sent.push(id); completed.add(id); } }, 'test-account', () => {}, () => {});
+  assert.deepEqual(sent, ['84452', '74751', '80432']);
+  assert.equal(restored.status, 'done');
+});
+
+test('发送确认中断后保留重试，恢复先核对已完成进度而不重复发送', async () => {
+  const lane = chatLane(['74751']);
+  let completed = false, sends = 0;
+  const api = { async fanChatTask() { return { cur: completed ? 1 : 0, max: 1, done: completed }; } };
+  await runFanChat(lane, api, { async send() { sends++; completed = true; throw new Error('发送确认超时'); } },
+    'test-account', () => {}, () => {});
+  assert.equal(lane.results['74751'], undefined);
+  assert.equal(lane.status, 'error');
+  lane.failures['74751'].nextAt = 0;
+  await runFanChat(lane, api, { send() { assert.fail('恢复应先确认官方已完成'); } }, 'test-account', () => {}, () => {});
+  assert.equal(sends, 1);
+  assert.equal(lane.status, 'done');
+});
+
+test('官方已接收但任务进度延迟时，恢复只查进度，不发送第二条', async () => {
+  const lane = chatLane(['74751']);
+  let done = false, sends = 0, saved;
+  const api = { async fanChatTask() { return { cur: done ? 1 : 0, max: 1, done }; } };
+  await runFanChat(lane, api, { async send(_id, text) { assert.equal(text, '.'); sends++; } },
+    'test-account', () => {}, () => { saved = JSON.stringify(lane); });
+  assert.equal(lane.status, 'error');
+  const restored = JSON.parse(saved);
+  assert.equal(restored.submitted['74751'], true);
+  const sessions = { send() { assert.fail('已获官方接收回包，不应重发'); } };
+  restored.failures['74751'].nextAt = 0;
+  await runFanChat(restored, api, sessions, 'test-account', () => {}, () => {});
+  assert.equal(restored.status, 'error');
+  done = true; restored.failures['74751'].nextAt = 0;
+  await runFanChat(restored, api, sessions, 'test-account', () => {}, () => {});
+  assert.equal(restored.status, 'done');
+  assert.equal(restored.results['74751'], 'sent');
+  assert.equal(sends, 1);
+});
+
+test('100 个房间当天各发一次，完成后定时、手动、刷新均不查询，北京时间零点才重开', async () => {
+  let now = Date.parse('2026-11-08T12:00:00+08:00'), scheduled;
+  const values = new Map(), completed = new Set(), sent = [];
+  const counts = { badges: 0, tasks: 0 };
+  const key = 'guanyu:daily-tasks:v1:test-account';
+  const day = () => requestHelpers.taskDay(now);
+  const targets = Array.from({ length: 100 }, (_, index) => ({ id: String(index + 1), name: `房间${index + 1}`, live: false }));
+  const api = {
+    async badges() { counts.badges++; return targets; },
+    async fanChatTask(id) { counts.tasks++; const done = completed.has(`${day()}:${id}`); return { cur: done ? 1 : 0, max: 1, done }; },
+  };
+  const sessions = {
+    async send(id, text) { assert.equal(text, '.'); sent.push(`${day()}:${id}`); completed.add(`${day()}:${id}`); },
+    cancel() {}, dispose() {},
+  };
+  const core = load('src/core/state.ts'), config = load('src/config/sign.ts');
+  const settings = core.createState({ sign: { ...Object.fromEntries(config.signTasks.map(task => [task.id, false])), enabled: true, fanChat: true } });
+  const { createDailyTasks } = load('src/features/sign/daily.ts', {
+    Date: class extends Date { static now() { return now; } },
+    localStorage: { getItem: name => values.get(name) ?? null, setItem: (name, value) => values.set(name, value) },
+    navigator: { onLine: true, locks: { request: async (_name, _options, run) => run({}) } },
+    window: { addEventListener() {}, removeEventListener() {} },
+    document: { addEventListener() {}, removeEventListener() {} },
+    setTimeout: callback => { scheduled = callback; return 0; }, clearTimeout() {},
+  }, {
+    '../../core/state': core, '../../config/sign': config,
+    '../../adapters/douyu/task-request': { ...requestHelpers, taskDay: day,
+      createTaskRequest: () => ({ request() { assert.fail('本场景只使用任务 API 边界'); }, dispose() {} }) },
+    '../../adapters/douyu/tasks': { createDouyuTasks: () => api },
+    '../../adapters/douyu/chat-session': { rememberChatRuntime() {}, createChatSessions: () => sessions },
+    './fan-chat': { runFanChat }, './points': { checkPoints },
+  });
+  const flush = () => new Promise(resolve => setImmediate(resolve));
+  const start = () => createDailyTasks(settings, () => '', { claim: async () => true, room: () => '', take: () => false, matches: () => false });
+  const tick = async () => { scheduled(); await flush(); };
+  let daily = start();
+  try {
+    await flush();
+    for (let batch = 1; batch < 50; batch++) await tick();
+    assert.equal(sent.length, 100); assert.equal(new Set(sent).size, 100);
+    assert.equal(counts.badges, 1); assert.equal(counts.tasks, 200);
+    assert.equal(daily.value.rows.find(row => row.id === 'fanChat').status, 'done');
+    assert.equal(JSON.parse(values.get(key)).lanes.fanChat.status, 'done');
+    const finished = { ...counts };
+    await tick(); await daily.run();
+    daily.dispose(); daily = start(); await flush();
+    now = Date.parse('2026-11-08T23:59:59+08:00'); await tick(); await daily.run();
+    assert.deepEqual(counts, finished); assert.equal(sent.length, 100);
+    now = Date.parse('2026-11-09T00:00:00+08:00'); await tick();
+    assert.equal(daily.value.day, '2026-11-09');
+    assert.equal(sent.length, 102); assert.equal(counts.badges, 2); assert.equal(counts.tasks, 204);
+    assert.equal(JSON.parse(values.get(key)).day, '2026-11-09');
+    assert.equal(Object.keys(JSON.parse(values.get(key)).lanes.fanChat.results).length, 2);
+  } finally { daily.dispose(); }
 });

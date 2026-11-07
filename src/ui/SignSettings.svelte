@@ -14,7 +14,7 @@
 <section>
   <h2>自动处理</h2>
   <div class="option-list">
-  <label class="option-row"><span><strong>自动签到与每日任务</strong><small>同账号多个页面共用一份任务，关闭窗口后继续运行，按北京时间换日；请求间隔 3～5 秒。</small></span><input type="checkbox" bind:checked={value.enabled} /></label>
+  <label class="option-row"><span><strong>自动签到与每日任务</strong><small>同账号多个页面共用一份任务，关闭窗口后继续运行，按北京时间换日；签到和任务状态请求间隔 3～5 秒，弹幕最多两路后台处理。</small></span><input type="checkbox" bind:checked={value.enabled} /></label>
   {#each signTasks as task (task.id)}
     <label class="option-row"><span><strong>{task.label}</strong><small>{task.help}</small></span><input type="checkbox" bind:checked={value[task.id]} disabled={!value.enabled} /></label>
   {/each}

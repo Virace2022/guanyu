@@ -5,10 +5,13 @@ import { accountId, createTaskRequest, taskDay, taskDelay, interrupted, alreadyS
 import { createDouyuTasks, type LevelTask, type TaskRoom } from '../../adapters/douyu/tasks';
 import type { TaskRunner } from '../../adapters/douyu/task-runner';
 import { checkPoints } from './points';
+import { createChatSessions, rememberChatRuntime } from '../../adapters/douyu/chat-session';
+import { runFanChat } from './fan-chat';
 
 export interface SignRow { id: string; label: string; status: 'pending' | 'done' | 'waiting' | 'error' | 'disabled'; detail: string; nextAt: number; attempts: number }
 interface Lane extends SignRow {
   targets?: TaskRoom[]; results?: Record<string, string>; signed?: boolean;
+  submitted?: Record<string, boolean>;
   failures?: Record<string, { attempts: number; nextAt: number; error: string }>;
 }
 interface Progress { day: string; lanes: Record<string, Lane>; readIds: string[]; tasks: LevelTask[] }
@@ -17,6 +20,7 @@ export interface DailySnapshot { uid: string; day: string; running: boolean; wai
 
 export function createDailyTasks(settings: SettingsStore, roomId: () => string, runner: TaskRunner) {
   let http = createTaskRequest();
+  const chat = createChatSessions(roomId);
   const api = createDouyuTasks({ request: (...args: Parameters<TaskRequest['request']>) => http.request(...args), dispose: () => http.dispose() });
   const view = createState<DailySnapshot>({ uid: '', day: taskDay(), running: false, waiting: false, error: '', rows: [], tasks: [], restore: '' });
   let uid = '', state: Progress | undefined, restore: Restore | undefined, running = false, stopped = false, waiting = false, error = '';
@@ -154,6 +158,7 @@ export function createDailyTasks(settings: SettingsStore, roomId: () => string, 
     switch (lane.id) {
       case 'client': { const result = await api.client(); lane.detail = result.status === 'already' ? '今日已签到' : `签到成功${result.rewards ? `：${result.rewards}` : ''}`; lane.status = 'done'; break; }
       case 'fansHome': await fansHomeLane(lane); break;
+      case 'fanChat': await runFanChat(lane, api, chat, uid, current, () => { persist(); publish(); }); break;
       case 'readPosts': await readLane(lane); break;
       case 'follow': await followLane(lane); break;
       case 'points': {
@@ -209,6 +214,7 @@ export function createDailyTasks(settings: SettingsStore, roomId: () => string, 
       if (!uid) { await runner.claim(''); return; }
       if (!navigator.locks) throw new Error('自动签到需要 HTTPS 和支持 Web Locks 的新版浏览器');
       if (!await runner.claim(uid, roomId())) { waiting = true; return; }
+      rememberChatRuntime();
       await navigator.locks.request(`guanyu:daily-tasks:${uid}`, { ifAvailable: true }, async lock => {
         if (!lock) { waiting = true; return; }
         current();
@@ -255,6 +261,7 @@ export function createDailyTasks(settings: SettingsStore, roomId: () => string, 
     if (next === previous) return;
     previous = next;
     if (active && (!value.sign.enabled || !value.sign[active as SignTask])) {
+      chat.cancel();
       http.dispose(); http = createTaskRequest();
     }
     void wake();
@@ -262,7 +269,7 @@ export function createDailyTasks(settings: SettingsStore, roomId: () => string, 
   window.addEventListener('storage', onStorage); window.addEventListener('online', onOnline); document.addEventListener('visibilitychange', onVisible);
   void wake();
   return { ...view, get value() { return view.value; }, run: () => wake(true),
-    dispose() { stopped = true; clearTimeout(timer); http.dispose(); stopSettings(); window.removeEventListener('storage', onStorage); window.removeEventListener('online', onOnline); document.removeEventListener('visibilitychange', onVisible); },
+    dispose() { stopped = true; clearTimeout(timer); http.dispose(); chat.dispose(); stopSettings(); window.removeEventListener('storage', onStorage); window.removeEventListener('online', onOnline); document.removeEventListener('visibilitychange', onVisible); },
   };
 }
 export type DailyTasks = ReturnType<typeof createDailyTasks>;

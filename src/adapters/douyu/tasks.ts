@@ -1,8 +1,9 @@
-import { assertResponse, accountToken, cookie, confirmedResult, type TaskRequest } from './task-request';
+import { assertResponse, accountId, accountToken, cookie, confirmedResult, type TaskRequest } from './task-request';
 
 export interface TaskRoom { id: string; name: string; live: boolean }
 export interface LevelTask { taskId: number; taskType: number; name: string; taskStatus: number; prizeStatus: number; cur: number; max: number }
 export interface Post { id: string; groupId: string }
+export interface FanChatTask { id: number; cur: number; max: number; done: boolean }
 
 export function createDouyuTasks(http: TaskRequest) {
   const request = http.request;
@@ -45,6 +46,16 @@ export function createDouyuTasks(http: TaskRequest) {
     const data = await get(`/japi/tasksys/userLevelTask/getTaskStatus?taskIds=${detail.taskIds.join(',')}`);
     if (!Array.isArray(data?.list)) throw new Error('官方等级任务状态格式异常');
     return data.list;
+  }
+  async function fanChatTask(roomId: string): Promise<FanChatTask | null> {
+    const result = await request(`/japi/interactnc/web/fans/userTaskList?rid=${roomId}&uid=${encodeURIComponent(accountId())}`, { sameOrigin: true });
+    assertResponse(result);
+    if (!Array.isArray(result.data?.dayTasks)) throw new Error('官方粉丝牌任务格式异常');
+    const task = result.data.dayTasks.find((item: any) => Number(item.taskType) === 1);
+    if (!task) return null;
+    const cur = Number(task.taskNum), max = Number(task.taskTotal);
+    if (!Number.isInteger(cur) || cur < 0 || !Number.isInteger(max) || max < 1) throw new Error('官方弹幕任务进度异常');
+    return { id: Number(task.taskId), cur, max, done: cur >= max };
   }
   async function posts(): Promise<Post[]> {
     const first = await request('/wbapi/web/group/myFollow?page=1&limit=30'); assertResponse(first);
@@ -118,7 +129,7 @@ export function createDouyuTasks(http: TaskRequest) {
     return claimed.length;
   }
   return {
-    request, get, post, followPage, followed, badges, level, posts, readPost, starConfig, starRooms, pointsSign, viewRewards,
+    request, get, post, followPage, followed, badges, level, fanChatTask, posts, readPost, starConfig, starRooms, pointsSign, viewRewards,
     async client() {
       const result = await request('https://apiv2.douyucdn.cn/h5nc/sign/sendSign', { method: 'POST', data: new URLSearchParams({ token: accountToken() }).toString() });
       const status = confirmedResult(result);
