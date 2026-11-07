@@ -10,7 +10,7 @@ export function loadFlv() {
       if (unsafeWindow.flvjs) resolve(unsafeWindow.flvjs);
       else { script.remove(); reject(new Error('FLV 预览组件加载失败')); }
     };
-    script.src = 'https://registry.npmmirror.com/flv.js/1.6.2/files/dist/flv.min.js';
+    script.src = 'https://cdn.jsdelivr.net/npm/flv.js@1.6.2/dist/flv.min.js';
     script.onload = script.onerror = finish; document.head.append(script);
   }).catch(error => { pending = null; throw error; });
   return pending;

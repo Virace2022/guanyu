@@ -15,7 +15,7 @@ npm run build
 
 完整脚本为 `dist/douyu.guanyu.user.js`，更新元数据为 `dist/douyu.guanyu.meta.js`；构建同时生成精简 npm 压缩包与 `SHA256SUMS`。通过用户脚本管理器导入完整脚本；管理器不支持文件导入时，可新建脚本，将完整产物粘贴进去并保存。启用后重新打开斗鱼直播间。
 
-生产元数据使用 npm 包 `guanyu-douyu` 在 npmmirror 的更新和下载入口，远程更新依赖正式版本发布与镜像同步。开发服务使用独立安装项，具体地址与发布流程见[发布说明](RELEASING.md)。
+生产元数据使用 npm 包 `guanyu-douyu` 在 jsDelivr 的更新和下载入口，远程更新受 CDN 缓存与管理器检查周期影响。开发服务使用独立安装项，具体地址与发布流程见[发布说明](RELEASING.md)。
 
 ## 开发调试
 
@@ -50,7 +50,7 @@ npm run dev
 
 `dist/npm/` 是 npm 发布包的生成目录，只有完整脚本、元数据、精简 README、LICENSE 和发布清单，不含工程依赖、截图、源码或历史版本。根 `package.json` 保持 `private: true` 和开发工程版本，生产包的版本来自 `version.json`。这些构建产物均不提交到 Git。
 
-生产脚本使用 Oxc 压缩，保留元数据、换行、缩进及必要许可，不启用属性重命名、unsafe 压缩或 eval 解包。唯一运行图标为 `assets/brand/guanyu.svg`，仓库文档、截图和历史设计稿不进入运行包。
+生产脚本使用 Oxc 压缩代码，再由 esbuild 缩短变量名、压缩空白并在约 200 字节处换行；长字符串使用合法续行，元数据头保持原样。保留必要许可，不启用属性重命名、unsafe 压缩或 eval 解包。唯一运行图标为 `assets/brand/guanyu.svg`，仓库文档、截图和历史设计稿不进入运行包。
 
 ## 文档配图
 

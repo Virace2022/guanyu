@@ -28,7 +28,7 @@
 ## 怎样开始
 
 1. 在浏览器中安装用户脚本管理器，例如 [Tampermonkey](https://www.tampermonkey.net/)。
-2. 点击[安装观鱼](https://registry.npmmirror.com/guanyu-douyu/2026.1108.6/files/dist/douyu.guanyu.user.js)，在脚本管理器中确认安装。也可从 [GitHub Release](https://github.com/Virace2022/guanyu/releases/latest) 下载 `douyu.guanyu.user.js` 后导入。脚本通过 npm 包 [`guanyu-douyu`](https://www.npmjs.com/package/guanyu-douyu) 分发，后续由脚本管理器检查更新。
+2. 点击[安装观鱼](https://cdn.jsdelivr.net/npm/guanyu-douyu@2026.1108.7/dist/douyu.guanyu.user.js)，在脚本管理器中确认安装。也可从 [GitHub Release](https://github.com/Virace2022/guanyu/releases/latest) 下载 `douyu.guanyu.user.js` 后导入。脚本通过 npm 包 [`guanyu-douyu`](https://www.npmjs.com/package/guanyu-douyu) 分发，后续由脚本管理器检查更新。
 3. 打开斗鱼直播间，点击小鱼进入设置：普通模式在右下角，网页全屏时在播放器的弹幕屏蔽控件左侧。
 
 先按自己的习惯调整“优化”“播放”和“签到”：首次安装默认整理页面、在开播后进入网页全屏，并开启签到任务。普通设置可跨分类修改，最后点“保存全部”；关闭时可选择放弃。团播名单单独保存。

@@ -57,8 +57,8 @@ export default defineConfig(({ command }) => {
         output: {
           minify: {
             compress: true,
-            mangle: true,
-            codegen: { removeWhitespace: false },
+            mangle: false,
+            codegen: { removeWhitespace: true },
           },
         },
       },
