@@ -45,3 +45,5 @@
 README 面向使用者；FEATURES 记录功能契约；ARCHITECTURE 记录实际模块与数据边界；UI 记录交互规范。本文件保留开发约束，不重复实施流水。
 
 过程记录通过宿主的项目文档解析器定位，SPEC、Plan、工作日志和 `agent-context/` 放在项目外文档区。仓库只引用相对该文档区的逻辑路径，不记录本机绝对目录。历史过程导航为 `plans/guanyu-rebuild/implementation.md` 与 `agent-context/20_DECISIONS.md`；恢复工作时以当前代码和用户要求为准。
+
+已确认的后续待办与优先级见 `agent-context/30_TODO.md`。
