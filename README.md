@@ -29,8 +29,22 @@
 ## 安装使用
 
 1. 在浏览器中安装用户脚本管理器，例如 [Tampermonkey](https://www.tampermonkey.net/)。
-2. 点击[安装观鱼](https://cdn.jsdelivr.net/npm/guanyu-douyu@2026.1108.7/dist/douyu.guanyu.user.js)，在脚本管理器中确认安装。也可从 [GitHub Release](https://github.com/Virace2022/guanyu/releases/latest) 下载 `douyu.guanyu.user.js` 后导入。脚本通过 npm 包 [`guanyu-douyu`](https://www.npmjs.com/package/guanyu-douyu) 分发，后续由脚本管理器检查更新。
+2. 点击[安装观鱼（GitHub Release，推荐）](https://github.com/Virace2022/guanyu/releases/latest/download/douyu.guanyu.user.js)，在脚本管理器中确认安装。无法访问时，可按下表顺序选择其他下载入口；若浏览器直接下载文件，将 `douyu.guanyu.user.js` 导入脚本管理器即可。
 3. 打开斗鱼直播间，点击小鱼进入设置：普通模式在右下角，网页全屏时在播放器的弹幕屏蔽控件左侧。
+
+五个安装入口按推荐优先级排列。星级越多越推荐；速度以中国境内网络的一般访问体验作参考，未经逐节点测速，实际以你的网络为准。安全星级表示分发链路的相对信任优先级。
+
+| 优先级 | 安装入口 | 境内速度参考 | 安全推荐 | 区别与选择建议 |
+| --- | --- | :---: | :---: | --- |
+| 1 | [GitHub Release](https://github.com/Virace2022/guanyu/releases/latest/download/douyu.guanyu.user.js) | ★★☆☆☆ | ★★★★★ | 项目直接发布的附件，优先选择；部分网络访问较慢或无法连接。 |
+| 2 | [jsDelivr · Fastly](https://fastly.jsdelivr.net/npm/guanyu-douyu@2026.1108.7/dist/douyu.guanyu.user.js) | ★★★★☆ | ★★★★☆ | 通过 jsDelivr 分发官方 npm 包，使用 Fastly 节点。 |
+| 3 | [jsDelivr · Quantil](https://quantil.jsdelivr.net/npm/guanyu-douyu@2026.1108.7/dist/douyu.guanyu.user.js) | ★★★★☆ | ★★★★☆ | 同一 npm 包的另一个 jsDelivr 节点，前一入口不可用时尝试。 |
+| 4 | [jsDelivr · 默认节点](https://cdn.jsdelivr.net/npm/guanyu-douyu@2026.1108.7/dist/douyu.guanyu.user.js) | ★★★★☆ | ★★★★☆ | 同一 npm 包，由 jsDelivr 默认域名调度节点。 |
+| 5 | [jsdmirror · 中国境内第三方镜像](https://cdn.jsdmirror.com/npm/guanyu-douyu@2026.1108.7/dist/douyu.guanyu.user.js) | ★★★★★ | 未知 | 境内加速可作为备选；由第三方运营，内容完整性与防篡改保障未经本项目核验，存在供应链投毒风险。 |
+
+中间三个入口只是 jsDelivr 的节点不同，哪个能用就用哪个。jsdmirror 的速度推荐较高，但安全性未知，放在最后作为备选；这不表示已发现其篡改内容。
+
+脚本同时通过 npm 包 [`guanyu-douyu`](https://www.npmjs.com/package/guanyu-douyu) 分发。后续由脚本管理器按脚本内的更新地址检查更新，选择安装入口不会自动切换更新源。
 
 先按自己的习惯调整“优化”“播放”和“签到”：首次安装默认整理页面、在开播后进入网页全屏，并开启签到任务。普通设置可跨分类修改，最后点“保存全部”；关闭时可选择放弃。团播名单单独保存。
 
