@@ -1,5 +1,6 @@
 import { isPlayerFullscreen } from './player';
 import styles from '../../ui/quick-dock-page.css?style';
+import { diagnostics } from '../../core/diagnostics';
 
 export function attachQuickDock(host: HTMLElement) {
   const style = styles.cloneNode(true); document.head.append(style);
@@ -12,6 +13,7 @@ export function attachQuickDock(host: HTMLElement) {
   }
   function mount() {
     if (!document.getElementById('js-player-main')) {
+      diagnostics.report('dock', 'unmatched', '未找到 #js-player-main，暂不挂载入口');
       host.hidden = true;
       host.remove();
       setSidebar(null);
@@ -26,10 +28,11 @@ export function attachQuickDock(host: HTMLElement) {
     host.hidden = hidden;
     host.toggleAttribute('data-player-controls', fullscreen);
     host.toggleAttribute('data-floating', !fullscreen && !native);
-    if (!target || hidden) return;
+    if (!target || hidden) { diagnostics.report('dock', 'unmatched', '全屏内未找到可用的 #js-player-controlbar [class^="shieldSetting-"] 锚点'); return; }
     if (host.parentElement !== target || fullscreen && host.nextElementSibling !== shield) {
       if (fullscreen) target.insertBefore(host, shield!); else target.prepend(host);
     }
+    diagnostics.report('dock', 'applied', fullscreen ? '已挂载到播放器全屏控制栏' : native ? '已挂载到官方侧边栏' : '已挂载右下角浮动入口');
   }
   const observer = new MutationObserver(mount);
   observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });

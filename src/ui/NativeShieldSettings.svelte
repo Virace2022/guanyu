@@ -25,7 +25,7 @@
     <summary bind:this={summary} aria-labelledby="guanyu-shield-title guanyu-shield-selection"><span id="guanyu-shield-selection">{count === nativeShieldChoices.length ? '全部屏蔽' : count ? `已选择 ${count} 项` : '不屏蔽'}</span><span class="muted">{count} / {nativeShieldChoices.length}</span><svg class="shield-chevron" aria-hidden="true" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m4 6 4 4 4-4" /></svg></summary>
     <div class="shield-options">
       <div class="shield-actions"><button class="button" onclick={() => selectAll(true)} disabled={count === nativeShieldChoices.length}>全选</button><button class="button" onclick={() => selectAll(false)} disabled={count === 0}>清空</button></div>
-      <div role="group" aria-labelledby="guanyu-shield-title">{#each nativeShieldChoices as choice (choice.key)}<label class="shield-option"><input type="checkbox" bind:checked={value[choice.key]} /><span>{choice.label}</span></label>{/each}</div>
+      <div role="group" aria-labelledby="guanyu-shield-title">{#each nativeShieldChoices as choice (choice.key)}<label class="shield-option"><input type="checkbox" data-setting={`shield.${choice.key}`} bind:checked={value[choice.key]} /><span><strong>{choice.label}</strong><small>{choice.hint}</small></span></label>{/each}</div>
     </div>
   </details>
   <p class="help">进入直播间时应用所选偏好；在原生菜单里的临时调整，下次进入时恢复。</p>

@@ -1,4 +1,6 @@
 import type { BarrageOptions } from '../../config/options';
+import { diagnostics } from '../../core/diagnostics';
+import { reportMatches } from './diagnostics';
 
 const markSelectors: Record<Exclude<keyof BarrageOptions, 'linked' | 'enter'>, string[]> = {
   fans: ['.FansMedal', '.FansMedalWrap:not(:has(dy-fan-medal))'],
@@ -69,7 +71,7 @@ export function mountBarrage(page: DouyuBarragePage) {
     const channel = page.__SHARK_INJECTABLE_CHANNEL__?.[service];
     if (typeof channel?.subscriber !== 'function') return false;
     try { channel.next({ method, args, subscriber: { next: receive, complete() {} } }); return true; }
-    catch { return false; }
+    catch (cause) { diagnostics.report('barrage.linked', 'error', `${service}.${method} 调用失败：${String(cause)}`, '官方配置'); return false; }
   }
 
   function loadConfig() {
@@ -116,10 +118,19 @@ export function mountBarrage(page: DouyuBarragePage) {
       observer.disconnect(); container = next;
       if (next) { observer.observe(next, { childList: true, subtree: true }); next.querySelectorAll<HTMLElement>('dy-fan-medal').forEach(syncMedal); }
     }
+    if (options) {
+      for (const key of Object.keys(markSelectors) as (keyof typeof markSelectors)[]) if (options[key]) {
+        const selectors = [...markSelectors[key], ...(['fans', 'diamond'].includes(key) ? ['dy-fan-medal'] : [])].map(selector => `.Barrage-listItem ${selector}`).join(', ');
+        reportMatches(`barrage.${key}`, selectors, '规则已准备，当前无对应弹幕标记，继续观察');
+      }
+      if (options.enter) reportMatches('barrage.enter', '#js-barrage-extend-container, .Barrage-listItem .Barrage-userEnter', '规则已准备，当前无进场提示节点，继续观察');
+    }
     if (!options?.linked) { restoreFilter(); return; }
     loadConfig();
     const player = page.__player;
-    if (!player || typeof player !== 'object') { restoreFilter(); return; }
+    if (!player || typeof player !== 'object') { diagnostics.report('barrage.linked', 'unmatched', '未找到页面 __player，commentFilter 尚未接入', '过滤器'); restoreFilter(); return; }
+    diagnostics.report('barrage.linked', templates && roomConfig ? 'ready' : 'waiting', templates && roomConfig ? '已取得官方活动模板和房间配置' : `等待官方配置：${!templates ? 'NormalServices.getCommChatmsgConfig ' : ''}${!roomConfig ? 'userPropCommonServices.getCommonRoomConfig' : ''}；普通文本链接过滤不受影响`, '官方配置');
+    diagnostics.report('barrage.linked', 'applied', '已接入 __player.commentFilter，整条消息在原生转发前过滤', '过滤器');
     if (active?.player === player && player.commentFilter === active.wrapper) return;
     restoreFilter();
     const original = player.commentFilter;

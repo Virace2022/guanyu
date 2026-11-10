@@ -1,5 +1,6 @@
 import type { MultiAudio } from '../../features/multiscreen/audio';
 import type { MultiScreenNative } from './multiscreen';
+import { diagnostics } from '../../core/diagnostics';
 
 const volume = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'volume')!;
 const muted = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'muted')!;
@@ -53,14 +54,14 @@ export function mountMultiscreenAudio(getNative: () => MultiScreenNative, audio:
     frame = 0; if (syncing) return; syncing = true;
     try {
       const current = getNative();
-      if (!enabled || !current.service || !current.core || !current.active() || !current.container?.isConnected) { detach(); return; }
+      if (!enabled || !current.service || !current.core || !current.active() || !current.container?.isConnected) { diagnostics.report('multi.independentVolume', 'idle', '等待开启多屏并取得官方媒体宿主'); detach(); return; }
       const ids = current.order(); if (ids.length < 2) { detach(); return; }
       if (native && (native !== current || container !== current.container)) detach();
       if (current.service.$dragBox) return;
       const host = current.container as HTMLElement;
       const main = [...media.values()].find(record => record.main && record.video.isConnected)?.video
         ?? host.querySelector<HTMLVideoElement>('#js-player-video-first video') ?? host.querySelector<HTMLVideoElement>('.layout-Player-videoEntity video');
-      if (!main) return;
+      if (!main) { diagnostics.report('multi.independentVolume', 'unmatched', '多屏已开启，未找到 #js-player-video-first video / .layout-Player-videoEntity video'); return; }
       if (!connected) {
         native = current; container = host; nativeVolume = Number(current.store.getState().getIn(['videoModule', 'player', 'volume'])) || 0;
         audio.connect(ids, current.roomId, nativeVolume, muted.get!.call(main)); connected = true;
@@ -79,6 +80,7 @@ export function mountMultiscreenAudio(getNative: () => MultiScreenNative, audio:
       }
       for (const [video, record] of media) if (!live.has(video)) { record.restore(); media.delete(video); }
       paint();
+      diagnostics.report('multi.independentVolume', media.size ? 'applied' : 'unmatched', media.size ? '已接入多屏媒体的独立音量与总音量' : '多屏槽位中尚未找到 video');
     } finally { syncing = false; }
   }
   const stop = audio.subscribe(paint), timer = setInterval(sync, 500);

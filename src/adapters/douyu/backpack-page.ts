@@ -1,6 +1,7 @@
 import type { BackpackOptions } from '../../config/enhancements';
 import type { BagGift, FanBadge, PocketItem, MonthCost } from './backpack-api';
 import { createIcon } from '../../ui/icons';
+import { diagnostics } from '../../core/diagnostics';
 
 export interface BackpackPageData { gifts: BagGift[]; badges: FanBadge[]; pocket: PocketItem[]; vipDays: number | null; month: MonthCost | null; roomId: string; uid: string }
 export function mountBackpackPage(open: () => void, refresh: () => void, openGlow: () => void) {
@@ -63,7 +64,7 @@ export function mountBackpackPage(open: () => void, refresh: () => void, openGlo
     const recharge = document.querySelector('#js-player-toolbar .InteractABAd-recharge, #js-player-toolbar .ToolbarRechargeModule');
     if (options.glow && recharge?.parentElement) { if (glow.nextElementSibling !== recharge) recharge.before(glow); } else glow.remove();
     const badge = data.badges.find(item => item.id === data.roomId), toolbar = document.querySelector('.ChatToolBar'), right = toolbar?.querySelector('.ChatToolBar__right');
-    if (options.badgeDays && badge && badge.since > 0 && toolbar && right) {
+    if (options.chatBadgeDays && badge && badge.since > 0 && toolbar && right) {
       currentBadge.textContent = `牌龄 ${badge.days} 天`; currentBadge.title = `本房粉丝牌获得于 ${new Date(badge.since).toLocaleString()}`;
       if (currentBadge.parentElement !== toolbar || currentBadge.nextElementSibling !== right) toolbar.insertBefore(currentBadge, right);
     } else currentBadge.remove();
@@ -92,6 +93,15 @@ export function mountBackpackPage(open: () => void, refresh: () => void, openGlo
       signature = next; pocket.replaceChildren();
       for (const item of data.pocket) { const span = document.createElement('span'), image = document.createElement('img'); image.src = item.webIcon; image.alt = ''; span.append(image, item.name); span.title = item.intro; pocket.append(span); }
     }
+    for (const [key, node, missing] of [
+      ['details', summary, '未找到 .BackpackExpandPanel-backpackHeader / .BackpackHeader-extInfo，等待打开背包'],
+      ['monthCost', monthItem, '未找到 .InteractABAd-valueInfo / .PlayerToolbar-Wealth'],
+      ['glow', glow, '未找到 #js-player-toolbar 中的 .InteractABAd-recharge / .ToolbarRechargeModule'],
+    ] as const) if (options[key]) diagnostics.report(`backpack.${key}`, node.isConnected ? 'ready' : 'unmatched', node.isConnected ? '页面入口已挂载，资料由接口独立读取' : missing);
+    if (options.vipExpiry) diagnostics.report('backpack.vipExpiry', !panel ? 'unmatched' : data.vipDays === null ? 'idle' : vip.isConnected ? 'applied' : 'waiting', !panel ? '未找到背包头部，等待打开背包：.BackpackExpandPanel-backpackHeader / .BackpackHeader-extInfo' : data.vipDays === null ? 'VIP 资料尚未返回或本房没有适用的 VIP' : '已显示本房 VIP 到期信息');
+    if (options.badgeDays) diagnostics.report('backpack.badgeDays', badgeDays.size ? 'applied' : 'idle', badgeDays.size ? '已挂载粉丝牌列表天数' : '粉丝牌列表页使用 .fans-badge-list [data-fans-room]');
+    if (options.chatBadgeDays) diagnostics.report('backpack.chatBadgeDays', currentBadge.isConnected ? 'applied' : 'idle', currentBadge.isConnected ? '已挂载聊天区牌龄' : !badge ? '当前没有本房粉丝牌或尚未读取' : !toolbar || !right ? '本房有粉丝牌，但未匹配 .ChatToolBar / .ChatToolBar__right' : '本房粉丝牌没有可用的获得日期');
+    if (options.pocket) diagnostics.report('backpack.pocket', !head ? 'unmatched' : pocket.isConnected ? 'applied' : 'idle', !head ? '未找到 .FansMedalInfo-head，等待展开粉丝牌资料' : pocket.isConnected ? '已挂载主播口袋道具' : '口袋资料尚未返回或没有可显示的道具');
     if (panel !== previousPanel) { previousPanel = panel; if (panel && enabled) refresh(); }
   }
   const timer = setInterval(sync, 1000);

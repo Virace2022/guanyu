@@ -1,3 +1,5 @@
+import { diagnostics } from '../../core/diagnostics';
+
 interface AudioRecord {
   source: MediaElementAudioSourceNode;
   gain: GainNode;
@@ -46,17 +48,18 @@ export class GainAudio {
 
   private async connect() {
     try {
-      if (!this.video) { this.onStatus('等待播放器加载'); return; }
+      if (!this.video) { diagnostics.report('gain.audio', 'waiting', '尚未取得主媒体 video'); this.onStatus('等待播放器加载'); return; }
       sharedContext ??= new AudioContext();
       // 先恢复上下文再接管媒体，避免自动播放限制使原声静音。
       if (sharedContext.state !== 'running') await sharedContext.resume();
       if (this.released) return;
-      if (sharedContext.state !== 'running') { this.onStatus('点击开启增益'); return; }
+      if (sharedContext.state !== 'running') { diagnostics.report('gain.audio', 'waiting', 'AudioContext 尚未运行，等待用户手势'); this.onStatus('点击开启增益'); return; }
       const video = this.video;
       if (!video?.isConnected) return;
       if (video.currentSrc) {
         const url = new URL(video.currentSrc, location.href);
         if (/^https?:$/.test(url.protocol) && url.origin !== location.origin && !video.crossOrigin) {
+          diagnostics.report('gain.audio', 'idle', '当前媒体为跨源线路且未设置 crossOrigin，不能接入 Web Audio');
           this.onStatus('当前播放线路暂不支持增益'); return;
         }
       }
@@ -71,9 +74,10 @@ export class GainAudio {
       }
       if (record !== this.active) { this.restore(); this.active = record; }
       this.apply();
+      diagnostics.report('gain.audio', 'applied', '已连接主媒体 Web Audio 音频源与 GainNode');
       this.onStatus(this.amount > 100 ? '增益已启用，仅记住当前房间' : '已恢复原声');
     } catch (error) {
-      console.warn('[观鱼][音量增益]', error);
+      diagnostics.report('gain.audio', 'error', error instanceof Error ? error.message : String(error));
       this.onStatus('增益未能启用，请刷新后重试');
     }
   }

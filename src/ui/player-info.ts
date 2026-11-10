@@ -1,6 +1,7 @@
 import { readMetadata } from '../features/player-info/metadata';
 import type { PlayerStore } from '../adapters/douyu/player';
 import type { SettingsStore } from '../config/settings';
+import { diagnostics } from '../core/diagnostics';
 
 interface Metadata { metadata?: Record<string, unknown>; width?: number; height?: number; fps?: number }
 
@@ -29,8 +30,9 @@ export function createPlayerInfo(player: PlayerStore, settings: SettingsStore) {
       const rows = fields.filter(([key]) => info.metadata?.[key!] != null).map(([key, label]) => [label!, String(info.metadata![key!])]);
       if (info.width && info.height) rows.push([`📺直播画面 ${info.width} × ${info.height}${info.fps ? ` · ${info.fps} fps` : ''}`]);
       loaded = true; render(rows);
+      diagnostics.report('menu.roomInfo', rows.length ? 'ready' : 'idle', rows.length ? '已读取并展示直播流中的主播配置' : '直播流未提供可展示的主播配置');
     } catch (error) {
-      if (!abort.signal.aborted && expected === roomId) render([[String(error instanceof Error ? error.message : error)], ['再次悬停可重试']]);
+      if (!abort.signal.aborted && expected === roomId) { diagnostics.report('menu.roomInfo', 'error', String(error instanceof Error ? error.message : error)); render([[String(error instanceof Error ? error.message : error)], ['再次悬停可重试']]); }
     } finally { if (request === abort) request = undefined; }
   }
   function sync() {

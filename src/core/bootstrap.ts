@@ -9,7 +9,8 @@ import { observeTeam } from '../adapters/douyu/team';
 import { mountTeamLayout } from '../adapters/douyu/team-layout';
 import { createTeam } from '../features/team-live/controller';
 import { createTeamEditor } from '../ui/team-editor';
-import { version } from './version';
+import { configureFeatureLogs } from './feature-logs';
+import { observeRuntimeLogs } from './runtime-logs';
 import { createPageTools } from '../features/page-tools/controller';
 import { createBarrage } from '../features/barrage/controller';
 import { mountQuickDock } from '../ui/quick-dock';
@@ -31,7 +32,9 @@ import { connectTheme } from '../ui/theme';
 import { createGlowWindow } from '../ui/glow-window';
 
 export function start() {
-  const settings = createSettings(localStorage, window), player = observePlayer(unsafeWindow), pageTheme = observePageTheme();
+  const settings = createSettings(localStorage, window);
+  const stopDiagnostics = configureFeatureLogs(settings);
+  const player = observePlayer(unsafeWindow), pageTheme = observePageTheme();
   const stopTheme = connectTheme(settings, pageTheme);
   const gain = createGain(player, settings, localStorage, window), pageTools = createPageTools(settings, unsafeWindow), barrage = createBarrage(settings, unsafeWindow);
   const teamSource = observeTeam(unsafeWindow), team = createTeam(teamSource, localStorage, window, settings);
@@ -47,13 +50,14 @@ export function start() {
   const backpack = createBackpack(settings, player, () => settingsWindow.open('backpack'), () => openGlow());
   const glowWindow = createGlowWindow(backpack, settings); openGlow = glowWindow.open;
   const settingsWindow = createSettingsWindow(settings, gain, pageTheme, pageTools, team, multi, sign, backpack, playback, roomPage, openTeam);
+  const stopRuntimeLogs = observeRuntimeLogs(team, multi, sign);
   const info = createPlayerInfo(player, settings);
   const removeGainControl = mountGainControl(player, gain, settings);
   const removeTeamLayout = mountTeamLayout(team, openTeam, player);
   const removeTopBanner = mountTopBanner(settings, team);
   const removeRoomLayout = mountRoomLayout(settings, team);
   const removeQuickDock = mountQuickDock(settings, () => settingsWindow.open());
-  const menus = [GM_registerMenuCommand('观鱼 · 设置', () => settingsWindow.open()), GM_registerMenuCommand('观鱼 · 团播名单', openTeam), GM_registerMenuCommand('观鱼 · 签到', () => settingsWindow.open('sign'))];
+  const menus = [GM_registerMenuCommand('观鱼 · 设置', () => settingsWindow.open()), GM_registerMenuCommand('观鱼 · 团播名单', openTeam), GM_registerMenuCommand('观鱼 · 每日任务', () => settingsWindow.open('sign'))];
   const toggle = (key: keyof OptimizationOptions) => settings.save({ ...settings.value, optimization: { ...settings.value.optimization, [key]: !settings.value.optimization[key] } });
   const hasTeam = () => !!team.value.source;
   async function preview() {
@@ -75,18 +79,20 @@ export function start() {
     hideAds: { label: () => '隐藏页面广告', checked: () => settings.value.optimization.hideAds, run: () => toggle('hideAds') },
     gain: { label: () => '音量增益', checked: () => gain.value.amount > 100, run: gain.toggle, enabled: () => gain.value.available },
     soundSettings: { label: () => '声音设置', run: () => settingsWindow.open('sound') },
-    optimizationSettings: { label: () => '优化设置', run: () => settingsWindow.open('optimization') },
-    barrageSettings: { label: () => '弹幕设置', run: () => settingsWindow.open('barrage') },
+    optimizationSettings: { label: () => '页面整理设置', run: () => settingsWindow.open('optimization') },
+    barrageSettings: { label: () => '弹幕与特效设置', run: () => settingsWindow.open('barrage') },
     teamSettings: { label: () => '团播设置', run: () => settingsWindow.open('team') },
     multiSettings: { label: () => '多屏设置', run: () => settingsWindow.open('multi') },
     menuSettings: { label: () => '右键菜单设置', run: () => settingsWindow.open('menu') },
-    signSettings: { label: () => '签到', run: () => settingsWindow.open('sign') },
+    signSettings: { label: () => '每日任务', run: () => settingsWindow.open('sign') },
   };
   const context = mountPlayerMenu(settings, actions, message => { void confirmAction('操作未完成', message, '知道了'); });
   multi.start();
-  console.info('[观鱼] 已启动', { version, sameWindow: monkeyWindow === unsafeWindow });
+  console.info('[观鱼][基础] 初始化完成，后续日志随功能运行输出', { sameWindow: monkeyWindow === unsafeWindow });
   function onPageHide(event: PageTransitionEvent) { if (!event.persisted) dispose(); }
   function dispose() {
+    stopRuntimeLogs();
+    stopDiagnostics();
     for (const menu of menus) GM_unregisterMenuCommand(menu);
     settingsWindow.dispose();
     context.dispose(); multi.dispose(); multiWindow.dispose(); info.dispose(); sign.dispose(); playback.dispose(); roomPage.dispose(); glowWindow.dispose(); backpack.dispose();

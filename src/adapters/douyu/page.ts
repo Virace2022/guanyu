@@ -1,6 +1,8 @@
 import type { OptimizationOptions } from '../../config/options';
 import styles from '../../ui/page-tools.css?style';
 import { createIcon } from '../../ui/icons';
+import { diagnostics } from '../../core/diagnostics';
+import { reportMatches, reportStyleMatches } from './diagnostics';
 
 const classes: Record<keyof OptimizationOptions, string> = {
   hideAds: 'guanyu-hide-ads',
@@ -53,6 +55,10 @@ export function mountPageTools(toggleChat: () => void) {
     if (!room) showHeader();
     if (root.classList.contains('guanyu-video-mirror') !== mirrored) root.classList.toggle('guanyu-video-mirror', mirrored);
     syncChat();
+    for (const key of ['hideAds', 'hideGiftBar', 'hidePk', 'hideActivities'] as const) if (options[key]) {
+      reportStyleMatches(`optimization.${key}`, style, `html.${classes[key]} `, '隐藏规则已挂载，当前没有匹配内容，继续观察');
+    }
+    if (options.autoHideHeader) reportMatches('optimization.autoHideHeader', '.Header-wrap, .layout-Header', '未找到导航宿主，滚动监听仍保留');
     if (changed) window.dispatchEvent(new Event('resize'));
   }
   const pageObserver = new MutationObserver(syncPage);
@@ -96,6 +102,8 @@ export function mountPageTools(toggleChat: () => void) {
     collapse.hidden = !!options?.collapseChat;
     const target = options?.collapseChat ? summary : toolbar;
     if (target && status.parentElement !== target) target.append(status);
+    if (options?.collapseChat) diagnostics.report('optimization.collapseChat', rank && stage && summary.isConnected ? 'applied' : 'unmatched',
+      !rank ? '未找到 .layout-Player-rank，继续观察' : !stage ? '未找到 .layout-Player-barrageStage，继续观察' : '已隐藏活动区并挂载摘要与恢复入口');
   }
 
   function showHeader() {

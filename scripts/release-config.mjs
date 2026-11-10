@@ -14,4 +14,5 @@ export const tarballFile = `${packageName.replace(/^@/, '').replace('/', '-')}-$
 export const updateURL = `https://cdn.jsdelivr.net/npm/${packageName}@latest/dist/${metaFile}`;
 export const downloadURL = `https://cdn.jsdelivr.net/npm/${packageName}@latest/dist/${scriptFile}`;
 export const installURL = `https://cdn.jsdelivr.net/npm/${packageName}@${version}/dist/${scriptFile}`;
+export const iconURL = `https://cdn.jsdelivr.net/gh/${repository}@${tag}/assets/brand/guanyu.svg`;
 export const releaseFiles = [scriptFile, metaFile, tarballFile, 'SHA256SUMS'];

@@ -1,6 +1,7 @@
 import type { SettingsStore } from '../../config/settings';
 import type { TeamController } from '../../features/team-live/controller';
 import { readRoomLayout } from './room-layout';
+import { diagnostics } from '../../core/diagnostics';
 
 export function mountTopBanner(settings: SettingsStore, team: TeamController) {
   const saved = new Map<HTMLElement, Map<string, string>>();
@@ -21,7 +22,7 @@ export function mountTopBanner(settings: SettingsStore, team: TeamController) {
   function sync() {
     const enabled = settings.runtime.value.optimization.hideTopBanner;
     const layout = readRoomLayout();
-    if (!layout) { restore(); signature = ''; previous = []; return; }
+    if (!layout) { diagnostics.report('optimization.hideTopBanner', 'unmatched', '未识别播放器与内容根的布局关系：#js-player-main → #root / .layout-Main'); restore(); signature = ''; previous = []; return; }
     const candidates = [...document.querySelectorAll<HTMLElement>('.bacpCommonHeader.is-innerRoom, .wm-general, [id^="bc"][style*="background-image"]')]
       .filter(node => {
         if (!layout.root.contains(node) || layout.section.contains(node)
@@ -35,6 +36,8 @@ export function mountTopBanner(settings: SettingsStore, team: TeamController) {
     if (next === signature && candidates.every((node, index) => node === previous[index])) return;
     restore(); signature = next; previous = candidates;
     if (!enabled) return;
+    diagnostics.report('optimization.hideTopBanner', team.value.source ? 'idle' : candidates.length ? 'applied' : 'unmatched',
+      team.value.source ? '团播顶图交由名单布局处理' : candidates.length ? '已匹配播放器上方的官方顶图，应用隐藏与占位调整' : '当前没有符合布局条件的顶图；选择器：.bacpCommonHeader.is-innerRoom / .wm-general / [id^="bc"][style*="background-image"]，继续观察');
     for (const node of candidates) {
       if (node.matches('.bacpCommonHeader')) { set(node, 'display', 'none'); continue; }
       const outer = node.closest<HTMLElement>('.bc-wrapper') || node;

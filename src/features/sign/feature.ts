@@ -5,17 +5,18 @@ import { createState } from '../../core/state';
 import { createDailyTasks, type SignRow } from './daily';
 import { SignYubaController } from './yuba';
 import type { LevelTask } from '../../adapters/douyu/tasks';
-import { observeStarPacket } from '../../adapters/douyu/star-packet';
+import { createStarPacket, type StarPacketSnapshot } from './star-packet';
 import { createTaskRunner } from '../../adapters/douyu/task-runner';
+import { diagnostics } from '../../core/diagnostics';
 
 export interface SignSnapshot {
   uid: string; day: string; rows: SignRow[]; tasks: LevelTask[]; yubaDetails: string[];
   running: boolean; error: string; notice: string; restore: string;
-  packet: { available: boolean; visible: boolean; status: string };
+  packet: StarPacketSnapshot;
 }
 export function createSign(settings: SettingsStore, roomId: () => string,
   reminder: (title: string, content: string) => Promise<boolean>) {
-  const packet = observeStarPacket();
+  const packet = createStarPacket(settings, roomId);
   const state = createState<SignSnapshot>({ uid: '', day: taskDay(), rows: [], tasks: [], yubaDetails: [], running: false, error: '', notice: '', restore: '', packet: packet.value });
   let yuba: SignYubaController | undefined, stopped = false, notice = '';
   let yubaRow: SignRow = { id: 'yuba', label: '鱼吧签到', status: 'pending', detail: '等待登录后读取', nextAt: 0, attempts: 0 };
@@ -26,11 +27,13 @@ export function createSign(settings: SettingsStore, roomId: () => string,
     if (stopped) return;
     const value = daily.value;
     state.set({ uid: value.uid, day: value.day, rows: [{ ...yubaRow }, ...value.rows], tasks: value.tasks,
-      yubaDetails: [...yubaDetails], running: value.running || !!yuba?.running, error: value.error, notice, restore: value.restore, packet: packet.value });
+      yubaDetails: [...yubaDetails], running: value.running || !!yuba?.running || packet.value.running, error: value.error, notice, restore: value.restore, packet: packet.value });
   }
   function report(controller: SignYubaController, message: string) {
     const progress = controller.state, groups = Object.values(progress?.groups || {}) as any[];
     const pending = groups.filter(group => group.status === 'pending');
+    if (progress?.list.error) diagnostics.report('sign.yuba', 'error', progress.list.error, '关注名单');
+    for (const group of groups) if (group.error || group.supplementError) diagnostics.report('sign.yuba', 'error', group.error || group.supplementError, `鱼吧 ${group.id}`);
     yubaRow = { id: 'yuba', label: '鱼吧签到', status: progress?.list.done && !pending.length ? 'done' : 'waiting',
       detail: message, nextAt: Math.min(...pending.map(group => Math.max(group.nextAt || 0, progress?.requestAt || 0)), Infinity), attempts: 0 };
     yubaDetails = [];
@@ -63,7 +66,6 @@ export function createSign(settings: SettingsStore, roomId: () => string,
     publish();
   });
   return { ...state, get value() { return state.value; },
-    openPacket: packet.open,
     async run() {
       const uid = accountId();
       try {
@@ -71,7 +73,7 @@ export function createSign(settings: SettingsStore, roomId: () => string,
         if (!settings.value.sign.enabled) { notice = '签到已关闭，请开启并保存后再检查'; publish(); return; }
         runner.submit(uid);
         notice = '已提交检查请求，未完成任务将由当前调度页面处理'; publish();
-        await Promise.all([daily.run(), yuba?.wake(true)]);
+        await Promise.all([daily.run(), yuba?.wake(true), packet.run()]);
       } catch (cause) { notice = `检查请求提交失败：${String(cause)}`; publish(); }
     },
     dispose() { stopped = true; stopSettings(); stopDaily(); stopPacket(); packet.dispose(); yuba?.dispose(); daily.dispose(); runner.dispose(); },

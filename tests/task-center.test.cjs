@@ -12,7 +12,7 @@ function load(file, globals = {}, imports = {}) {
   }).outputText;
   vm.runInNewContext(source, { exports, URLSearchParams, AbortController, setTimeout, clearTimeout,
     document: { cookie: 'acf_uid=test-account; acf_ccn=test-ctn; cvl_csrf_token=test-csrf' },
-    require(name) { if (name in imports) return imports[name]; throw new Error(`未支持模块 ${name}`); }, ...globals,
+    require(name) { if (name in imports) return imports[name]; if (name === '../../core/diagnostics') return load('src/core/diagnostics.ts'); throw new Error(`未支持模块 ${name}`); }, ...globals,
   }, { filename: file });
   return exports;
 }
@@ -21,6 +21,8 @@ const requestHelpers = load('src/adapters/douyu/task-request.ts', {}, { $: {} })
 const { createDouyuTasks } = load('src/adapters/douyu/tasks.ts', {}, { './task-request': requestHelpers });
 const { checkPoints } = load('src/features/sign/points.ts');
 const { runFanChat } = load('src/features/sign/fan-chat.ts', {}, { '../../adapters/douyu/task-request': requestHelpers });
+const { createClientSignApi } = load('src/adapters/douyu/client-sign.ts', {}, { './task-request': requestHelpers });
+const clientSign = load('src/features/sign/client.ts');
 const signed = value => ({ error: 0, data: { todaySigned: value, todayTaskFinished: 1 } });
 const view = tasks => ({ error: 0, data: { startTime: 1793894400, taskList: tasks } });
 
@@ -58,6 +60,7 @@ async function restoreFansHome(error) {
     '../../adapters/douyu/task-request': { ...requestHelpers, taskDay: () => day,
       createTaskRequest: () => ({ async request(url) { requests.push(url); throw new Error('本场景不应重新请求签到'); }, dispose() {} }) },
     '../../adapters/douyu/tasks': { createDouyuTasks },
+    '../../adapters/douyu/client-sign': { createClientSignApi }, './client': clientSign,
     './points': { checkPoints },
     './fan-chat': { runFanChat },
     '../../adapters/douyu/chat-session': { rememberChatRuntime() {}, createChatSessions: () => ({ cancel() {}, dispose() {}, send() { assert.fail('粉丝家园恢复不应发送弹幕'); } }) },
@@ -289,6 +292,7 @@ test('100 个房间当天各发一次，完成后定时、手动、刷新均不�
     '../../adapters/douyu/task-request': { ...requestHelpers, taskDay: day,
       createTaskRequest: () => ({ request() { assert.fail('本场景只使用任务 API 边界'); }, dispose() {} }) },
     '../../adapters/douyu/tasks': { createDouyuTasks: () => api },
+    '../../adapters/douyu/client-sign': { createClientSignApi }, './client': clientSign,
     '../../adapters/douyu/chat-session': { rememberChatRuntime() {}, createChatSessions: () => sessions },
     './fan-chat': { runFanChat }, './points': { checkPoints },
   });

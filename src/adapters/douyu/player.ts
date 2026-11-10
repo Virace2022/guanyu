@@ -1,4 +1,5 @@
 import { createState } from '../../core/state';
+import { diagnostics } from '../../core/diagnostics';
 
 interface DouyuPage {
   room_id?: string | number;
@@ -48,6 +49,8 @@ export function observePlayer(page: Window & DouyuPage) {
       ?? (canonical ? roomNumber(new URL(canonical, location.href).pathname.slice(1)) : null)
       ?? (video ? roomNumber(location.pathname.slice(1)) : null);
     const next = { roomId, video, volume };
+    diagnostics.report('player', !root ? 'unmatched' : !roomId || !video ? 'waiting' : 'ready',
+      !root ? '未找到 #room-html5-player，继续等待页面宿主' : !roomId ? '尚未识别真实房间号' : !video ? '未找到主媒体：#js-player-video-first video / .layout-Player-videoEntity video / #room-html5-player video；未开播时可能没有媒体' : '已识别真实房间号和主媒体');
     if (Object.keys(next).some(key => next[key as keyof PlayerState] !== state.value[key as keyof PlayerState])) {
       state.set(next);
     }

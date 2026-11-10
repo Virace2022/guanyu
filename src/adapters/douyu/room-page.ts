@@ -2,6 +2,8 @@ import type { RoomOptions } from '../../config/enhancements';
 import styles from '../../ui/room-page.css?style';
 import { createIcon } from '../../ui/icons';
 import { bindTheme } from '../../ui/theme';
+import { diagnostics } from '../../core/diagnostics';
+import { reportMatches } from './diagnostics';
 
 export interface SessionInfo { live: boolean; start: number; now: number; received: number; guild: string }
 export function mountRoomPage() {
@@ -51,7 +53,20 @@ export function mountRoomPage() {
       exact.textContent = new Date(info.start).toLocaleString(); exact.dateTime = new Date(info.start).toISOString();
       if (last.parentElement !== host) host.append(last);
     } else last.remove();
-    if (options?.closeRecommendation) document.querySelector<HTMLElement>('.ClosingRecommend .dy-ModalRadius-close-x')?.click();
+    if (options) {
+      for (const [key, node, applicable] of [['duration', duration, !!info?.live && !!info.start], ['guild', guild, !!info?.guild], ['lastLive', last, offline]] as const) {
+        if (!options[key]) continue;
+        const dismissed = key === 'lastLive' && dismissedStart === info?.start;
+        diagnostics.report(`room.${key}`, !info ? 'waiting' : !applicable || dismissed ? 'idle' : node.isConnected ? 'applied' : 'unmatched',
+          !info ? '等待房间资料接口结果' : !applicable ? '当前房间状态或资料不需要显示此项' : dismissed ? '本次卡片已由用户关闭' : node.isConnected ? '已挂载房间资料' : key === 'lastLive' ? '未找到 .room-Player 宿主' : '未找到 [class*="subTitleContainer__"] 中的原生 [class*="label__"] 锚点');
+      }
+      if (options.hideUnread) reportMatches('room.hideUnread', '.UserInfo .Badge, .YubaMessage .Badge, .ChatLetter-PopUnread', '隐藏规则已挂载，当前没有未读提示');
+    }
+    if (options?.closeRecommendation) {
+      const close = document.querySelector<HTMLElement>('.ClosingRecommend .dy-ModalRadius-close-x');
+      if (close) { close.click(); diagnostics.report('room.closeRecommendation', 'applied', '已点击官方下播推荐关闭入口'); }
+      else diagnostics.report('room.closeRecommendation', document.querySelector('.ClosingRecommend') ? 'unmatched' : 'idle', document.querySelector('.ClosingRecommend') ? '已出现下播推荐，但未找到 .dy-ModalRadius-close-x 关闭入口' : '当前未显示下播推荐');
+    }
   }
   const timer = setInterval(sync, 1000);
   return {

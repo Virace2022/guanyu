@@ -5,6 +5,7 @@ import { mountBackpackPage } from '../../adapters/douyu/backpack-page';
 import { accountId, taskDay } from '../../adapters/douyu/task-request';
 import { createState } from '../../core/state';
 import { RoomApi } from '../../adapters/douyu/rooms';
+import { diagnostics } from '../../core/diagnostics';
 
 interface BadgeRoom extends FanBadge { avatar: string }
 interface GlowPlan { uid: string; gift: number; name: string; available: number; each: number; total: number; rooms: BadgeRoom[]; avatarError: string }
@@ -30,6 +31,8 @@ export function createBackpack(settings: SettingsStore, player: PlayerStore, ope
     if (stopped) return;
     state.set({ ...state.value, ...next });
     const value = state.value;
+    if (value.glowError) diagnostics.report('backpack.glow', 'error', value.glowError, '续牌计划');
+    if (value.sendError) diagnostics.report('backpack.glow', 'error', value.sendError, '赠送');
     dom.update({ ...value, uid: accountId(), roomId: player.value.roomId || '' });
   }
   async function refresh() {
@@ -41,15 +44,15 @@ export function createBackpack(settings: SettingsStore, player: PlayerStore, ope
     const current = () => !stopped && generation === revision && uid === accountId() && room === player.value.roomId;
     async function load<T>(enabled: boolean, label: string, read: () => Promise<T>, result: (value: T) => Partial<BackpackState>) {
       if (!enabled) return;
-      try { const value = await read(); if (current()) publish(result(value)); }
-      catch (cause) { if (current()) errors.push(`${label}：${cause instanceof Error ? cause.message : String(cause)}`); }
+      try { const value = await read(); if (current()) { publish(result(value)); diagnostics.report('backpack.api', 'ready', `${label}资料读取完成，空数据按官方结果处理`, label); } }
+      catch (cause) { if (current()) { const error = `${label}：${cause instanceof Error ? cause.message : String(cause)}`; errors.push(error); diagnostics.report('backpack.api', 'error', error, label); } }
     }
     await Promise.all([
       load(options.details || options.glow, '背包', () => api.bag(room), gifts => {
         const plan = state.value.plan;
         return { gifts, ...(plan && Object.keys(state.value.deliveries).length ? { plan: { ...plan, available: Number(gifts.find(gift => Number(gift.id) === plan.gift)?.count || 0) } } : {}) };
       }),
-      load(options.badgeDays || options.glow, '粉丝牌', async () => badgeRooms(await api.badges()), result => ({ badges: result.rooms, avatarError: result.avatarError })),
+      load(options.badgeDays || options.chatBadgeDays || options.glow, '粉丝牌', async () => badgeRooms(await api.badges()), result => ({ badges: result.rooms, avatarError: result.avatarError })),
       load(options.pocket, '主播口袋', () => api.pocket(room), pocket => ({ pocket })),
       load(options.vipExpiry, 'VIP', () => api.vip(room), vipDays => ({ vipDays })),
       load(options.monthCost, '月消费', async () => {
@@ -63,7 +66,7 @@ export function createBackpack(settings: SettingsStore, player: PlayerStore, ope
   }
   async function prepare(each = settings.value.backpack.glowCount) {
     if (stopped || state.value.sending || state.value.preparing) return;
-    if (!settings.value.backpack.glow) { publish({ plan: null, glowError: '荧光棒续牌已关闭，请在背包设置中开启并保存' }); return; }
+    if (!settings.value.backpack.glow) { publish({ plan: null, glowError: '荧光棒续牌已关闭，请在背包与权益设置中开启并保存' }); return; }
     const uid = accountId(), room = player.value.roomId, revision = generation;
     if (!uid || !room) { publish({ glowError: '请先登录并进入真实直播间' }); return; }
     publish({ preparing: true, glowError: '', sendError: '', plan: null, deliveries: {} });
@@ -102,6 +105,7 @@ export function createBackpack(settings: SettingsStore, player: PlayerStore, ope
           await api.donate(plan.gift, plan.each, room.id);
           if (stopped || revision !== generation || plan.uid !== accountId()) return;
           publish({ deliveries: { ...state.value.deliveries, [room.id]: { status: 'sent' } }, sent: { ...state.value.sent, [room.id]: (state.value.sent[room.id] || 0) + plan.each } });
+          diagnostics.report('backpack.glow', 'applied', '官方接口已确认手动赠送', `房间 ${room.id}`);
         } catch (cause) {
           if (revision === generation) publish({ deliveries: { ...state.value.deliveries, [room.id]: { status: 'failed', error: cause instanceof Error ? cause.message : String(cause) } } });
           throw cause;

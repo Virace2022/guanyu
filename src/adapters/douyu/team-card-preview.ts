@@ -1,4 +1,5 @@
 import type { TeamRoom } from './team';
+import { diagnostics } from '../../core/diagnostics';
 
 const borrowed = new WeakMap<HTMLElement, HTMLElement>();
 
@@ -30,7 +31,7 @@ export function mountTeamCardPreview(native: () => HTMLElement | null) {
         restore();
         const root = room.element.closest<HTMLElement>('.wm-pc-room-button-dropdown')
           ?? (native()?.matches('.room-info') ? room.decoration : room.element.closest<HTMLElement>('a'));
-        if (!root || !native()?.contains(root)) return;
+        if (!root || !native()?.contains(root)) { diagnostics.report('team.hoverPreview', 'unmatched', '悬停时未找到名单内的 .wm-pc-room-button-dropdown / .room-info 原生卡片宿主'); return; }
         const slot = document.createElement('span'); slot.hidden = true; slot.dataset.guanyuNativeCardSlot = '';
         // 保留原位置的房间引用，悬停借走组件时名单识别不能少掉这个成员。
         borrowed.set(slot, room.element); root.before(slot);
@@ -39,6 +40,7 @@ export function mountTeamCardPreview(native: () => HTMLElement | null) {
         link.hidden = true; card.classList.add('guanyu-team-preview-active'); card.append(root);
         // 借用官方组件及事件，保留其 React 状态、预览播放器和弹层。
         room.element.dispatchEvent(new MouseEvent('mouseover', { bubbles: true, relatedTarget: null, clientX: event.clientX, clientY: event.clientY }));
+        diagnostics.report('team.hoverPreview', 'ready', '已借用原生卡片并触发官方 mouseover，预览由官方组件加载');
       });
       card.addEventListener('pointerleave', restore);
     },

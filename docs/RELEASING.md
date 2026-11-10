@@ -37,6 +37,8 @@ https://cdn.jsdelivr.net/npm/guanyu-douyu@2026.1108.7/dist/douyu.guanyu.user.js
 
 国内实际网络的安装与旧版升级需分别验收。GitHub Release 可直接下载同版完整脚本；原来使用旧更新地址的 `.6` 及更早版本需重新安装一次，才能切换到 jsDelivr。
 
+管理器图标 `@icon` 使用仓库中的 `assets/brand/guanyu.svg`，经 jsDelivr 的 GitHub 路径按当前发布 tag 访问。图标不另存副本，也不加入 npm 发布包；页面内的小鱼继续内联，保留主题与悬停变色。
+
 ## 一次性配置
 
 1. 用有权发布该包的 npm 账号登录官方 registry，完成邮箱验证和发布所需的 2FA。

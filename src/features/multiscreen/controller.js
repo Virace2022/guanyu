@@ -1,6 +1,7 @@
 import { MultiScreenNative } from '../../adapters/douyu/multiscreen';
 import { MultiScreenRooms } from './rooms';
 import { MultiScreenPanel } from './panel';
+import { diagnostics } from '../../core/diagnostics';
 export class MultiScreenController {
     constructor(dependencies) {
         this.dependencies = dependencies;
@@ -98,8 +99,8 @@ export class MultiScreenController {
                 const team = this.teamRooms();
                 for (const room of this.official?.battleList || team) this.rooms.remember(room);
                 if (!this.official && !team.length && this.settings.useFollow) {
-                    try { await this.rooms.follow(); }
-                    catch (error) { warning = error.message; }
+                    try { await this.rooms.follow(); diagnostics.report('multi.useFollow', 'ready', '已读取完整关注候选', '接口'); }
+                    catch (error) { warning = error.message; diagnostics.report('multi.useFollow', 'error', error.message, '接口'); }
                 }
                 if (revision !== this.revision) return;
                 const ids = [roomId, ...team.map(room => room.rid), ...this.settings.custom, ...this.rooms.temporary, ...this.native.order()];
@@ -108,8 +109,10 @@ export class MultiScreenController {
                 this.lastRefresh = Date.now();
                 this.rebuild();
                 this.ui.status(warning || "候选名单已更新，当前画面与排列保持不变。");
+                diagnostics.report('multi.service', 'ready', '候选房间资料已更新', '候选');
             } catch (error) {
                 if (!this.stopped && this.roomId === roomId && revision === this.revision && this.settings.enabled) {
+                    diagnostics.report('multi.service', 'error', error.message, '候选');
                     this.rebuild();
                     this.ui.status(error.name === "AbortError" ? "房间资料请求已取消或超时，可点击刷新重试。" : error.message);
                 }

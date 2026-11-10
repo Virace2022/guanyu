@@ -4,6 +4,7 @@ import { TeamLiveFocus } from './focus';
 import { element as TeamLive_element, button as TeamLive_button } from './dom';
 import { loadFlv } from './libraries';
 import { teamColumns } from '../layout';
+import { diagnostics } from '../../../core/diagnostics';
 export class TeamLiveMonitor {
     constructor(page) {
         this.page = page;
@@ -202,13 +203,14 @@ export class TeamLiveMonitor {
             };
             video.onplaying = () => {
                 if (!this.valid(tile, token)) return;
+                diagnostics.report('team.preview', 'applied', '预览媒体已触发 playing', `房间 ${tile.id}`);
                 clearTimeout(tile.timer); tile.timer = null; this.message(tile, "playing", "");
             };
             video.onwaiting = () => {
                 if (!this.valid(tile, token)) return;
                 this.message(tile, "loading", "缓冲中…"); this.deadline(tile, token);
             };
-            video.onerror = () => { if (this.valid(tile, token)) this.fail(tile); };
+            video.onerror = () => { if (this.valid(tile, token)) { diagnostics.report('team.preview', 'error', `媒体播放失败，MediaError code=${video.error?.code ?? '未知'}`, `房间 ${tile.id}`); this.fail(tile); } };
             video.onended = () => { if (this.valid(tile, token)) this.fail(tile, "预览已结束"); };
             this.deadline(tile, token);
             if (source.kind === "flv") {
@@ -217,7 +219,7 @@ export class TeamLiveMonitor {
                     autoCleanupMaxBackwardDuration: 15, autoCleanupMinBackwardDuration: 5
                 });
                 tile.flv = player;
-                player.on(this.flv.Events.ERROR, () => { if (this.valid(tile, token)) this.fail(tile); });
+                player.on(this.flv.Events.ERROR, (type, detail) => { if (this.valid(tile, token)) { diagnostics.report('team.preview', 'error', `FLV 播放失败：${type} / ${detail}`, `房间 ${tile.id}`); this.fail(tile); } });
                 player.attachMediaElement(video); player.load(); this.play(tile, token);
                 return;
             }
@@ -228,12 +230,13 @@ export class TeamLiveMonitor {
                 const hls = new Hls({ maxBufferLength: 10, maxMaxBufferLength: 20, maxBufferSize: 8 * 1024 * 1024 });
                 tile.hls = hls;
                 hls.on(Hls.Events.MANIFEST_PARSED, () => this.play(tile, token));
-                hls.on(Hls.Events.ERROR, (_event, data) => { if (data.fatal && this.valid(tile, token)) this.fail(tile); });
+                hls.on(Hls.Events.ERROR, (_event, data) => { if (data.fatal && this.valid(tile, token)) { diagnostics.report('team.preview', 'error', `HLS 播放失败：${data.type} / ${data.details}`, `房间 ${tile.id}`); this.fail(tile); } });
                 hls.loadSource(source.url); hls.attachMedia(video);
             } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
                 video.src = source.url; this.play(tile, token);
             } else this.fail(tile, "浏览器不支持预览");
         } catch (error) {
+            if (this.valid(tile, token)) diagnostics.report('team.preview', error.message === '未开播' ? 'idle' : 'error', error.message, `房间 ${tile.id}`);
             if (this.valid(tile, token)) this.fail(tile, ["预览组件加载失败", "未开播"].includes(error.message) ? error.message : "预览暂时不可用");
         }
     }
@@ -261,6 +264,7 @@ export class TeamLiveMonitor {
             } else { tile.video.src = url; this.play(tile, token); }
         } catch (error) {
             if (!this.valid(tile, token)) return;
+            diagnostics.report('team.preview', error.message === '未开播' ? 'idle' : 'error', `预览地址续期：${error.message}`, `房间 ${tile.id}`);
             if (error.message === "未开播" || ++tile.renewFailures >= 3) { this.fail(tile, error.message === "未开播" ? "未开播" : "预览暂时不可用"); return; }
             tile.renewTimer = setTimeout(() => {
                 if (this.valid(tile, token)) { this.queue.push({ tile, token, renew: true }); this.pump(); }
@@ -270,14 +274,15 @@ export class TeamLiveMonitor {
 
     deadline(tile, token) {
         if (tile.timer) return;
-        tile.timer = setTimeout(() => { if (this.valid(tile, token)) this.fail(tile); }, 25000);
+        tile.timer = setTimeout(() => { if (this.valid(tile, token)) { diagnostics.report('team.preview', 'error', '现有播放器加载等待已超过 25 秒', `房间 ${tile.id}`); this.fail(tile); } }, 25000);
     }
 
     play(tile, token) {
         if (!this.valid(tile, token)) return;
         tile.video.muted = !(tile.audible && this.focus.original(tile)); tile.video.volume = tile.video.muted ? 0 : 1;
-        Promise.resolve(tile.video.play()).catch(() => {
+        Promise.resolve(tile.video.play()).catch(cause => {
             if (!this.valid(tile, token)) return;
+            diagnostics.report('team.preview', 'waiting', `播放请求未完成，等待手动播放：${cause?.name || '播放被阻止'}`, `房间 ${tile.id}`);
             if (tile.node.dataset.source === "original") { this.fail(tile); return; }
             clearTimeout(tile.timer); tile.timer = null; this.message(tile, "blocked", "点击播放");
         });

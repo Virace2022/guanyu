@@ -2,6 +2,7 @@ import type { PlayerStore } from '../../adapters/douyu/player';
 import type { SettingsStore } from '../../config/settings';
 import { createState } from '../../core/state';
 import { GainAudio } from './audio';
+import { diagnostics } from '../../core/diagnostics';
 
 const roomPrefix = 'guanyu:gain:room:';
 export interface GainState {
@@ -37,6 +38,8 @@ export function createGain(player: PlayerStore, settings: SettingsStore, storage
     }
     state.set({ ...state.value, roomId: room, amount, error,
       status: amount > 100 ? '点击播放器或增益按钮恢复增益' : '当前为原声' });
+    if (error) diagnostics.report('gain.audio', 'error', error, '配置');
+    diagnostics.report('gain.audio', amount > 100 ? 'waiting' : 'idle', amount > 100 ? '已读取房间增益，等待主媒体和用户手势' : '当前房间为原声，尚未主动启用额外增益');
   }
 
   function persist() {
@@ -44,7 +47,7 @@ export function createGain(player: PlayerStore, settings: SettingsStore, storage
     try {
       storage.setItem(roomPrefix + state.value.roomId, JSON.stringify({ amount: state.value.amount, lastAmount }));
       state.set({ ...state.value, error: '' });
-    } catch (cause) { state.set({ ...state.value, error: `本次有效，房间增益未能保存：${String(cause)}` }); }
+    } catch (cause) { diagnostics.report('gain.audio', 'error', `房间增益未能保存：${String(cause)}`, '配置'); state.set({ ...state.value, error: `本次有效，房间增益未能保存：${String(cause)}` }); }
   }
 
   const stopPlayer = player.subscribe(value => {

@@ -59,6 +59,8 @@
 
 `player.ts` 观察真实房间号、主媒体、音量宿主和原生全屏状态。`playback.ts` 调用官方网页全屏、画质和音量路径，原生音量存储的 `v` 保持二次 JSON 编码。
 
+`background-video.ts` 从已提交的主屏 React hook 引用识别节流状态，核对服务的引用归属后包装其构造器的 `getAutoSwitch`；保留官方请求上下文，仅在开启时将有效策略的 `switch` 置为 0，并撤销已排定的计时器、同步缓存。已发生音频节流时按能力特征发现官方跨播放器动作桥，通过 `LoadVideoNet.reloadVideo` 恢复一次；旧控制栏的动作注册器不能替代该桥。`playback/controller.ts` 只订阅已保存的 `playback.keepBackgroundVideo`，适配错误独立存入播放状态，界面开关与错误展示归播放分类。关闭、换房、主屏重建及释放时恢复仍由本功能持有的方法并使缓存失效；在途策略按完成时的开关状态处理，不接管全局可见性事件或副屏。
+
 自动网页全屏复用 `room-page/controller.ts` 对 `/betard/<rid>` 的结果，仅对当前房间已开播且非轮播的状态执行。资料显示关闭时，播放功能仍可请求必要状态。
 
 `volume-gain/controller.ts` 管理主房间倍率和记忆；`audio.ts` 通过 WeakMap 复用媒体音频源和 GainNode。释放时恢复单位增益，不强行断开已接管的音频上下文；HMR 复用同一资源，避免重复创建媒体源。
@@ -123,9 +125,13 @@ flv.js 1.6.2 从固定 jsDelivr npm 地址按需加载，HLS 使用斗鱼 SDK。
 
 `backpack-page.ts` 将道具总亲密度留在背包，分别挂载月消费显隐、独立 VIP 提示、本房聊天工具栏牌龄和充值旁续牌按钮。`GlowPrompt.svelte` 打开时调用背包控制器准备计划，数量变化只重算本地计划；设置页使用同一窗口入口。控制器分别保存本轮逐房状态 `deliveries` 与本页累计确认数量 `sent`，准备新计划及显示设置变化保留累计记录，手动再次确认允许重新赠送。资料刷新不重置赠送队列，账号变化才取消请求并清空赠送状态，迟到响应不写入新账号。`RoomAvatar.svelte` 与显式导入的 `avatar-grid.css` 复用头像、加号、描边勾和进度展示，分别用于续牌与多屏选房。`ui/icons.ts` 显式区分实心钱包、显隐眼睛与其他线形图标，避免原生 SVG 样式覆盖图标。
 
+`backpack.chatBadgeDays` 单独控制聊天工具栏牌龄，`backpack.badgeDays` 继续控制设置与牌表。两者任一开启时可读取粉丝牌资料，分别记录页面挂载状态；旧配置没有新字段时继承原值。
+
 ## 签到调度
 
-`task-runner.ts` 长持账号级 Web Lock，统一鱼吧与其他任务的页面所有权；其他已匹配页面只同步状态或提交共享检查请求，接手时重新读取进度。共享真实房间号使缺少房间上下文的调度页也可处理需房间上下文的任务。`task-request.ts` 在请求时读取当前凭据，统一取消、超时、同源 Web Locks 与请求间隔，不持久保存凭据。`tasks.ts` 封装真实任务、鱼吧文章、等级和星推接口。`star-packet.ts` 通过官方事件和文字识别原生红包入口。
+`task-runner.ts` 长持账号级 Web Lock，统一鱼吧与其他任务的页面所有权；其他已匹配页面只同步状态或提交共享检查请求，接手时重新读取进度。共享真实房间号使缺少房间上下文的调度页也可处理需房间上下文的任务。`task-request.ts` 在请求时读取当前凭据，统一签到的取消、超时、同源 Web Locks 与请求间隔，不持久保存凭据。`tasks.ts` 封装真实任务、鱼吧文章、等级和星推接口。`adapters/douyu/star-packet.ts` 封装官方 `redbag/room/list` 与 `redbag/snatch`，保留 `code/id/rid` 和官方 CSRF 表单参数，解析对象或 JSON 字符串形式的数据；红包列表、CSRF 准备与领取使用独立、可取消的同源 fetch，不占用签到队列，领取发送前读取当前 Cookie。
+
+`sign/star-packet.ts` 独立处理当前房间红包，不占用账号级签到调度页；同账号同房间使用独立 Web Lock 和 `guanyu:star-packet:v1:<uid>:<rid>` 进度。每分钟读取列表，以 `waitSec` 估算开抢时间，用独立定时器在 T−2s 启动，250ms 发送节奏、最多两个在途，单次领取 1.5s 超时，T+2s 截止。临近领取不先发列表查询；Web Lock 覆盖整段抢领，待发送记录先保存至窗口结束的租期，完成或终止的红包不再启动。领取成功只依据官方 error=0，12001 记为抢完，12006 与网络错误仅在本轮窗口继续；明确失败或 HTTP 错误终止。终止时取消竞争请求，已收到的成功优先保留，然后立即查询下一红包。领取凭据仅在内存保存，设置关闭、账号/房间/北京时间日期改变或释放时取消本功能计时器与请求并使旧响应失效。设置提供默认开启的 `sign.starPacket` 和进度，不再提供代点官方弹层的按钮。
 
 `sign/yuba.js` 和 `yuba-response.js` 管理鱼吧调度与成功判定；`daily.ts` 管理其他任务、逐房间结果、退避、官方进度和关注恢复；`feature.ts` 合并可订阅状态。粉丝家园入口直接交由签到结果判定器处理原始响应，允许明确已签到消息先于通用错误码确认。读取同账号当天进度时，复用已签到消息判定修正旧失败记录；逐房间结果与旧记录恢复共用汇总，只有持有调度锁的页面写回修正结果。已下线的关注房间签到不进入设置定义或调度。进度按账号和北京时间保存，恢复未完成的关注还原操作优先于新增任务。
 
@@ -133,13 +139,19 @@ flv.js 1.6.2 从固定 jsDelivr npm 地址按需加载，HLS 使用斗鱼 SDK。
 
 `chat-runtime.ts` 从本页官方 Webpack/DLL 运行时按特征发现 SocketCore 和 DataCenter，收集其依赖闭包，保留官方协议、加密和心跳实现。个人中心可用缓存的公开共享库 URL 重建运行时；资源清单使用 `guanyu:chat-runtime:v1`，不保存凭据或模块编号。`chat-session.ts` 为每个房间创建隔离 iframe，仅注入该闭包与官方 polyfill，CSP 禁止图片、媒体和页面子框架。等待网关登录、初始化及签名鉴权，再在 iframe 内创建消息对象，避免官方 STT 编码器拒绝跨 realm 对象；发送确认后销毁网关、Worker 和 iframe。关闭任务、页面释放或账号变化时取消会话。 当前主房间通过现有网关发送，在页面 realm 内创建协议对象并单独释放本次响应订阅，不创建同房 iframe，也不销毁原连接。
 
+`adapters/douyu/client-sign.ts` 沿用公开 H5 签到入口，封装状态、签到、补签资格与一键补签，发送时读取最新 token；连续天数使用 `sign_rd`，累计天数使用 `sign_sum`。已用同账号实查 H5 与 PC 入口的签到字段和补签日历一致，运行包无需 PC 签名材料。`sign/client.ts` 负责今日去重、首次签到跳过补签及提交后的官方状态确认；`daily.ts` 在原客户端任务内保存日期、连签、累计天数、剩余补签次数和检查结果。补签状态查询独立于 `sign.clientRemedy`，首次签到或关闭自动补签时仍读取并展示剩余次数；旧当天记录缺少次数时补查一次。该偏好只控制是否自动提交补签，依赖客户端签到及总开关，关闭时取消任务持有的在途请求；重新开启后可补查原先未执行的补签，不新增独立调度队列。
+
 ## 生命周期与样式
 
 每项功能明确启动、配置变化、宿主重建和释放路径。后台业务与窗口生命周期分离；播放器与请求按功能自身的暂停/恢复契约组织，不全局伪造页面可见性。
 
+`core/diagnostics.ts` 统一控制台分类、状态与按阶段去重，`feature-logs.ts` 连接已保存配置和可撤回预览，`runtime-logs.ts` 订阅团播、逐路画质和签到已有状态。DOM 及服务适配器在真实匹配和执行位置上报选择器、能力与结果；页面隐藏规则直接读取已挂载 CSS 的选择器，兼容生产压缩合并规则。日志不增加探测请求、计时器、自动重试或存储，释放时停止订阅并清空本页去重状态。
+
 自有窗口使用 Shadow DOM + dialog/popover，原生增强使用限定宿主的 CSS。样式通过 `?style` 显式导入，Svelte 使用 `emitCss: false`。页面宽度、状态刷新和布局调整不应重建播放实例。
 
 `ui/modal.ts` 在自有窗口的 ShadowRoot 统一隔离 keydown、keypress 与 keyup，避免官方快捷键把经 Shadow DOM 重定向的宿主当成非输入区域；窗口释放时移除监听，不写入官方快捷键配置。`SettingsIcon.svelte` 统一分类导航的线形图标，文字主题色通过 `--accent-text` 随浅深主题适配，品牌图形继续使用原始主题色。
+
+设置搜索由 `ui/settings-options.ts` 共享常规选项文案，原生屏蔽项在 `config/options.ts` 共享名称与用途说明。`ui/settings-search.ts` 合并分类、分区、特殊控件与菜单动作，按导航顺序和分区执行本地筛选与分组；分类和分区名称参与各成员匹配。`SettingsSearch.svelte` 使用 combobox、分组树与窗口内的原生 popover 展示结果，持有搜索词、折叠状态和键盘选中项，关键词变化重置折叠状态；`Settings.svelte` 负责切换分类、展开折叠项、滚动与短暂高亮，不额外挂载隐藏设置页，也不改变设置草稿。
 
 ## 构建与分发
 
@@ -147,5 +159,5 @@ flv.js 1.6.2 从固定 jsDelivr npm 地址按需加载，HLS 使用斗鱼 SDK。
 - Vite 使用 Oxc 的 compress，构建脚本用 esbuild 缩短变量名、压缩空白并按约 200 字节限制代码行长，保留原始元数据头和必要许可；CSS 使用 Lightning CSS。不启用属性重命名、unsafe 或 eval 解包。
 - `scripts/licenses.mjs` 注入项目 MIT 正文及 Svelte 必要声明；`scripts/build.mjs` 检查完整脚本、元数据、语法与许可，再由 `scripts/package.mjs` 生成精简 npm 包及校验和，并核对实际打包文件。
 - `version.json` 是生产版本来源，格式为 `YYYY.<月×100+日>.N`；`scripts/version.mjs` 提供公历校验、北京时间下一版与 tag 核对。构建不递增版本。`scripts/release-config.mjs` 集中版本、仓库、文件名和 jsDelivr npm 更新/下载入口；开发服务以“开发 · ”区分安装项，不接入生产更新地址。
-- `assets/brand/guanyu.svg` 为唯一运行图标，由 `FishIcon.svelte` 和用户脚本元数据复用，当前内嵌。历史 PNG、设计稿与完整说明不进入运行包。
+- `assets/brand/guanyu.svg` 为小鱼图标的唯一来源。页面由 `FishIcon.svelte` 内联复用；元数据 `@icon` 通过 jsDelivr 按当前发布 tag 读取仓库中的同一文件。历史 PNG、设计稿与完整说明不进入运行包。
 - 根 `package.json` 保持 `private: true`；`dist/npm/` 持有无运行依赖的公开发布清单。tag 工作流通过 OIDC 发包，`scripts/publish.mjs` 用 npm integrity 核对重跑内容，先准备 GitHub Release 草稿和附件，npm 成功后公开；已公开的附件按摘要核对，不覆盖。普通 CI 只检查和构建，产物不提交到源码仓库。首次建包与 Trusted Publisher 仍需在正式发布前配置，操作见[发布说明](RELEASING.md)。

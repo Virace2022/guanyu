@@ -1,4 +1,4 @@
-import { assertResponse, accountId, accountToken, cookie, confirmedResult, type TaskRequest } from './task-request';
+import { assertResponse, accountId, cookie, confirmedResult, type TaskRequest } from './task-request';
 
 export interface TaskRoom { id: string; name: string; live: boolean }
 export interface LevelTask { taskId: number; taskType: number; name: string; taskStatus: number; prizeStatus: number; cur: number; max: number }
@@ -130,11 +130,6 @@ export function createDouyuTasks(http: TaskRequest) {
   }
   return {
     request, get, post, followPage, followed, badges, level, fanChatTask, posts, readPost, starConfig, starRooms, pointsSign, viewRewards,
-    async client() {
-      const result = await request('https://apiv2.douyucdn.cn/h5nc/sign/sendSign', { method: 'POST', data: new URLSearchParams({ token: accountToken() }).toString() });
-      const status = confirmedResult(result);
-      return { status, rewards: result.data?.sign_pl?.map((item: any) => `${item.name}×${item.cnt}`).join('、') || '' };
-    },
     async signFansHome(id: string) {
       const result = await request('/japi/interactnc/web/fanshome/sign', { method: 'POST',
         data: new URLSearchParams({ ctn: cookie('acf_ccn') || cookie('ccn'), rid: id }).toString() });

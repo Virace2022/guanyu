@@ -1,6 +1,7 @@
 import { GM_xmlhttpRequest } from '$';
 import { hex_md5 } from '../../../core/md5';
 import { getCookieValue, getDouyuRealLiveAuth } from './auth';
+import { diagnostics } from '../../../core/diagnostics';
 export class TeamLiveStreamSource {
     constructor(monitor) {
         this.monitor = monitor;
@@ -10,7 +11,7 @@ export class TeamLiveStreamSource {
 
     async get(tile, token) {
         if (this.monitor.focus.original(tile) || this.monitor.page.owner.layout.previewSource === "lowest") {
-            try { this.monitor.flv = await this.monitor.loadFlv(); } catch { this.monitor.flv = null; }
+            try { this.monitor.flv = await this.monitor.loadFlv(); } catch (cause) { diagnostics.report('team.preview', 'error', `flv.js 加载失败：${cause.message}，继续尝试原生预览`, '播放器依赖'); this.monitor.flv = null; }
         }
         if (this.monitor.focus.original(tile)) {
             try {
@@ -21,6 +22,7 @@ export class TeamLiveStreamSource {
                 return { kind: "flv", mode: "original", hasAudio: true, url: this.url(data) };
             } catch (error) {
                 if (!this.monitor.valid(tile, token)) throw error;
+                diagnostics.report('team.preview', 'error', `原声取流失败：${error.message}，继续尝试备用来源`, `房间 ${tile.id} 取流`);
                 tile.originalFailed = true;
             }
         }
@@ -32,6 +34,7 @@ export class TeamLiveStreamSource {
                 if (source) return source;
             } catch (error) {
                 if (!this.monitor.valid(tile, token)) throw error;
+                diagnostics.report('team.preview', 'error', `低画质取流失败：${error.message}，继续尝试原生预览`, `房间 ${tile.id} 取流`);
                 tile.lowestSupported = false;
             }
         }
@@ -60,7 +63,7 @@ export class TeamLiveStreamSource {
 
     data(result) {
         if (Number(result?.error) === 104) throw new Error("未开播");
-        if (Number(result?.error) !== 0) throw new Error("预览暂不可用");
+        if (Number(result?.error) !== 0) throw new Error(`预览接口未确认成功（error=${result?.error ?? '缺失'}）`);
         const data = typeof result.data === "string" ? JSON.parse(result.data) : result.data;
         if (!data || typeof data !== "object") throw new Error("预览暂不可用");
         return data;

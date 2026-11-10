@@ -1,6 +1,7 @@
 import type { SettingsStore } from '../../config/settings';
 import type { TeamController } from '../../features/team-live/controller';
 import { isPlayerFullscreen } from './player';
+import { diagnostics } from '../../core/diagnostics';
 
 const protectedContent = '#js-player-main, #js-player-asideMain, #js-room-snapbar, .room-info, .wm-pc-room-button';
 
@@ -56,7 +57,7 @@ export function mountRoomLayout(settings: SettingsStore, team: TeamController) {
   function sync() {
     frame = 0;
     const layout = readRoomLayout();
-    if (!layout) { restoreSpacing(); restoreExtras(); return; }
+    if (!layout) { diagnostics.report('optimization.hideRoomExtras', 'unmatched', '未识别播放器与内容根的布局关系：#js-player-main → #root / .layout-Main'); restoreSpacing(); restoreExtras(); return; }
     const { player, root, section } = layout;
     const options = settings.runtime.value.optimization;
     const extras = new Set<HTMLElement>();
@@ -80,6 +81,7 @@ export function mountRoomLayout(settings: SettingsStore, team: TeamController) {
       if (!node.classList.contains('guanyu-room-extra-hidden')) node.classList.add('guanyu-room-extra-hidden');
       hidden.add(node);
     }
+    diagnostics.report('optimization.hideRoomExtras', extras.size ? 'applied' : 'unmatched', extras.size ? '已隐藏播放器后方符合结构条件的大模块' : '隐藏规则已准备，后续同级 .bc-wrapper / .wm-general / .ActivityPlatformContent 中暂无符合条件的模块，继续观察懒加载');
     if (spacing && spacing.root !== root) restoreSpacing();
     if (!options.hideTopBanner && !options.hideRoomExtras) { restoreSpacing(); return; }
     if (!spacing) {

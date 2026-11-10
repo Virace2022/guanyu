@@ -4,6 +4,7 @@ import { mountRoomPage } from '../../adapters/douyu/room-page';
 import { RoomApi } from '../../adapters/douyu/rooms';
 import { createState } from '../../core/state';
 import { unsafeWindow } from '$';
+import { diagnostics } from '../../core/diagnostics';
 
 export function createRoomPage(settings: SettingsStore, player: PlayerStore) {
   const view = createState<{ error: string; roomId: string | null; live: boolean | null }>({ error: '', roomId: null, live: null }), dom = mountRoomPage(), api = new RoomApi();
@@ -23,7 +24,8 @@ export function createRoomPage(settings: SettingsStore, player: PlayerStore) {
       dom.update({ live, start: Number(data.show_time) * 1000,
         now: Number(data.nowtime) * 1000 || Date.now(), received: Date.now(), guild: String(guild || '').trim() });
       view.set({ error: '', roomId: id, live });
-    } catch (cause) { if (!stopped && player.value.roomId === id) { dom.update(); view.set({ error: cause instanceof Error ? cause.message : String(cause), roomId: id, live: null }); } }
+      diagnostics.report('room.api', 'ready', '/betard/<房间号> 已返回有效房间资料', '接口');
+    } catch (cause) { if (!stopped && player.value.roomId === id) { diagnostics.report('room.api', 'error', `/betard/<房间号>：${cause instanceof Error ? cause.message : String(cause)}`, '接口'); dom.update(); view.set({ error: cause instanceof Error ? cause.message : String(cause), roomId: id, live: null }); } }
     finally { busy = false; nextAt = player.value.roomId === id ? Date.now() + 60000 : 0; }
   }
   const stopPlayer = player.subscribe(value => { if (room !== value.roomId) { room = value.roomId || ''; nextAt = 0; api.close(); dom.update(); view.set({ error: '', roomId: value.roomId, live: null }); void refresh(); } });

@@ -10,6 +10,7 @@
   import { version } from '../core/version';
   import type { PageTools } from '../features/page-tools/controller';
   import type { SettingsSection } from './settings-types';
+  import { settingsSections } from './settings-types';
   import OptimizationSettings from './OptimizationSettings.svelte';
   import BarrageSettings from './BarrageSettings.svelte';
   import { animateContent } from './motion';
@@ -32,10 +33,12 @@
   import { readMultiOptions } from '../config/multiscreen';
   import { readSignOptions } from '../config/sign';
   import { actionColor } from './theme';
+  import SettingsSearch from './SettingsSearch.svelte';
+  import type { SettingResult } from './settings-search';
 
   let { settings, gain, pageTheme, tools, team, multi, sign, backpack, playback, roomPage, openTeam }: { settings: SettingsStore; gain: GainController; pageTheme: Readable<'light' | 'dark'>; tools: PageTools; team: TeamController; multi: MultiscreenController; sign: SignController; backpack: BackpackController; playback: PlaybackController; roomPage: RoomPageController; openTeam: () => void } = $props();
   let dialog: HTMLDialogElement;
-  let section = $state<SettingsSection>('general');
+  let section = $state<SettingsSection>('playback');
   const initial = untrack(() => ({ ...settings.value }));
   let saved = $state(initial);
   let theme = $state<Theme>(initial.theme);
@@ -62,19 +65,23 @@
   let backdropDown = false;
   let error = $state('');
   let outsideChange = $state(false);
+  let clearSearchTarget = () => {};
   const generalDirty = $derived(theme !== saved.theme || accentColor !== saved.accentColor);
   const soundDirty = $derived(maxMultiplier !== saved.maxMultiplier || JSON.stringify(gainPresets) !== JSON.stringify(saved.gainPresets));
   const optimizationDirty = $derived(JSON.stringify(optimization) !== JSON.stringify(saved.optimization)
+    || roomOptions.closeRecommendation !== saved.room.closeRecommendation || roomOptions.hideUnread !== saved.room.hideUnread);
+  const barrageDirty = $derived(JSON.stringify(barrage) !== JSON.stringify(saved.barrage)
     || JSON.stringify(nativeShield) !== JSON.stringify(saved.nativeShield));
-  const barrageDirty = $derived(JSON.stringify(barrage) !== JSON.stringify(saved.barrage));
   const teamDirty = $derived(JSON.stringify(teamOptions) !== JSON.stringify(saved.team));
   const multiDirty = $derived(JSON.stringify(multiOptions) !== JSON.stringify(saved.multi));
   const menuDirty = $derived(JSON.stringify(playerMenu) !== JSON.stringify(saved.playerMenu));
   const signDirty = $derived(JSON.stringify(signOptions) !== JSON.stringify(saved.sign));
   const playbackDirty = $derived(JSON.stringify(playbackOptions) !== JSON.stringify(saved.playback));
-  const roomDirty = $derived(JSON.stringify(roomOptions) !== JSON.stringify(saved.room));
+  const roomDirty = $derived(roomOptions.duration !== saved.room.duration || roomOptions.guild !== saved.room.guild || roomOptions.lastLive !== saved.room.lastLive);
   const backpackDirty = $derived(JSON.stringify(backpackOptions) !== JSON.stringify(saved.backpack));
   const dirtyCount = $derived(Number(playbackDirty) + Number(roomDirty) + Number(backpackDirty) + Number(signDirty) + Number(teamDirty) + Number(multiDirty) + Number(menuDirty) + Number(generalDirty) + Number(soundDirty) + Number(optimizationDirty) + Number(barrageDirty));
+  const dirtySections: Record<SettingsSection, boolean> = $derived({ general: generalDirty, sound: soundDirty, optimization: optimizationDirty,
+    playback: playbackDirty, room: roomDirty, backpack: backpackDirty, barrage: barrageDirty, team: teamDirty, multi: multiDirty, menu: menuDirty, sign: signDirty });
   const resolvedTheme = $derived(theme === 'page' ? detectedTheme : theme);
 
   $effect(() => {
@@ -87,6 +94,7 @@
   });
 
   function finish() {
+    clearSearchTarget();
     opened = false;
     settings.preview(null);
     dialog.close();
@@ -124,6 +132,33 @@
     if (dialog.open) { showModal(dialog); return; }
     reset(); confirming = false; navigation = undefined; opened = true;
     showModal(dialog);
+  }
+
+  async function locateSetting(result: SettingResult) {
+    clearSearchTarget();
+    section = result.section;
+    await tick();
+    const field = dialog.querySelector<HTMLElement>(`main ${result.selector}`);
+    if (!field) return;
+    let ancestor = field.parentElement;
+    while (ancestor && ancestor !== dialog) {
+      if (ancestor instanceof HTMLDetailsElement) ancestor.open = true;
+      ancestor = ancestor.parentElement;
+    }
+    await tick();
+    const target = field.closest<HTMLElement>('.option-row, .setting-row, .shield-option') ?? field;
+    target.classList.add('settings-search-target');
+    target.scrollIntoView({ block: 'center' });
+    const control = field.matches('input:not(:disabled), select:not(:disabled), button:not(:disabled), [tabindex]') ? field : field.querySelector<HTMLElement>('input:not(:disabled), select:not(:disabled), button:not(:disabled), [tabindex]');
+    const tabindex = target.getAttribute('tabindex');
+    if (!control) target.tabIndex = -1;
+    (control ?? target).focus({ preventScroll: true });
+    const clear = () => {
+      target.classList.remove('settings-search-target');
+      if (!control) { if (tabindex === null) target.removeAttribute('tabindex'); else target.setAttribute('tabindex', tabindex); }
+    };
+    const timer = setTimeout(clear, 2400);
+    clearSearchTarget = () => { clearTimeout(timer); clear(); };
   }
 
   async function locateError(target: SettingsSection, selector: string, message: string) {
@@ -208,7 +243,7 @@
     });
     const stopGain = gain.subscribe(value => { sound = value; });
     const stopTheme = pageTheme.subscribe(value => { detectedTheme = value; });
-    return () => { stopSettings(); stopGain(); stopTheme(); settings.preview(null); };
+    return () => { stopSettings(); stopGain(); stopTheme(); clearSearchTarget(); settings.preview(null); };
   });
   $effect(() => {
     section;
@@ -235,29 +270,19 @@
 <dialog bind:this={dialog} class="settings-window guanyu-themed" oncancel={cancel} onclose={() => { if (!dialog.open) { opened = false; settings.preview(null); } }} onpointerdown={event => { backdropDown = outside(event); }} onclick={backdrop} aria-labelledby="guanyu-title" data-theme={resolvedTheme} style:--guanyu-accent={accentColor} style:--guanyu-action={actionColor(accentColor)}>
   <header class="window-header" inert={confirming}>
     <div class="brand"><FishIcon class="brand-icon" /><strong>观鱼</strong><span class="header-divider"></span><span id="guanyu-title">设置</span></div>
+    <SettingsSearch active={opened && !confirming} onselect={result => { void locateSetting(result); }} />
     <button class="icon-button close" aria-label="关闭设置" onclick={close}>×</button>
   </header>
 
   <div class="window-body" inert={confirming}>
     <nav aria-label="设置分类">
-      <label class="compact-category">当前分类<select aria-label="选择设置分类" bind:value={section}>{#each [['general', '通用'], ['sound', '声音'], ['optimization', '优化'], ['playback', '播放'], ['room', '房间页面'], ['backpack', '背包'], ['barrage', '弹幕'], ['team', '团播'], ['multi', '多屏'], ['menu', '右键菜单'], ['sign', '签到']] as item}<option value={item[0]}>{item[1]}</option>{/each}</select></label>
+      <label class="compact-category">当前分类<select aria-label="选择设置分类" bind:value={section}>{#each settingsSections as item (item.id)}<option value={item.id}>{item.label}{dirtySections[item.id] ? ' · 未保存' : ''}</option>{/each}</select></label>
       <div class="nav-items">
-        <button class:current={section === 'general'} aria-current={section === 'general' ? 'page' : undefined} onclick={() => { section = 'general'; }}>
-          <SettingsIcon name="general" /><span>通用</span>{#if generalDirty}<small>未保存</small>{/if}
-        </button>
-        <button class:current={section === 'sound'} aria-current={section === 'sound' ? 'page' : undefined} onclick={() => { section = 'sound'; }}>
-          <SettingsIcon name="sound" />
-          <span>声音</span>{#if soundDirty}<small>未保存</small>{/if}
-        </button>
-        <button class:current={section === 'optimization'} aria-current={section === 'optimization' ? 'page' : undefined} onclick={() => { section = 'optimization'; }}><SettingsIcon name="optimization" /><span>优化</span>{#if optimizationDirty}<small>未保存</small>{/if}</button>
-        <button class:current={section === 'playback'} aria-current={section === 'playback' ? 'page' : undefined} onclick={() => { section = 'playback'; }}><SettingsIcon name="playback" /><span>播放</span>{#if playbackDirty}<small>未保存</small>{/if}</button>
-        <button class:current={section === 'room'} aria-current={section === 'room' ? 'page' : undefined} onclick={() => { section = 'room'; }}><SettingsIcon name="room" /><span>房间页面</span>{#if roomDirty}<small>未保存</small>{/if}</button>
-        <button class:current={section === 'backpack'} aria-current={section === 'backpack' ? 'page' : undefined} onclick={() => { section = 'backpack'; }}><SettingsIcon name="backpack" /><span>背包</span>{#if backpackDirty}<small>未保存</small>{/if}</button>
-        <button class:current={section === 'barrage'} aria-current={section === 'barrage' ? 'page' : undefined} onclick={() => { section = 'barrage'; }}><SettingsIcon name="barrage" /><span>弹幕</span>{#if barrageDirty}<small>未保存</small>{/if}</button>
-        <button class:current={section === 'team'} aria-current={section === 'team' ? 'page' : undefined} onclick={() => { section = 'team'; }}><SettingsIcon name="team" /><span>团播</span>{#if teamDirty}<small>未保存</small>{/if}</button>
-        <button class:current={section === 'multi'} aria-current={section === 'multi' ? 'page' : undefined} onclick={() => { section = 'multi'; }}><SettingsIcon name="multi" /><span>多屏</span>{#if multiDirty}<small>未保存</small>{/if}</button>
-        <button class:current={section === 'menu'} aria-current={section === 'menu' ? 'page' : undefined} onclick={() => { section = 'menu'; }}><SettingsIcon name="menu" /><span>右键菜单</span>{#if menuDirty}<small>未保存</small>{/if}</button>
-        <button class:current={section === 'sign'} aria-current={section === 'sign' ? 'page' : undefined} onclick={() => { section = 'sign'; }}><SettingsIcon name="sign" /><span>签到</span>{#if signDirty}<small>未保存</small>{/if}</button>
+        {#each settingsSections as item (item.id)}
+          <button class:current={section === item.id} class:group-start={item.groupStart} aria-current={section === item.id ? 'page' : undefined} aria-label={`${item.label}${dirtySections[item.id] ? '，未保存' : ''}`} onclick={() => { section = item.id; }}>
+            <SettingsIcon name={item.id} /><span class="nav-label">{item.label}</span>{#if dirtySections[item.id]}<span class="dirty-dot" aria-hidden="true"></span>{/if}
+          </button>
+        {/each}
       </div>
       <p class="nav-version">观鱼 {version}</p>
     </nav>
@@ -265,9 +290,9 @@
     <main class="settings-content" use:animateContent={section}>
       {#if section === 'general'}
         <h1>通用</h1>
-        <p class="intro">让观鱼适应你的看播习惯。</p>
         <section class="appearance-settings">
-          <h2>外观</h2>
+          <h2>观鱼外观</h2>
+          <p class="help">调整观鱼窗口与工具的主题和颜色。</p>
           <fieldset class="theme-picker">
             <legend>主题</legend>
             <div class="theme-options">
@@ -279,7 +304,7 @@
           <AccentPicker bind:value={accentColor} />
         </section>
       {:else if section === 'optimization'}
-        <OptimizationSettings bind:value={optimization} bind:shield={nativeShield} {tools} />
+        <OptimizationSettings bind:value={optimization} bind:room={roomOptions} />
       {:else if section === 'playback'}
         <PlaybackSettings bind:value={playbackOptions} {playback} />
       {:else if section === 'room'}
@@ -287,7 +312,7 @@
       {:else if section === 'backpack'}
         <BackpackSettings bind:value={backpackOptions} {backpack} validationError={fieldError === '#guanyu-glow-count' ? error : ''} onNavigate={() => navigate('荧光棒续牌', backpack.openGlow)} />
       {:else if section === 'barrage'}
-        <BarrageSettings bind:value={barrage} />
+        <BarrageSettings bind:value={barrage} bind:shield={nativeShield} {tools} />
       {:else if section === 'team'}
         <TeamSettings bind:value={teamOptions} {team} openEditor={openTeam} roomId={sound.roomId || ''} />
       {:else if section === 'multi'}
@@ -299,28 +324,6 @@
       {:else}
         <h1>声音</h1>
         <p class="intro">按房间记住额外增益，保留原生音量。</p>
-        <section>
-          <h2>增益上限</h2>
-          <div class="setting-row">
-            <label for="guanyu-limit">额外倍率上限</label>
-            <div class="stepper">
-              <button aria-label="降低最大倍率" disabled={maxMultiplier === undefined || maxMultiplier <= 1} onclick={() => { maxMultiplier = Math.max(1, Math.round(((maxMultiplier ?? 2) - 0.1) * 10) / 10); }}>−</button>
-              <div class="stepper-value">
-                <input id="guanyu-limit" aria-label="额外倍率上限" type="number" min="1" max="5" step="0.1" bind:value={maxMultiplier} />
-                <span aria-hidden="true">倍</span>
-              </div>
-              <button aria-label="提高最大倍率" disabled={maxMultiplier === undefined || maxMultiplier >= 5} onclick={() => { maxMultiplier = Math.min(5, Math.round(((maxMultiplier ?? 2) + 0.1) * 10) / 10); }}>+</button>
-            </div>
-            <span class="muted">1.0–5.0 倍</span>
-          </div>
-          <p class="help">加 1 倍为 +100%，加 2 倍为 +200%。调高上限不会提高当前增益。</p>
-        </section>
-        <section class="preset-settings">
-          <h2>常用档位 <small>{gainPresets.length} / 8</small></h2>
-          <p class="help">额外增益百分比，每行 4 个，最多两行。超出上限的档位会禁用。</p>
-          <div class="preset-editor" aria-label="已设置的常用档位">{#each gainPresets as extra (extra)}<button class="button preset-chip" aria-label={`移除 ${extra === 0 ? '原声' : `+${extra}%`} 档位`} onclick={() => { gainPresets = gainPresets.filter(item => item !== extra); }}><span>{extra === 0 ? '原声' : `+${extra}%`}</span><span aria-hidden="true">×</span></button>{/each}</div>
-          <div class="preset-add"><label for="guanyu-preset-extra">额外增益</label><input id="guanyu-preset-extra" aria-label="新增档位百分比" type="number" min="0" max="500" step="1" placeholder="例如 200" bind:value={presetExtra} onkeydown={event => { if (event.key === 'Enter') { event.preventDefault(); addPreset(); } }} /><span>%</span><button class="button" disabled={gainPresets.length >= 8} onclick={addPreset}>添加档位</button><button class="button" onclick={() => { gainPresets = [...defaults.gainPresets]; error = ''; }}>恢复默认档位</button></div>
-        </section>
         <section class="room-section">
           <h2>当前房间</h2>
           <p class="room-id">{sound.roomId ? `房间 ${sound.roomId}` : '等待识别直播间'}</p>
@@ -339,6 +342,28 @@
           <p class="help">只影响当前房间，不改变播放器音量。</p>
           <p class="status" role="status">{sound.status}</p>
           {#if sound.error}<p class="error" role="alert">{sound.error}</p>{/if}
+        </section>
+        <section class="preset-settings">
+          <h2>常用档位 <small>{gainPresets.length} / 8</small></h2>
+          <p class="help">额外增益百分比，每行 4 个，最多两行。超出上限的档位会禁用。</p>
+          <div class="preset-editor" aria-label="已设置的常用档位">{#each gainPresets as extra (extra)}<button class="button preset-chip" aria-label={`移除 ${extra === 0 ? '原声' : `+${extra}%`} 档位`} onclick={() => { gainPresets = gainPresets.filter(item => item !== extra); }}><span>{extra === 0 ? '原声' : `+${extra}%`}</span><span aria-hidden="true">×</span></button>{/each}</div>
+          <div class="preset-add"><label for="guanyu-preset-extra">额外增益</label><input id="guanyu-preset-extra" aria-label="新增档位百分比" type="number" min="0" max="500" step="1" placeholder="例如 200" bind:value={presetExtra} onkeydown={event => { if (event.key === 'Enter') { event.preventDefault(); addPreset(); } }} /><span>%</span><button class="button" disabled={gainPresets.length >= 8} onclick={addPreset}>添加档位</button><button class="button" onclick={() => { gainPresets = [...defaults.gainPresets]; error = ''; }}>恢复默认档位</button></div>
+        </section>
+        <section>
+          <h2>增益上限</h2>
+          <div class="setting-row">
+            <label for="guanyu-limit">额外倍率上限</label>
+            <div class="stepper">
+              <button aria-label="降低最大倍率" disabled={maxMultiplier === undefined || maxMultiplier <= 1} onclick={() => { maxMultiplier = Math.max(1, Math.round(((maxMultiplier ?? 2) - 0.1) * 10) / 10); }}>−</button>
+              <div class="stepper-value">
+                <input id="guanyu-limit" aria-label="额外倍率上限" type="number" min="1" max="5" step="0.1" bind:value={maxMultiplier} />
+                <span aria-hidden="true">倍</span>
+              </div>
+              <button aria-label="提高最大倍率" disabled={maxMultiplier === undefined || maxMultiplier >= 5} onclick={() => { maxMultiplier = Math.min(5, Math.round(((maxMultiplier ?? 2) + 0.1) * 10) / 10); }}>+</button>
+            </div>
+            <span class="muted">1.0–5.0 倍</span>
+          </div>
+          <p class="help">加 1 倍为 +100%，加 2 倍为 +200%。调高上限不会提高当前增益。</p>
         </section>
       {/if}
       {#if outsideChange}<p class="error" role="alert">设置已在其他页面更新。当前草稿保留，请放弃更改后重新编辑。</p>{/if}

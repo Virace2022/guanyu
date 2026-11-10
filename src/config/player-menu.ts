@@ -8,9 +8,9 @@ export const menuActions = [
   { id: 'hidePk', label: '隐藏 / 显示 PK 条' }, { id: 'hideActivities', label: '隐藏 / 显示活动浮窗' },
   { id: 'hideAds', label: '隐藏 / 显示页面广告' },
   { id: 'gain', label: '开启 / 关闭音量增益' }, { id: 'soundSettings', label: '声音设置' },
-  { id: 'optimizationSettings', label: '优化设置' }, { id: 'barrageSettings', label: '弹幕设置' },
+  { id: 'optimizationSettings', label: '页面整理设置' }, { id: 'barrageSettings', label: '弹幕与特效设置' },
   { id: 'teamSettings', label: '团播设置' }, { id: 'multiSettings', label: '多屏设置' }, { id: 'menuSettings', label: '右键菜单设置' },
-  { id: 'signSettings', label: '签到' },
+  { id: 'signSettings', label: '每日任务' },
 ] as const;
 export type MenuAction = typeof menuActions[number]['id'];
 export const menuDefaults: MenuAction[] = ['roomInfo', 'hideGiftBar', 'mirror', 'settings', 'multi'];

@@ -1,3 +1,5 @@
+import { diagnostics } from '../../core/diagnostics';
+
 export class MultiScreenPanel {
     constructor(owner) {
         this.owner = owner;
@@ -35,7 +37,7 @@ export class MultiScreenPanel {
         const owner = this.owner;
         if (!owner.settings.enabled || owner.stopped || !owner.host) { this.detach(); return; }
         const node = document.querySelector('[class*="mutiPlayerEditPanel-"]');
-        if (!node) { this.detach(); return; }
+        if (!node) { diagnostics.report('multi.compact', 'idle', '等待打开官方选房面板：[class*="mutiPlayerEditPanel-"]'); this.detach(); return; }
         if (node !== this.node) {
             this.detach(); this.node = node;
             const bar = document.createElement("div"); bar.className = "guanyu-multi-selected";
@@ -106,6 +108,7 @@ export class MultiScreenPanel {
             card.setAttribute("aria-disabled", String(Number(room.rid) === owner.native.roomId || Number(room.showStatus) !== 1));
         });
         this.measure();
+        diagnostics.report('multi.compact', 'applied', '已匹配官方选房面板并启用紧凑布局');
     }
 
     measure() {

@@ -1,4 +1,5 @@
 import { createState } from '../core/state';
+import { diagnostics } from '../core/diagnostics';
 import { barrageDefaults, nativeShieldDefaults, optimizationDefaults, readOptions, type BarrageOptions, type NativeShieldOptions, type OptimizationOptions } from './options';
 import { teamDefaults, readTeamOptions, type TeamOptions } from './team';
 import { multiDefaults, readMultiOptions, type MultiOptions } from './multiscreen';
@@ -70,7 +71,7 @@ export function createSettings(storage: Storage, events: Window) {
   let loadError = '';
   let initial = { ...defaults };
   try { initial = read(storage); }
-  catch (error) { loadError = `设置读取失败：${String(error)}`; }
+  catch (error) { loadError = `设置读取失败：${String(error)}`; diagnostics.failure('设置读取', error); }
   const state = createState(initial);
   const runtime = createState(initial);
   let draft: SettingsPreview | null = null;
@@ -83,7 +84,8 @@ export function createSettings(storage: Storage, events: Window) {
 
   function save(value: Settings) {
     const next = validate(value);
-    storage.setItem(settingsKey, JSON.stringify(next));
+    try { storage.setItem(settingsKey, JSON.stringify(next)); }
+    catch (cause) { diagnostics.failure('设置保存', cause); throw cause; }
     loadError = '';
     draft = null;
     state.set(next);
@@ -93,7 +95,7 @@ export function createSettings(storage: Storage, events: Window) {
   function onStorage(event: StorageEvent) {
     if (event.key !== settingsKey && event.key !== null) return;
     try { const value = read(storage); loadError = ''; state.set(value); refreshRuntime(); }
-    catch (error) { loadError = `设置读取失败：${String(error)}`; }
+    catch (error) { loadError = `设置读取失败：${String(error)}`; diagnostics.failure('跨页设置同步', error); }
   }
   events.addEventListener('storage', onStorage);
 
