@@ -1,4 +1,5 @@
 import { unsafeWindow } from '$';
+import { diagnostics } from '../../core/diagnostics';
 export class MultiScreenNative {
     constructor() {
         this.control = null;
@@ -22,15 +23,15 @@ export class MultiScreenNative {
 
     connect() {
         this.control = this.component(document.getElementById("js-player-controlbar"), value => typeof value.listenMultiScreenStart === "function");
-        if (!this.control) return false;
+        if (!this.control) { diagnostics.report('multi.service', 'unmatched', document.getElementById('js-player-controlbar') ? '未找到带 listenMultiScreenStart 的官方控制栏组件' : '未找到 #js-player-controlbar'); return false; }
         if (!this.service) {
             const queue = unsafeWindow.sharkLivePlayerJsonp;
-            if (!Array.isArray(queue) || queue.push === Array.prototype.push) return false;
+            if (!Array.isArray(queue) || queue.push === Array.prototype.push) { diagnostics.report('multi.service', 'waiting', '官方 sharkLivePlayerJsonp 运行时尚未安装'); return false; }
             let runtime;
             const id = `guanyu-multi-${Date.now()}`;
             // 使用页面自己的 Webpack 运行时取得已加载模块，避免固定模块编号或依赖调试器。
             queue.push([[id], { [id]: (module, exports, require) => { runtime = require; } }, [[id]]]);
-            if (!runtime?.c) return false;
+            if (!runtime?.c) { diagnostics.report('multi.service', 'unmatched', '未取得官方 Webpack 模块缓存 runtime.c'); return false; }
             delete runtime.m[id]; delete runtime.c[id];
             for (const [moduleId, module] of Object.entries(runtime.c)) {
                 const source = runtime.m[moduleId]?.toString() || "";
@@ -43,7 +44,9 @@ export class MultiScreenNative {
                 }
             }
         }
-        return !!this.service && !!this.core && this.roomId > 0 && Number(this.service.currentRoomId) === this.roomId;
+        const ready = !!this.service && !!this.core && this.roomId > 0 && Number(this.service.currentRoomId) === this.roomId;
+        diagnostics.report('multi.service', ready ? 'ready' : 'unmatched', !this.service ? '未发现带 changeMultiRoomList / setBattleList 的官方多屏服务' : !this.core ? '未发现官方事件与状态服务 gethandleByType / msgCallback' : !ready ? '控制栏房间号与多屏服务 currentRoomId 尚未一致' : '已识别官方多屏控制器、名单服务和状态服务');
+        return ready;
     }
 
     get container() { return document.getElementById("js-player-multiContainer"); }

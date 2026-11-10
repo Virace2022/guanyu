@@ -6,6 +6,7 @@ import type { RoomData } from './rooms';
 import { createMultiscreenMenu } from '../../ui/multiscreen-menu';
 import styles from '../../ui/multiscreen-audio.css?style';
 import labelStyles from '../../ui/multiscreen-labels.css?style';
+import { diagnostics } from '../../core/diagnostics';
 
 interface Label {
   id: number; slot: HTMLElement; anchor: HTMLElement; node: HTMLElement; source: HTMLElement | null;
@@ -180,11 +181,11 @@ export function mountMultiscreenLabels(getNative: () => MultiScreenNative, audio
     frame = 0; if (syncing) return; syncing = true;
     try {
       const native = getNative();
-      if (!enabled || !native.service || !native.core || !native.active() || !native.container?.isConnected) { detach(true); return; }
+      if (!enabled || !native.service || !native.core || !native.active() || !native.container?.isConnected) { diagnostics.report('multi.labels', 'idle', '等待开启官方多屏'); diagnostics.report('multi.centerLabels', 'idle', '等待开启官方多屏'); detach(true); return; }
       const ids = native.order(); if (ids.length < 2) { detach(true); return; }
       if (native.service.$dragBox) { menu.close(); return; }
       if (container && (container !== native.container || !layer?.isConnected)) detach(false);
-      const editor = document.querySelector<HTMLElement>('[class*="mutiPlayerEditPanel-"]'); if (!editor) return;
+      const editor = document.querySelector<HTMLElement>('[class*="mutiPlayerEditPanel-"]'); if (!editor) { diagnostics.report('multi.labels', 'unmatched', '多屏已开启，未找到标签叠层锚点 [class*="mutiPlayerEditPanel-"]'); return; }
       if (!layer) {
         container = native.container; layer = document.createElement('div'); layer.className = 'guanyu-audio-layer';
         const overlay = editor.parentElement!, barrage = overlay.querySelector<HTMLElement>(':scope > [class^="comment-"]');
@@ -201,6 +202,8 @@ export function mountMultiscreenLabels(getNative: () => MultiScreenNative, audio
       }
       for (const [slot, label] of labels) if (!alive.has(slot)) { menu.close(); label.dispose(); labels.delete(slot); }
       quality.sync(ids); paint(); menu.check();
+      diagnostics.report('multi.labels', labels.size === ids.length ? 'applied' : 'unmatched', labels.size === ids.length ? '所有画面均已挂载主播标签与专用菜单' : '部分画面缺少 .multi-screen-nick-icon 模板，继续等待官方标签');
+      diagnostics.report('multi.centerLabels', labels.size === ids.length ? 'applied' : 'waiting', labels.size === ids.length ? '已按画面位置集中排列标签' : '等待所有画面的官方标签模板');
       session = true; if (!introduced && labels.size === ids.length) introduce();
     } finally { syncing = false; }
   }

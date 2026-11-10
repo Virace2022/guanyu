@@ -12,6 +12,7 @@ function load(file, imports = {}, globals = {}) {
   }).outputText;
   vm.runInNewContext(source, { exports, console, ...globals, require(name) {
     if (name in imports) return imports[name];
+    if (name === '../../core/diagnostics') return load('src/core/diagnostics.ts');
     throw new Error(`未支持模块 ${name}`);
   } }, { filename: file });
   return exports;

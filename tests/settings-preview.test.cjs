@@ -21,6 +21,23 @@ function load(file, overrides = {}, cache = new Map()) {
 
 const { createSettings, settingsKey, defaults } = load(path.join(__dirname, '../src/config/settings.ts'));
 
+test('新默认值不覆盖已保存关闭项，旧牌龄选择继承到聊天区', () => {
+  const { settings, storage, events } = session();
+  const { chatBadgeDays, ...backpack } = defaults.backpack;
+  storage.setItem(settingsKey, JSON.stringify({ ...defaults, backpack: { ...backpack, badgeDays: false },
+    playback: { ...defaults.playback, keepBackgroundVideo: false }, barrage: { ...defaults.barrage, fans: false },
+    nativeShield: { ...defaults.nativeShield, allGift: false } }));
+  const reopened = createSettings(storage, events);
+  assert.equal(reopened.value.backpack.chatBadgeDays, false);
+  assert.equal(reopened.value.playback.keepBackgroundVideo, false);
+  assert.equal(reopened.value.barrage.fans, false);
+  assert.equal(reopened.value.nativeShield.allGift, false);
+  reopened.save({ ...reopened.value, backpack: { ...reopened.value.backpack, chatBadgeDays: true } });
+  const saved = createSettings(storage, events);
+  assert.equal(saved.value.backpack.badgeDays, false); assert.equal(saved.value.backpack.chatBadgeDays, true);
+  settings.dispose(); reopened.dispose(); saved.dispose();
+});
+
 function session() {
   const values = new Map();
   const events = new EventTarget();

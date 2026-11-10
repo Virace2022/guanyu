@@ -7,11 +7,15 @@ import type { TaskRunner } from '../../adapters/douyu/task-runner';
 import { checkPoints } from './points';
 import { createChatSessions, rememberChatRuntime } from '../../adapters/douyu/chat-session';
 import { runFanChat } from './fan-chat';
+import { diagnostics } from '../../core/diagnostics';
+import { createClientSignApi } from '../../adapters/douyu/client-sign';
+import { runClientSign, clientSignDetail, type ClientProgress } from './client';
 
 export interface SignRow { id: string; label: string; status: 'pending' | 'done' | 'waiting' | 'error' | 'disabled'; detail: string; nextAt: number; attempts: number }
 interface Lane extends SignRow {
   targets?: TaskRoom[]; results?: Record<string, string>; signed?: boolean;
   submitted?: Record<string, boolean>;
+  client?: ClientProgress;
   failures?: Record<string, { attempts: number; nextAt: number; error: string }>;
 }
 interface Progress { day: string; lanes: Record<string, Lane>; readIds: string[]; tasks: LevelTask[] }
@@ -22,10 +26,12 @@ export function createDailyTasks(settings: SettingsStore, roomId: () => string, 
   let http = createTaskRequest();
   const chat = createChatSessions(roomId);
   const api = createDouyuTasks({ request: (...args: Parameters<TaskRequest['request']>) => http.request(...args), dispose: () => http.dispose() });
+  const client = createClientSignApi({ request: (...args: Parameters<TaskRequest['request']>) => http.request(...args), dispose: () => http.dispose() }, current);
   const view = createState<DailySnapshot>({ uid: '', day: taskDay(), running: false, waiting: false, error: '', rows: [], tasks: [], restore: '' });
   let uid = '', state: Progress | undefined, restore: Restore | undefined, running = false, stopped = false, waiting = false, error = '';
   let timer: ReturnType<typeof setTimeout> | undefined;
   let previous = JSON.stringify(settings.value.sign);
+  let previousRemedy = settings.value.sign.clientRemedy;
   let active: string | undefined;
   const key = () => `guanyu:daily-tasks:v1:${uid}`;
   const restoreKey = () => `guanyu:follow-restore:v1:${uid}`;
@@ -74,8 +80,12 @@ export function createDailyTasks(settings: SettingsStore, roomId: () => string, 
       if (!/^\d+$/.test(item.id)) throw new Error('关注恢复记录格式异常');
       restore = item;
     }
-    state!.lanes = Object.fromEntries(signTasks.filter(task => task.id !== 'yuba').map(task => [task.id,
+    state!.lanes = Object.fromEntries(signTasks.filter(task => task.id !== 'yuba' && task.id !== 'starPacket').map(task => [task.id,
       state!.lanes[task.id] || { id: task.id, label: task.label, status: 'pending', detail: '等待按间隔处理', nextAt: 0, attempts: 0 }]));
+    const clientLane = state!.lanes.client!;
+    if (clientLane.status === 'done' && (clientLane.client?.remaining === undefined || settings.value.sign.clientRemedy && !clientLane.client.remedyChecked)) {
+      clientLane.status = 'pending'; clientLane.nextAt = 0;
+    }
     return restoreFansHome();
   }
   async function restoreFollow() {
@@ -156,7 +166,12 @@ export function createDailyTasks(settings: SettingsStore, roomId: () => string, 
   }
   async function execute(lane: Lane) {
     switch (lane.id) {
-      case 'client': { const result = await api.client(); lane.detail = result.status === 'already' ? '今日已签到' : `签到成功${result.rewards ? `：${result.rewards}` : ''}`; lane.status = 'done'; break; }
+      case 'client': {
+        await runClientSign(client, state!.day, () => settings.value.sign.clientRemedy, current, progress => {
+          current(); lane.client = progress; lane.detail = clientSignDetail(progress); persist(); publish();
+        });
+        lane.status = 'done'; break;
+      }
       case 'fansHome': await fansHomeLane(lane); break;
       case 'fanChat': await runFanChat(lane, api, chat, uid, current, () => { persist(); publish(); }); break;
       case 'readPosts': await readLane(lane); break;
@@ -226,6 +241,7 @@ export function createDailyTasks(settings: SettingsStore, roomId: () => string, 
         if (manual) for (const lane of Object.values(state!.lanes)) {
           if (lane.status !== 'done') lane.nextAt = 0;
           if (lane.id === 'fansHome') { lane.targets = undefined; lane.status = 'pending'; lane.nextAt = 0; }
+          if (lane.id === 'client') { lane.status = 'pending'; lane.nextAt = 0; }
         }
         const lane = Object.values(state!.lanes).filter(lane => settings.value.sign[lane.id as SignTask] && lane.status !== 'done' && lane.nextAt <= Date.now())
           .sort((a, b) => a.nextAt - b.nextAt)[0];
@@ -238,7 +254,8 @@ export function createDailyTasks(settings: SettingsStore, roomId: () => string, 
         } catch (cause: any) {
           if (cause.interrupted) throw cause;
           current(); lane.status = 'error'; lane.detail = cause.message || String(cause); lane.nextAt = Date.now() + taskDelay(lane.attempts);
-          console.warn('[观鱼][签到任务]', lane.label, lane.detail);
+          if (lane.id === 'client' && lane.client) lane.detail = `${clientSignDetail(lane.client)}；${lane.detail}`;
+          diagnostics.report(`sign.${lane.id}`, 'error', lane.detail, '任务');
         }
         persist();
       });
@@ -260,7 +277,9 @@ export function createDailyTasks(settings: SettingsStore, roomId: () => string, 
     const next = JSON.stringify(value.sign);
     if (next === previous) return;
     previous = next;
-    if (active && (!value.sign.enabled || !value.sign[active as SignTask])) {
+    const remedyStopped = previousRemedy && !value.sign.clientRemedy;
+    previousRemedy = value.sign.clientRemedy;
+    if (active && (!value.sign.enabled || !value.sign[active as SignTask] || active === 'client' && remedyStopped)) {
       chat.cancel();
       http.dispose(); http = createTaskRequest();
     }

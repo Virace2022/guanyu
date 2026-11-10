@@ -1,9 +1,8 @@
 import { defineConfig } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import monkey from 'vite-plugin-monkey';
-import { readFileSync } from 'node:fs';
 import { licenseBanner } from './scripts/licenses.mjs';
-import { downloadURL, metaFile, scriptFile, updateURL, version } from './scripts/release-config.mjs';
+import { downloadURL, iconURL, metaFile, scriptFile, updateURL, version } from './scripts/release-config.mjs';
 
 export default defineConfig(({ command }) => {
   return {
@@ -21,7 +20,7 @@ export default defineConfig(({ command }) => {
           version,
           author: 'Virace2022',
           description: '原生优先的斗鱼网页看播增强：音量增益、团播、官方多屏、签到与每日任务。',
-          icon: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(readFileSync(new URL('./assets/brand/guanyu.svg', import.meta.url), 'utf8'))}`,
+          icon: iconURL,
           match: [
             ...Array.from({ length: 10 }, (_, digit) => `https://www.douyu.com/${digit}*`),
             'https://www.douyu.com/beta/*',

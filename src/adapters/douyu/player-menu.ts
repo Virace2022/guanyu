@@ -2,6 +2,7 @@ import type { SettingsStore } from '../../config/settings';
 import type { MenuAction } from '../../config/player-menu';
 import { mountPlayerSubmenu, type PlayerSubmenu } from './player-submenu';
 import styles from '../../ui/player-menu.css?style';
+import { diagnostics } from '../../core/diagnostics';
 
 export interface PlayerAction { label: () => string; run?: () => void | Promise<unknown>; enabled?: () => boolean; checked?: () => boolean; submenu?: PlayerSubmenu }
 export interface NativeMenuEntry { label: string; separator: boolean; disabled: boolean; submenu: boolean }
@@ -25,7 +26,7 @@ export function mountPlayerMenu(settings: SettingsStore, actions: Partial<Record
     const label = document.createElement('span'); labels.set(id, label);
     if (action.submenu) { const name = document.createElement('div'); name.className = 'name-2f52df'; name.append(label); item.append(name); }
     else item.append(label);
-    const run = () => { if (action.enabled?.() === false) return; Promise.resolve().then(action.run).then(sync).catch(error => report(String(error instanceof Error ? error.message : error))); };
+    const run = () => { if (action.enabled?.() === false) return; Promise.resolve().then(action.run).then(() => { diagnostics.report('menu', 'applied', `${action.label()} 操作已完成`, '操作'); sync(); }).catch(error => { diagnostics.report('menu', 'error', `${action.label()}：${String(error instanceof Error ? error.message : error)}`, '操作'); report(String(error instanceof Error ? error.message : error)); }); };
     if (action.submenu) release.set(id, mountPlayerSubmenu(item, action.submenu, report));
     else {
       item.onclick = run;
@@ -47,7 +48,7 @@ export function mountPlayerMenu(settings: SettingsStore, actions: Partial<Record
         item.setAttribute('aria-disabled', String(action.enabled?.() === false));
       }
     }
-    if (!menu) return;
+    if (!menu) { diagnostics.report('menu', 'idle', '等待打开播放器右键菜单；宿主：.menu-da2a9e:not(.subMenu-de1c61)'); return; }
     const anchor = [...menu.children].find((node, index) => index > 0 && !(node instanceof HTMLElement && node.dataset.guanyuAction));
     let next: Element | null = anchor ?? null;
     for (const id of [...active].reverse()) {
@@ -55,6 +56,7 @@ export function mountPlayerMenu(settings: SettingsStore, actions: Partial<Record
       if (item.parentElement !== menu || item.nextElementSibling !== next) menu.insertBefore(item, next);
       next = item;
     }
+    diagnostics.report('menu', 'applied', `已挂载菜单项：${active.map(id => actions[id]?.label() ?? id).join('、')}`);
   }
   let frame = 0;
   const onContext = () => { cancelAnimationFrame(frame); frame = requestAnimationFrame(() => { sync(); frame = requestAnimationFrame(sync); }); };

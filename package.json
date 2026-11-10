@@ -16,7 +16,7 @@
   "scripts": {
     "dev": "vite",
     "check": "svelte-check --tsconfig ./tsconfig.json && tsc --project ./tsconfig.node.json",
-    "test:sign": "node --test tests/sign-yuba.test.cjs tests/task-center.test.cjs",
+    "test:sign": "node --test tests/sign-yuba.test.cjs tests/task-center.test.cjs tests/client-sign.test.cjs tests/star-packet.test.cjs",
     "test:settings": "node --test tests/settings-preview.test.cjs",
     "test:backpack": "node --test tests/backpack.test.cjs",
     "test:release": "node --test tests/release-version.test.mjs",

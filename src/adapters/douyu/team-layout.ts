@@ -12,6 +12,7 @@ import FishIcon from '../../ui/FishIcon.svelte';
 import { bindTheme } from '../../ui/theme';
 import { attachEdgeDrag } from '../../ui/edge-drag';
 import { mountTeamCardPreview } from './team-card-preview';
+import { diagnostics } from '../../core/diagnostics';
 
 export function mountTeamLayout(team: TeamController, openEditor: () => void, player: PlayerStore) {
   const style = styles.cloneNode(true), previewStyle = previewStyles.cloneNode(true);
@@ -227,7 +228,7 @@ export function mountTeamLayout(team: TeamController, openEditor: () => void, pl
   const stop = team.subscribe(value => {
     const next = value.source;
     if (next?.native !== source?.native) { restore(); if (next) mount(next); }
-    if (!next || !source || !host || !view || !cards || !controls) return;
+    if (!next || !source || !host || !view || !cards || !controls) { diagnostics.report('team.layout', next ? 'unmatched' : 'idle', next ? '已识别名单，但名单布局宿主或控件未挂载' : '当前没有适用的团播名单'); return; }
     source = next;
     const nativeText = source.rooms[0]?.element.querySelector('.room-info-text, .wm-pc-room-button-text');
     if (nativeText) view.style.setProperty('--guanyu-team-native-ink', getComputedStyle(nativeText).color);
@@ -302,6 +303,10 @@ export function mountTeamLayout(team: TeamController, openEditor: () => void, pl
     originalAudio = value.options.previewFocusOriginal;
     sourcePreference = value.options.previewSource;
     arrange(); monitor.arrange(bridge.owner.layout); monitor.sync(); reflow();
+    diagnostics.report('team.layout', 'applied', value.grouped ? '已挂载分组名单并保留原生卡片' : '已接入官方原始名单');
+    diagnostics.report('team.showToolbar', 'applied', '已挂载团播工具条，全屏期间按原有规则收起');
+    diagnostics.report('team.preview', value.preview ? 'ready' : 'idle', value.preview ? '成员预览已开启，各房间播放结果随加载上报' : '等待手动开启成员预览');
+    if (value.options.hideBanner) diagnostics.report('optimization.hideTopBanner', outer ? 'applied' : 'unmatched', outer ? '团播顶图已隐藏并调整原生占位' : '未找到团播顶图外层宿主', '团播');
   });
   const fullscreen = () => { if (toolbar) toolbar.hidden = bridge.fullscreen || !team.value.options.showToolbar; if (bridge.fullscreen) { nativePreview.restore(); monitor.focus.restoreAll(); } monitor.sync(); };
   document.addEventListener('fullscreenchange', fullscreen);

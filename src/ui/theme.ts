@@ -1,6 +1,7 @@
 import type { Readable } from '../core/state';
 import { createState } from '../core/state';
 import type { SettingsStore } from '../config/settings';
+import { diagnostics } from '../core/diagnostics';
 
 const appearance = createState({ theme: 'light' as 'light' | 'dark', accentColor: '#ff5d23' });
 
@@ -23,6 +24,7 @@ export function connectTheme(settings: SettingsStore, pageTheme: Readable<'light
     const value = settings.runtime.value;
     appearance.set({ theme: value.theme === 'page' ? detected : value.theme, accentColor: value.accentColor });
     root.style.setProperty('--guanyu-page-accent', value.accentColor);
+    diagnostics.report('theme', 'applied', value.theme === 'page' ? `已应用跟随页面的${detected === 'dark' ? '深色' : '浅色'}主题与主题色` : `已应用固定${value.theme === 'dark' ? '深色' : '浅色'}主题与主题色`);
   };
   const stopPage = pageTheme.subscribe(value => { detected = value; refresh(); });
   const stopSettings = settings.runtime.subscribe(refresh);
