@@ -1,6 +1,6 @@
 import { GM_openInTab } from '$';
 import type { SettingsStore } from '../../config/settings';
-import { accountId, createTaskRequest, taskDay } from '../../adapters/douyu/task-request';
+import { accountId, createTaskRequest, retryAccount, taskDay } from '../../adapters/douyu/task-request';
 import { createState } from '../../core/state';
 import { createDailyTasks, type SignRow } from './daily';
 import { SignYubaController } from './yuba';
@@ -71,6 +71,7 @@ export function createSign(settings: SettingsStore, roomId: () => string,
       try {
         if (!uid) { notice = '请先登录斗鱼'; publish(); return; }
         if (!settings.value.sign.enabled) { notice = '签到已关闭，请开启并保存后再检查'; publish(); return; }
+        retryAccount();
         runner.submit(uid);
         notice = '已提交检查请求，未完成任务将由当前调度页面处理'; publish();
         await Promise.all([daily.run(), yuba?.wake(true), packet.run()]);
