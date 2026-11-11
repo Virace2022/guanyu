@@ -63,6 +63,8 @@
 
 `background-video.ts` 从已提交的主屏 React hook 引用识别节流状态，核对服务的引用归属后包装其构造器的 `getAutoSwitch`；保留官方请求上下文，仅在开启时将有效策略的 `switch` 置为 0，并撤销已排定的计时器、同步缓存。已发生音频节流时按能力特征发现官方跨播放器动作桥，通过 `LoadVideoNet.reloadVideo` 恢复一次；旧控制栏的动作注册器不能替代该桥。`playback/controller.ts` 只订阅已保存的 `playback.keepBackgroundVideo`，适配错误独立存入播放状态，界面开关与错误展示归播放分类。关闭、换房、主屏重建及释放时恢复仍由本功能持有的方法并使缓存失效；在途策略按完成时的开关状态处理，不接管全局可见性事件或副屏。
 
+`violation-playback.ts` 从已提交的主屏组件树按 `netIllegalEvent / jsBreakRuleTip / ILLEGAL_CLOSE_TIME` 识别整改实例，接管该实例的整改消息与渲染，并限定该实例的动作以保留全屏，不更改官方回调注册表。消息沿用官方 `loginres / rii`，不拦截其他来源的播放动作；正式封禁图片与下播状态阻止恢复播放。关闭、换房和释放时只恢复仍由本功能持有的实例属性。`player-actions.ts` 按导出能力发现跨播放器动作桥，供后台视频和整改适配共用。`features/playback/violation.ts` 解析官方原因与明确扣分，播放控制器持有独立通知状态，`ui/violation-notice.ts` 在主屏左上角显示小型半透明提示。
+
 自动网页全屏复用 `room-page/controller.ts` 对 `/betard/<rid>` 的结果，仅对当前房间已开播且非轮播的状态执行。资料显示关闭时，播放功能仍可请求必要状态。
 
 `volume-gain/controller.ts` 管理主房间倍率和记忆；`audio.ts` 通过 WeakMap 复用媒体音频源和 GainNode。释放时恢复单位增益，不强行断开已接管的音频上下文；HMR 复用同一资源，避免重复创建媒体源。

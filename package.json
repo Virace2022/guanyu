@@ -19,6 +19,7 @@
     "test:sign": "node --test tests/sign-yuba.test.cjs tests/task-center.test.cjs tests/client-sign.test.cjs tests/star-packet.test.cjs",
     "test:settings": "node --test tests/settings-preview.test.cjs",
     "test:backpack": "node --test tests/backpack.test.cjs",
+    "test:playback": "node --test tests/playback-violation.test.cjs",
     "test:release": "node --test tests/release-version.test.mjs",
     "version:next": "node scripts/version.mjs",
     "release:check": "node scripts/version.mjs --check-tag",

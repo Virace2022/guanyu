@@ -22,7 +22,7 @@ export function configureFeatureLogs(settings: SettingsStore) {
     options('barrage', '弹幕与特效', { fans: '隐藏粉丝牌', diamond: '隐藏钻粉后缀', noble: '隐藏贵族标记', level: '隐藏等级', other: '隐藏其他标记', suffix: '隐藏弹幕后缀', enter: '隐藏进场提示' }, preview.barrage);
     diagnostics.enable('barrage.linked', '弹幕与特效', '过滤活动及链接消息', room && saved.barrage.linked);
     options('shield', '弹幕与特效', Object.fromEntries(nativeShieldChoices.map(item => [item.key, item.label])), preview.nativeShield);
-    options('playback', '播放', { autoWebFullscreen: '自动网页全屏', highestQuality: '自动最高画质', volumeWheel: '滚轮音量', keepBackgroundVideo: '后台保持视频流' }, saved.playback);
+    options('playback', '播放', { autoWebFullscreen: '自动网页全屏', highestQuality: '自动最高画质', volumeWheel: '滚轮音量', keepBackgroundVideo: '后台保持视频流', keepViolationPlayback: '整改期间继续播放' }, saved.playback);
     options('room', '房间信息', { duration: '开播时长', guild: '公会资料', lastLive: '上次开播' }, saved.room);
     options('room', '页面整理', { closeRecommendation: '关闭下播推荐', hideUnread: '隐藏未读提示' }, saved.room);
     options('backpack', '背包与权益', { details: '道具到期与价值', monthCost: '月消费', vipExpiry: 'VIP 到期', pocket: '主播口袋', glow: '荧光棒续牌' }, saved.backpack);

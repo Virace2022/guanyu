@@ -30,6 +30,7 @@ import { mountRoomLayout } from '../adapters/douyu/room-layout';
 import { toggleTeamPreview } from '../ui/team-preview';
 import { connectTheme } from '../ui/theme';
 import { createGlowWindow } from '../ui/glow-window';
+import { mountViolationNotice } from '../ui/violation-notice';
 
 export function start() {
   const settings = createSettings(localStorage, window);
@@ -46,6 +47,7 @@ export function start() {
   const sign = createSign(settings, () => player.value.roomId || '', (title, content) => confirmAction(title, content, '前往鱼吧', '继续自动重试'));
   const roomPage = createRoomPage(settings, player);
   const playback = createPlayback(settings, player, () => roomPage.value.roomId === player.value.roomId && roomPage.value.live === true);
+  const removeViolationNotice = mountViolationNotice(player, playback.violation);
   let openGlow = () => {};
   const backpack = createBackpack(settings, player, () => settingsWindow.open('backpack'), () => openGlow());
   const glowWindow = createGlowWindow(backpack, settings); openGlow = glowWindow.open;
@@ -95,7 +97,7 @@ export function start() {
     stopDiagnostics();
     for (const menu of menus) GM_unregisterMenuCommand(menu);
     settingsWindow.dispose();
-    context.dispose(); multi.dispose(); multiWindow.dispose(); info.dispose(); sign.dispose(); playback.dispose(); roomPage.dispose(); glowWindow.dispose(); backpack.dispose();
+    context.dispose(); multi.dispose(); multiWindow.dispose(); info.dispose(); sign.dispose(); removeViolationNotice(); playback.dispose(); roomPage.dispose(); glowWindow.dispose(); backpack.dispose();
     removeTopBanner();
     removeRoomLayout();
     removeQuickDock(); barrage.dispose(); pageTools.dispose(); removeTeamLayout(); teamEditor.dispose(); team.dispose(); teamSource.dispose();

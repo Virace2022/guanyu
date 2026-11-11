@@ -49,6 +49,7 @@ npm run dev
 | `npm run test:sign` | 鱼吧、客户端连签与补签、星推荐红包领取、共享调度、粉丝家园与任务中心契约 |
 | `npm run test:settings` | 设置预览、保存、放弃恢复与预览人数确认边界 |
 | `npm run test:backpack` | 续牌数量、逐房赠送状态与账号切换隔离 |
+| `npm run test:playback` | 官方整改通知的原因与扣分解析，不将缺失信息或时长作为扣分 |
 | `npm run test:release` | 日期版本、公历校验、北京时间日界线与 tag 一致性 |
 | `npm run build` | 类型检查、生产打包、元数据一致性、语法、许可及实际 npm 包清单 |
 | `npm run version:next` | 按北京时间准备下一版并写入 `version.json` |

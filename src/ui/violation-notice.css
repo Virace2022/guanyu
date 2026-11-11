@@ -1,0 +1,22 @@
+#__h5player > .guanyu-violation-notice {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 2;
+  box-sizing: border-box;
+  width: max-content;
+  max-width: min(320px, calc(100% - 32px));
+  margin: 0;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 6px;
+  background: rgb(16 18 22 / 78%);
+  color: #fff;
+  font: 12px/1.5 system-ui, 'Microsoft YaHei', sans-serif;
+  text-align: left;
+  pointer-events: none;
+  overflow-wrap: anywhere;
+}
+#__h5player > .guanyu-violation-notice strong { display: block; margin: 0 0 4px; color: #ffc184; font-size: 12px; font-weight: 600; }
+#__h5player > .guanyu-violation-notice p { margin: 0; padding: 0; color: inherit; font: inherit; }
+#__h5player > .guanyu-violation-notice .guanyu-violation-score { margin-top: 2px; color: #ddd; }
