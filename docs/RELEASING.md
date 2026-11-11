@@ -52,7 +52,7 @@ https://cdn.jsdelivr.net/npm/guanyu-douyu@2026.1108.7/dist/douyu.guanyu.user.js
 
 ## 日常发布
 
-普通 main push 和 PR 只运行版本、签到、设置、背包检查与构建。正式发布前，将代码、版本和工作流同步到远端 main，并完成真实页面验收。
+普通 main push 和 PR 运行版本、签到、设置、背包、播放检查与构建。正式发布前，将代码、版本和工作流同步到远端 main，并完成真实页面验收。
 
 获准发布后，为相应 main 提交创建并推送与版本文件一致的 tag：
 

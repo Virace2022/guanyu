@@ -21,4 +21,5 @@ jobs:
       - run: npm run test:sign
       - run: npm run test:settings
       - run: npm run test:backpack
+      - run: npm run test:playback
       - run: npm run build

@@ -37,10 +37,10 @@
 | 优先级 | 安装入口 | 境内速度参考 | 安全推荐 | 区别与选择建议 |
 | --- | --- | :---: | :---: | --- |
 | 1 | [GitHub Release](https://github.com/Virace2022/guanyu/releases/latest/download/douyu.guanyu.user.js) | ★★☆☆☆ | ★★★★★ | 项目直接发布的附件，优先选择；部分网络访问较慢或无法连接。 |
-| 2 | [jsDelivr · Fastly](https://fastly.jsdelivr.net/npm/guanyu-douyu@2026.1111.1/dist/douyu.guanyu.user.js) | ★★★★☆ | ★★★★☆ | 通过 jsDelivr 分发官方 npm 包，使用 Fastly 节点。 |
-| 3 | [jsDelivr · Quantil](https://quantil.jsdelivr.net/npm/guanyu-douyu@2026.1111.1/dist/douyu.guanyu.user.js) | ★★★★☆ | ★★★★☆ | 同一 npm 包的另一个 jsDelivr 节点，前一入口不可用时尝试。 |
-| 4 | [jsDelivr · 默认节点](https://cdn.jsdelivr.net/npm/guanyu-douyu@2026.1111.1/dist/douyu.guanyu.user.js) | ★★★★☆ | ★★★★☆ | 同一 npm 包，由 jsDelivr 默认域名调度节点。 |
-| 5 | [jsdmirror · 中国境内第三方镜像](https://cdn.jsdmirror.com/npm/guanyu-douyu@2026.1111.1/dist/douyu.guanyu.user.js) | ★★★★★ | 未知 | 境内加速可作为备选；由第三方运营，内容完整性与防篡改保障未经本项目核验，存在供应链投毒风险。 |
+| 2 | [jsDelivr · Fastly](https://fastly.jsdelivr.net/npm/guanyu-douyu@2026.1112.1/dist/douyu.guanyu.user.js) | ★★★★☆ | ★★★★☆ | 通过 jsDelivr 分发官方 npm 包，使用 Fastly 节点。 |
+| 3 | [jsDelivr · Quantil](https://quantil.jsdelivr.net/npm/guanyu-douyu@2026.1112.1/dist/douyu.guanyu.user.js) | ★★★★☆ | ★★★★☆ | 同一 npm 包的另一个 jsDelivr 节点，前一入口不可用时尝试。 |
+| 4 | [jsDelivr · 默认节点](https://cdn.jsdelivr.net/npm/guanyu-douyu@2026.1112.1/dist/douyu.guanyu.user.js) | ★★★★☆ | ★★★★☆ | 同一 npm 包，由 jsDelivr 默认域名调度节点。 |
+| 5 | [jsdmirror · 中国境内第三方镜像](https://cdn.jsdmirror.com/npm/guanyu-douyu@2026.1112.1/dist/douyu.guanyu.user.js) | ★★★★★ | 未知 | 境内加速可作为备选；由第三方运营，内容完整性与防篡改保障未经本项目核验，存在供应链投毒风险。 |
 
 中间三个入口只是 jsDelivr 的节点不同，哪个能用就用哪个。jsdmirror 的速度推荐较高，但安全性未知，放在最后作为备选；这不表示已发现其篡改内容。
 
@@ -107,7 +107,7 @@
 
 ## 其他功能
 
-- **声音与播放**：在播放器增益按钮上调额外音量，按房间记住选择；额外增益上限可设为 +100%～+500%。自动最高画质、网页全屏和滚轮调音量也可分别设置。
+- **声音与播放**：在播放器增益按钮上调额外音量，按房间记住选择；额外增益上限可设为 +100%～+500%。自动最高画质、网页全屏和滚轮调音量也可分别设置。临时整改时保留画面与声音，在左上角显示官方原因和扣分，整改结束后撤下提示。
 - **页面与弹幕**：按需保留顶图、礼物栏和活动内容，隐藏不想看的弹幕标记、进场提示或含链接消息。
 - **背包与续牌**：查看道具到期、总价值和亲密度；从充值旁的荧光棒按钮打开计划，核对目标与数量后点“确认赠送”。本页会记录已送数量，再次确认仍会再送。
 - **签到任务**：默认在后台处理鱼吧签到和粉丝牌每日弹幕等任务，可在设置中查看进度、关闭任务。客户端签到显示连续与累计签到天数、剩余补签次数及最近日期，同组独立开关控制自动补签，首次签到不消耗补签机会。星推荐红包默认每分钟检查当前房间，预计开抢前 2 秒开始连续抢领，成功、抢完或明确失败即停止，最晚在开抢后 2 秒结束。弹幕任务向当天未完成的持牌房间各发一条 `.`，同账号多个标签页共用任务池，最多两路并发。进度自动保存，关闭浏览器后下次继续。粉丝牌弹幕任务全部完成后，当天不再查询或发送，北京时间零点后重新开始。关闭设置窗口后后台任务继续运行。
