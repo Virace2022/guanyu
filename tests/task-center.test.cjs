@@ -7,12 +7,13 @@ const ts = require('typescript');
 
 function load(file, globals = {}, imports = {}) {
   const exports = {};
+  let account;
   const source = ts.transpileModule(readFileSync(path.join(__dirname, '..', file), 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText;
   vm.runInNewContext(source, { exports, URLSearchParams, AbortController, setTimeout, clearTimeout,
-    document: { cookie: 'acf_uid=test-account; acf_ccn=test-ctn; cvl_csrf_token=test-csrf' },
-    require(name) { if (name in imports) return imports[name]; if (name === '../../core/diagnostics') return load('src/core/diagnostics.ts'); throw new Error(`未支持模块 ${name}`); }, ...globals,
+    document: { cookie: 'acf_uid=test-account; acf_biz=1; acf_stk=test-stk; acf_ct=0; acf_ltkid=test-ltk; acf_ccn=test-ctn; cvl_csrf_token=test-csrf' },
+    require(name) { if (name in imports) return imports[name]; if (name === './account') return account ||= load('src/adapters/douyu/account.ts', globals, { $: imports.$ || {} }); if (name === '../../core/diagnostics') return load('src/core/diagnostics.ts'); throw new Error(`未支持模块 ${name}`); }, ...globals,
   }, { filename: file });
   return exports;
 }
@@ -164,6 +165,7 @@ test('任务中心请求使用携带浏览器 Cookie 的同源 fetch', async () 
       requested = true;
       assert.equal(url, 'https://www.douyu.com/wgapi/activitync/gametask/viewStatus');
       assert.equal(options.credentials, 'include');
+      assert.equal(options.redirect, 'error');
       assert.equal(options.method, 'POST');
       assert.equal(options.body, 'actAlias=20250521OPFOY');
       return { status: 200, text: async () => JSON.stringify(view({ 1: { status: 2 } })) };
@@ -174,6 +176,85 @@ test('任务中心请求使用携带浏览器 Cookie 的同源 fetch', async () 
   assert.equal(requested, true);
   assert.equal(response.data.taskList[1].status, 2);
   http.dispose();
+});
+
+test('UID 已存在但官方聊天尚未确认当前账号时，等待登录完成', () => {
+  const page = { location: { pathname: '/80432' }, socketProxy: { info: {
+    user: { userId: 'test-account' }, barrage: { isUserLogied: false },
+  } } };
+  const account = load('src/adapters/douyu/account.ts', {}, { $: { unsafeWindow: page } });
+  assert.equal(account.accountId(), 'test-account');
+  assert.equal(account.accountReady(), false);
+  page.socketProxy.info.barrage.isUserLogied = true;
+  assert.equal(account.accountReady(), true);
+  page.socketProxy.info.user.userId = 'another-account';
+  assert.equal(account.accountReady(), false);
+});
+
+test('只有 UID 而缺少完整登录凭据时，个人中心也不能启动账号请求', () => {
+  const account = load('src/adapters/douyu/account.ts', { document: { cookie: 'acf_uid=test-account' } }, { $: {} });
+  assert.equal(account.accountId(), 'test-account');
+  assert.equal(account.accountReady(), false);
+});
+
+test('实测请登录响应暂停当前凭据，普通业务失败和旧凭据的迟到响应不暂停新登录', () => {
+  const doc = { cookie: 'acf_uid=test-account; acf_biz=1; acf_stk=first; acf_ct=0; acf_ltkid=test-ltk' };
+  const account = load('src/adapters/douyu/account.ts', { document: doc }, { $: {} });
+  const previous = account.accountToken();
+  account.observeAccountResponse({ error: 1, msg: '任务尚未完成' }, previous);
+  assert.equal(account.accountReady(), true);
+  account.observeAccountResponse({ error: 9, msg: '请登录' }, previous);
+  assert.equal(account.accountReady(), false);
+  doc.cookie = doc.cookie.replace('acf_stk=first', 'acf_stk=second');
+  assert.equal(account.accountReady(), true);
+  account.observeAccountResponse({ error: 1002, msg: '用户未登录' }, previous);
+  assert.equal(account.accountReady(), true);
+});
+
+for (const recovery of ['凭据变化', '手动检查']) test(`后台任务就绪前和鉴权失败后不发送请求，${recovery}后可以继续`, async () => {
+  const doc = { cookie: 'acf_uid=test-account; acf_biz=1; acf_stk=first; acf_ct=0; acf_ltkid=test-ltk' };
+  const page = { location: { pathname: '/80432' }, socketProxy: { info: {
+    user: { userId: 'test-account' }, barrage: { isUserLogied: false },
+  } } };
+  const values = new Map();
+  let requests = 0;
+  const helpers = load('src/adapters/douyu/task-request.ts', {
+    document: doc,
+    navigator: { locks: { request: async (_name, _options, run) => run({}) } },
+    localStorage: { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, value) },
+    async fetch() { requests++; return { status: 200, text: async () => JSON.stringify(requests === 1 ? { error: 9, msg: '请登录' } : { error: 0 }) }; },
+  }, { $: { unsafeWindow: page, GM_xmlhttpRequest() { assert.fail('本场景不能发起 GM 请求'); } } });
+  const http = helpers.createTaskRequest();
+  try {
+    await assert.rejects(http.request('/japi/prop/backpack/web/v5', { sameOrigin: true }), /等待斗鱼登录就绪/);
+    assert.equal(requests, 0);
+    page.socketProxy.info.barrage.isUserLogied = true;
+    assert.equal((await http.request('/japi/prop/backpack/web/v5', { sameOrigin: true })).error, 9);
+    await assert.rejects(http.request('/japi/prop/backpack/web/v5', { sameOrigin: true }), /等待斗鱼登录就绪/);
+    assert.equal(requests, 1);
+    if (recovery === '凭据变化') doc.cookie = doc.cookie.replace('acf_stk=first', 'acf_stk=second');
+    else helpers.retryAccount();
+    assert.equal(requests, 1);
+    values.clear();
+    assert.equal((await http.request('/japi/prop/backpack/web/v5', { sameOrigin: true })).error, 0);
+    assert.equal(requests, 2);
+  } finally { http.dispose(); }
+});
+
+test('粉丝牌后台 HTML 请求使用拒绝重定向的同源 fetch，不跟随 GM 登录链路', async () => {
+  const helpers = load('src/adapters/douyu/task-request.ts', {
+    navigator: { locks: { request: async (_name, _options, run) => run({}) } },
+    localStorage: { getItem: () => null, setItem() {} },
+    async fetch(url, options) {
+      assert.equal(url, 'https://www.douyu.com/member/cp/getFansBadgeList');
+      assert.equal(options.credentials, 'include');
+      assert.equal(options.redirect, 'error');
+      return { status: 200, text: async () => '<table class="fans-badge-list"></table>' };
+    },
+  }, { $: { GM_xmlhttpRequest() { assert.fail('个人中心资料不应走自动跟随跳转的 GM 请求'); } } });
+  const http = helpers.createTaskRequest();
+  try { assert.match(await http.request('/member/cp/getFansBadgeList', { text: true }), /fans-badge-list/); }
+  finally { http.dispose(); }
 });
 
 // 字段与 0/1、1/1 计数来自真实 userTaskList；不以此模拟官方鉴权或网络兼容。

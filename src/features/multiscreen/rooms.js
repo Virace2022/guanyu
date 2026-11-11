@@ -1,3 +1,5 @@
+import { accountToken, observeAccountResponse, requireAccount } from '../../adapters/douyu/account';
+
 export class MultiScreenRooms {
     constructor() {
         this.rooms = new Map();
@@ -11,7 +13,7 @@ export class MultiScreenRooms {
         this.requests.add(abort);
         const timer = setTimeout(() => abort.abort(), 15000);
         try {
-            const response = await fetch(url, { credentials: "include", signal: abort.signal });
+            const response = await fetch(url, { credentials: "include", redirect: "error", signal: abort.signal });
             if (!response.ok) throw new Error(`房间资料请求失败（HTTP ${response.status}）`);
             return await response.json();
         } finally { clearTimeout(timer); this.requests.delete(abort); }
@@ -46,7 +48,10 @@ export class MultiScreenRooms {
         const ids = [];
         let page = 1, pages = 1;
         do {
+            requireAccount();
+            const token = accountToken();
             const result = await this.request(`/wgapi/livenc/liveweb/follow/list?sort=1&cid1=0&page=${page}`);
+            observeAccountResponse(result, token);
             if (result.error !== 0 || !Array.isArray(result.data?.list)) throw new Error("关注名单未能读取，仍可添加自定义房间。");
             for (const room of result.data.list) {
                 const value = this.remember({

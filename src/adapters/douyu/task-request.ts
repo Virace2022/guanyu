@@ -1,11 +1,6 @@
 import { GM_xmlhttpRequest } from '$';
-
-export function cookie(name: string) {
-  const value = document.cookie.split('; ').find(item => item.startsWith(`${name}=`))?.slice(name.length + 1) || '';
-  return decodeURIComponent(value);
-}
-export const accountId = () => cookie('acf_uid');
-export const accountToken = () => ['acf_uid', 'acf_biz', 'acf_stk', 'acf_ct', 'acf_ltkid'].map(cookie).join('_');
+import { accountId, accountToken, observeAccountResponse, requireAccount } from './account';
+export { cookie, accountId, accountToken, accountReady, requireAccount, retryAccount, observeAccountResponse } from './account';
 export const taskGap = () => 3000 + Math.floor(Math.random() * 2001);
 export const taskTimeout = (attempt = 1) => Math.min(60000, 10000 * 2 ** Math.min(3, Math.max(0, attempt - 1)));
 export const taskDay = (now = Date.now()) => new Date(now + 8 * 3600000).toISOString().slice(0, 10);
@@ -57,6 +52,7 @@ export function createTaskRequest(storage: Storage = localStorage) {
     const uid = accountId();
     check(uid);
     if (!uid) throw new Error('请先登录斗鱼');
+    requireAccount();
     if (!navigator.locks) throw new Error('自动签到需要 HTTPS 和支持 Web Locks 的新版浏览器');
     return navigator.locks.request(`guanyu:task-requests:${uid}`, { signal: abort.signal }, async () => {
       const key = `guanyu:task-gap:v1:${uid}`, timeout = taskTimeout(options.attempt);
@@ -70,6 +66,8 @@ export function createTaskRequest(storage: Storage = localStorage) {
         // 排队结束后再读取登录态和生成签名，避免等待期间的凭据刷新或时间戳失效。
         const prepared = options.prepare?.();
         check(uid);
+        requireAccount();
+        const token = accountToken();
         const data = prepared?.data ?? options.data;
         return await new Promise((resolve, reject) => {
           let cancelRequest = () => {}, settled = false;
@@ -95,13 +93,14 @@ export function createTaskRequest(storage: Storage = localStorage) {
               if (!options.text && (!result || typeof result !== 'object')) result = JSON.parse(response.responseText);
               if (response.status < 200 || response.status >= 300) throw new Error(`接口 HTTP ${response.status}${!options.text && result ? `：${responseError(result)}` : ''}`);
               if (!options.text && (!result || typeof result !== 'object' || Array.isArray(result))) throw new Error('接口没有返回有效 JSON');
+              if (!options.text) observeAccountResponse(result, token);
               finish(undefined, result);
             } catch (error) { finish(error as Error); }
           };
           try {
-            if (options.sameOrigin) {
+            if (options.sameOrigin || url.startsWith('https://www.douyu.com/member/')) {
               const controller = new AbortController(); cancelRequest = () => controller.abort();
-              void fetch(url, { method: options.method || 'GET', headers, body: data, credentials: 'include', signal: controller.signal })
+              void fetch(url, { method: options.method || 'GET', headers, body: data, credentials: 'include', redirect: 'error', signal: controller.signal })
                 .then(async response => receive({ status: response.status, responseText: await response.text() }))
                 .catch(error => finish(error));
               return;

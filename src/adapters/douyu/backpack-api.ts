@@ -1,4 +1,4 @@
-import { assertResponse, accountId, taskDay } from './task-request';
+import { assertResponse, accountId, accountToken, requireAccount, observeAccountResponse, taskDay } from './task-request';
 
 export interface BagGift { id: number; name: string; count: number; expiry: number; met: number; price: number; intimate: number; isValuable: number; picUrlPrefix: string; propPic?: { src: string }[] }
 export interface FanBadge { id: string; name: string; since: number; days: number }
@@ -8,15 +8,18 @@ export interface MonthCost { date: string; uid: string; total: number; details: 
 export class BackpackApi {
   private requests = new Set<AbortController>();
   async request(path: string, body?: URLSearchParams, text = false): Promise<any> {
+    requireAccount();
+    const token = accountToken();
     const abort = new AbortController(); this.requests.add(abort);
     const timer = setTimeout(() => abort.abort(), 15000);
     try {
-      const response = await fetch(path, { credentials: 'include', signal: abort.signal,
+      const response = await fetch(path, { credentials: 'include', redirect: 'error', signal: abort.signal,
         ...(body ? { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body } : {}) });
       if (!response.ok) throw new Error(`背包资料请求失败（HTTP ${response.status}）`);
       if (text) return await response.text();
       const result = await response.json();
       if (!result || !('error' in result || 'status_code' in result)) throw new Error('接口未确认请求结果');
+      observeAccountResponse(result, token);
       assertResponse(result); return result.data;
     } finally { clearTimeout(timer); this.requests.delete(abort); }
   }

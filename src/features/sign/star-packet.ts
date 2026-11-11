@@ -2,7 +2,7 @@ import type { SettingsStore } from '../../config/settings';
 import { createState } from '../../core/state';
 import { diagnostics } from '../../core/diagnostics';
 import { createStarPacketApi, type StarPacket, type PacketClaim } from '../../adapters/douyu/star-packet';
-import { accountId, interrupted, taskDay } from '../../adapters/douyu/task-request';
+import { accountId, accountReady, interrupted, taskDay } from '../../adapters/douyu/task-request';
 
 interface RecordEntry { status: PacketClaim['status'] | 'sending'; detail: string; nextAt: number; attempts: number }
 interface Progress {
@@ -33,7 +33,7 @@ export function createStarPacket(settings: SettingsStore, roomId: () => string) 
   function schedule() {
     if (alarm !== undefined) clearTimeout(alarm);
     alarm = undefined;
-    if (!stopped && !running && enabled() && accountId() && /^\d+$/.test(roomId())) {
+    if (!stopped && !running && enabled() && accountReady() && /^\d+$/.test(roomId())) {
       alarm = setTimeout(() => { alarm = undefined; void wake(); }, Math.max(0, wakeAt - Date.now()));
     }
   }
@@ -42,6 +42,7 @@ export function createStarPacket(settings: SettingsStore, roomId: () => string) 
     let status: string;
     if (!enabled()) status = '星推荐红包自动领取已关闭';
     else if (!accountId()) status = '登录斗鱼后自动领取星推荐红包';
+    else if (!accountReady()) status = '等待斗鱼登录就绪，暂不检查星推荐红包';
     else if (!roomId()) status = '进入直播间后自动检查星推荐红包';
     else if (running) status = '正在检查或领取当前房间的星推荐红包…';
     else {
@@ -96,7 +97,7 @@ export function createStarPacket(settings: SettingsStore, roomId: () => string) 
     return { ...result, attempts, nextAt: 0 };
   }
   async function wake(manual = false) {
-    if (stopped || running || !enabled() || !accountId() || !/^\d+$/.test(roomId())) return;
+    if (stopped || running || !enabled() || !accountReady() || !/^\d+$/.test(roomId())) return;
     const expected = generation, uid = accountId(), room = roomId(), day = taskDay();
     const current = () => {
       if (stopped || generation !== expected || uid !== accountId() || room !== roomId() || day !== taskDay() || !enabled()) throw interrupted();

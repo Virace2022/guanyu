@@ -7,11 +7,12 @@ const ts = require('typescript');
 
 function load(file, imports = {}, globals = {}) {
   const exports = {};
+  let account;
   const source = ts.transpileModule(readFileSync(path.join(__dirname, '..', file), 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText;
   vm.runInNewContext(source, { exports, URLSearchParams, setTimeout, clearTimeout,
-    require(name) { if (name in imports) return imports[name]; throw new Error(`未支持模块 ${name}`); }, ...globals,
+    require(name) { if (name in imports) return imports[name]; if (name === './account') return account ||= load('src/adapters/douyu/account.ts', { $: imports.$ || {} }, globals); throw new Error(`未支持模块 ${name}`); }, ...globals,
   }, { filename: file });
   return exports;
 }
@@ -33,7 +34,7 @@ function session(options = {}) {
   let room = '12899578', uid = 'contract-account', csrf = true;
   const FakeDate = class extends Date { static now() { return clock.now; } };
   const helpers = load('src/adapters/douyu/task-request.ts', { $: {} }, { Date: FakeDate,
-    document: { get cookie() { return `acf_uid=${uid}; ${csrf ? 'acf_ccn=contract-csrf' : ''}`; } },
+    document: { get cookie() { return `acf_uid=${uid}; acf_biz=1; acf_stk=contract-stk; acf_ct=0; acf_ltkid=contract-ltk; ${csrf ? 'acf_ccn=contract-csrf' : ''}`; } },
   });
   const fetch = async (url, request = {}) => {
     assert.equal(request.credentials, 'include');

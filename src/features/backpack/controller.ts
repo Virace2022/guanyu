@@ -2,7 +2,7 @@ import type { SettingsStore } from '../../config/settings';
 import type { PlayerStore } from '../../adapters/douyu/player';
 import { BackpackApi, type BagGift, type FanBadge, type PocketItem, type MonthCost } from '../../adapters/douyu/backpack-api';
 import { mountBackpackPage } from '../../adapters/douyu/backpack-page';
-import { accountId, taskDay } from '../../adapters/douyu/task-request';
+import { accountId, accountReady, retryAccount, taskDay } from '../../adapters/douyu/task-request';
 import { createState } from '../../core/state';
 import { RoomApi } from '../../adapters/douyu/rooms';
 import { diagnostics } from '../../core/diagnostics';
@@ -38,7 +38,7 @@ export function createBackpack(settings: SettingsStore, player: PlayerStore, ope
   async function refresh() {
     const room = player.value.roomId, uid = accountId(), options = { ...settings.value.backpack }, revision = generation;
     const optionSignature = JSON.stringify(options);
-    if (!room || !uid || state.value.loading || stopped || state.value.sending || state.value.preparing) return;
+    if (!room || !uid || !accountReady() || state.value.loading || stopped || state.value.sending || state.value.preparing) return;
     publish({ loading: true, error: '' });
     const errors: string[] = [];
     const current = () => !stopped && generation === revision && uid === accountId() && room === player.value.roomId;
@@ -69,6 +69,7 @@ export function createBackpack(settings: SettingsStore, player: PlayerStore, ope
     if (!settings.value.backpack.glow) { publish({ plan: null, glowError: '荧光棒续牌已关闭，请在背包与权益设置中开启并保存' }); return; }
     const uid = accountId(), room = player.value.roomId, revision = generation;
     if (!uid || !room) { publish({ glowError: '请先登录并进入真实直播间' }); return; }
+    retryAccount();
     publish({ preparing: true, glowError: '', sendError: '', plan: null, deliveries: {} });
     try {
       const gifts = await api.bag(room), rooms = await api.badges();
@@ -130,7 +131,7 @@ export function createBackpack(settings: SettingsStore, player: PlayerStore, ope
   }
   const stopSettings = settings.subscribe(sync), stopPlayer = player.subscribe(sync);
   const timer = setInterval(() => { sync(); if (!document.hidden && Date.now() >= nextAt) void refresh(); }, 1000);
-  return { ...state, get value() { return state.value; }, refresh, prepare, setGlowCount, send, openGlow,
+  return { ...state, get value() { return state.value; }, refresh: () => { retryAccount(); return refresh(); }, prepare, setGlowCount, send, openGlow,
     dispose() { stopped = true; generation++; clearInterval(timer); stopSettings(); stopPlayer(); api.close(); roomApi.close(); dom.dispose(); } };
 }
 export type BackpackController = ReturnType<typeof createBackpack>;

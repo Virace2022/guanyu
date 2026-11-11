@@ -5,6 +5,7 @@ export const playbackChoices: { key: keyof PlaybackOptions; label: string; hint:
   { key: 'autoWebFullscreen', label: '自动网页全屏', hint: '直播开始后自动进入网页全屏；未开播或轮播时跳过，手动退出后本页不再自动进入。' },
   { key: 'highestQuality', label: '自动最高画质', hint: '播放器就绪后选择当前可用的最高画质；手动切换后，本页保留你的选择。' },
   { key: 'keepBackgroundVideo', label: '后台保持视频流', hint: '切到后台后继续接收视频流，避免回到前台时因切换音频模式而重载视频；后台流量高于纯音频模式。' },
+  { key: 'keepViolationPlayback', label: '整改期间继续播放', hint: '将临时整改遮罩改为左上角提示，保留画面与声音，显示官方违规原因和扣分信息。' },
   { key: 'volumeWheel', label: '原生音量滚轮', hint: '在播放器音量按钮或滑条上滚动，每格调整音量 5%。' },
 ];
 export const layoutChoices: { key: keyof OptimizationOptions; label: string; hint: string }[] = [

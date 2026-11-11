@@ -1,4 +1,4 @@
-import { assertResponse, cookie, responseError } from './task-request';
+import { assertResponse, cookie, responseError, requireAccount, accountToken, observeAccountResponse } from './task-request';
 
 export interface StarPacket { id: string; code: string; status: number; readyAt: number }
 export interface PacketClaim { status: 'received' | 'exhausted' | 'retry' | 'failed'; detail: string }
@@ -18,6 +18,8 @@ function number(value: unknown, field: string) {
 export function createStarPacketApi(signal: AbortSignal, current = () => {}) {
   async function request(path: string, options: RequestInit = {}, timeout = 10000): Promise<any> {
     current();
+    requireAccount();
+    const token = accountToken();
     const abort = new AbortController();
     const cancel = () => abort.abort();
     const stop = options.signal;
@@ -34,6 +36,7 @@ export function createStarPacketApi(signal: AbortSignal, current = () => {}) {
       }); current();
       if (!response.ok) throw Object.assign(new Error(`红包接口 HTTP ${response.status}${result && typeof result === 'object' ? `：${responseError(result)}` : ''}`), { terminal: true });
       if (!result || typeof result !== 'object' || Array.isArray(result)) throw new Error('红包接口没有返回有效 JSON');
+      observeAccountResponse(result, token);
       return result;
     } catch (cause) {
       if (timedOut) throw new Error(`红包请求超过 ${timeout / 1000} 秒未响应`);

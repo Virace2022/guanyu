@@ -1,6 +1,7 @@
 import type { PlaybackOptions } from '../../config/enhancements';
 import type { PlayerStore } from './player';
 import { diagnostics } from '../../core/diagnostics';
+import { accountId, accountReady } from './account';
 
 function component(node: Element | null, accepts: (value: any) => boolean): any {
   if (!node) return null;
@@ -65,6 +66,10 @@ export function mountPlayback(player: PlayerStore, isLive: () => boolean, report
       }
     }
     if (options.highestQuality && !qualityApplied) {
+      if (accountId() && !accountReady()) {
+        diagnostics.report('playback.highestQuality', 'waiting', '等待官方确认账号登录后再自动切换画质');
+        return;
+      }
       const rate = component(bar, value => typeof value.onMultirateChange === 'function' && Array.isArray(value.props?.multirates));
       const highest = rate?.props.multirates[0];
       if (!highest) diagnostics.report('playback.highestQuality', 'unmatched', !bar ? '未找到 #js-player-controlbar' : !rate ? '未找到带 onMultirateChange / props.multirates 的原生画质组件' : '官方 multirates 尚未提供画质档位');

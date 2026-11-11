@@ -1,4 +1,4 @@
-import { accountId } from '../../adapters/douyu/task-request';
+import { accountId, accountReady } from '../../adapters/douyu/task-request';
 import { SignYuba_timeout, SignYuba_assertResponse, SignYuba_signResult, SignYuba_supplementComplete } from './yuba-response';
 
 function SignYuba_day(now = Date.now()) {
@@ -85,6 +85,11 @@ export class SignYubaController {
             }
             this.uid = String(uid);
             this.key = `guanyu:yuba:v1:${this.uid}`;
+            if (!accountReady()) {
+                this.waiting = true;
+                this.status("等待斗鱼登录就绪，暂不请求鱼吧。");
+                return;
+            }
             if (!navigator.locks) throw new Error("鱼吧签到需要 HTTPS 页面和支持 Web Locks 的新版浏览器");
             await this.remind();
             if (!await this.runner.claim(this.uid)) { this.waitForOtherPage(manual); return; }

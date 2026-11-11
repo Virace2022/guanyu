@@ -1,6 +1,6 @@
 import { readOptions } from './options';
 
-export const playbackDefaults = { autoWebFullscreen: true, highestQuality: true, volumeWheel: true, keepBackgroundVideo: true };
+export const playbackDefaults = { autoWebFullscreen: true, highestQuality: true, volumeWheel: true, keepBackgroundVideo: true, keepViolationPlayback: true };
 export const roomDefaults = { duration: true, guild: true, lastLive: true, closeRecommendation: true, hideUnread: true };
 export const backpackDefaults = { details: true, monthCost: true, vipExpiry: true, badgeDays: true, chatBadgeDays: true, pocket: true, glow: true, glowCount: 1 };
 export type PlaybackOptions = typeof playbackDefaults;

@@ -1,7 +1,7 @@
 import type { SettingsStore } from '../../config/settings';
 import { signTasks, type SignTask } from '../../config/sign';
 import { createState } from '../../core/state';
-import { accountId, createTaskRequest, taskDay, taskDelay, interrupted, alreadySigned, type TaskRequest } from '../../adapters/douyu/task-request';
+import { accountId, accountReady, createTaskRequest, taskDay, taskDelay, interrupted, alreadySigned, type TaskRequest } from '../../adapters/douyu/task-request';
 import { createDouyuTasks, type LevelTask, type TaskRoom } from '../../adapters/douyu/tasks';
 import type { TaskRunner } from '../../adapters/douyu/task-runner';
 import { checkPoints } from './points';
@@ -227,6 +227,7 @@ export function createDailyTasks(settings: SettingsStore, roomId: () => string, 
     try {
       load(); error = ''; publish();
       if (!uid) { await runner.claim(''); return; }
+      if (!accountReady()) { waiting = true; return; }
       if (!navigator.locks) throw new Error('自动签到需要 HTTPS 和支持 Web Locks 的新版浏览器');
       if (!await runner.claim(uid, roomId())) { waiting = true; return; }
       rememberChatRuntime();

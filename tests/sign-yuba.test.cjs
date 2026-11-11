@@ -6,6 +6,9 @@ const vm = require("node:vm");
 
 // 只验证用户要求的本地调度契约，合成响应不代表鱼吧线上接口样本。
 const ts = require("typescript");
+const accountSource = ts.transpileModule(readFileSync(path.join(__dirname, "../src/adapters/douyu/account.ts"), "utf8"), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
+}).outputText;
 const requestSource = ts.transpileModule(readFileSync(path.join(__dirname, "../src/adapters/douyu/task-request.ts"), "utf8"), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
 }).outputText;
@@ -64,9 +67,10 @@ async function browser(options = {}) {
         constructor(...args) { super(...(args.length ? args : [clock.now])); }
         static now() { return clock.now; }
     }
+    let accountModule;
     const context = vm.createContext({
         Date: ClockDate, window, document, AbortController, URLSearchParams, exports: {},
-        require: name => { if (name === "$") return { GM_xmlhttpRequest: args => context.GM_xmlhttpRequest(args) }; throw new Error(`未支持模块 ${name}`); },
+        require: name => { if (name === "$") return { GM_xmlhttpRequest: args => context.GM_xmlhttpRequest(args) }; if (name === './account') return accountModule; throw new Error(`未支持模块 ${name}`); },
         console: Object.fromEntries(["info", "warn", "error"].map(level => [level, (...args) => logs.push({ level, args })])),
         navigator: { onLine: true, locks: options.locks === undefined ? locks() : options.locks },
         localStorage: {
@@ -102,6 +106,8 @@ async function browser(options = {}) {
             return { abort() { request.aborted = true; args.onabort(); } };
         }
     });
+    accountModule = vm.runInContext(`(() => { const exports = {}; ${accountSource}; return exports; })()`, context);
+    Object.assign(context, accountModule);
     vm.runInContext(source, context);
     const Controller = vm.runInContext("SignYubaController", context);
     const apiRequest = vm.runInContext("createTaskRequest(localStorage)", context);

@@ -36,7 +36,9 @@
 
 页面增强通过 `--guanyu-page-accent` 共用主题色，独立窗口仍持有各自主题变量，主按钮文字统一由共享主题定义为白色。粉丝牌资料与续牌计划共用 `RoomApi` 批量头像查询及本页缓存；`glow-prompt.css` 显式挂载到窗口 Shadow DOM，原生消费行与多屏音量轨道复用官方结构、样式及资源。
 
-任务中心的签到与观时领取由 `features/sign/points.ts` 分别执行并汇总结果。`task-request.ts` 的同源请求分支保留账号互斥、间隔、超时和释放，使用浏览器 fetch 处理任务中心 Cookie/CSRF；鱼吧等跨源请求继续使用 GM 桥接。
+`adapters/douyu/account.ts` 分开读取账号身份与判断登录就绪：凭据须完整，直播页还需官方聊天确认同一账号。聊天就绪不替代接口鉴权结果；接口明确返回未登录时，仅在本页内存暂停对应凭据，凭据变化后重新判断；迟到的旧响应不暂停新登录。显式刷新资料、检查任务和准备续牌计划可解除本页暂停，重新走原请求核验。它不写官方 Cookie，不请求自动登录，也不刷新页面。签到、背包、红包、关注候选和自动最高画质在账号恢复期间等待；原有调度负责恢复检查，不新增鉴权探测请求。
+
+任务中心的签到与观时领取由 `features/sign/points.ts` 分别执行并汇总结果。`task-request.ts` 的同源请求分支保留账号互斥、间隔、超时和释放，使用浏览器 fetch 处理任务中心 Cookie/CSRF；个人中心 HTML 资料也使用同源 fetch。后台同源 fetch 拒绝重定向，避免跟随登录链路；鱼吧等跨源请求继续使用 GM 桥接。
 
 `core/md5.js` 为团播取流签名提供共享 MD5 工具，沿用已验证的 JS 实现。
 
@@ -60,6 +62,8 @@
 `player.ts` 观察真实房间号、主媒体、音量宿主和原生全屏状态。`playback.ts` 调用官方网页全屏、画质和音量路径，原生音量存储的 `v` 保持二次 JSON 编码。
 
 `background-video.ts` 从已提交的主屏 React hook 引用识别节流状态，核对服务的引用归属后包装其构造器的 `getAutoSwitch`；保留官方请求上下文，仅在开启时将有效策略的 `switch` 置为 0，并撤销已排定的计时器、同步缓存。已发生音频节流时按能力特征发现官方跨播放器动作桥，通过 `LoadVideoNet.reloadVideo` 恢复一次；旧控制栏的动作注册器不能替代该桥。`playback/controller.ts` 只订阅已保存的 `playback.keepBackgroundVideo`，适配错误独立存入播放状态，界面开关与错误展示归播放分类。关闭、换房、主屏重建及释放时恢复仍由本功能持有的方法并使缓存失效；在途策略按完成时的开关状态处理，不接管全局可见性事件或副屏。
+
+`violation-playback.ts` 从已提交的主屏组件树按 `netIllegalEvent / jsBreakRuleTip / ILLEGAL_CLOSE_TIME` 识别整改实例，接管该实例的整改消息与渲染，并限定该实例的动作以保留全屏，不更改官方回调注册表。消息沿用官方 `loginres / rii`，不拦截其他来源的播放动作；正式封禁图片与下播状态阻止恢复播放。关闭、换房和释放时只恢复仍由本功能持有的实例属性。`player-actions.ts` 按导出能力发现跨播放器动作桥，供后台视频和整改适配共用。`features/playback/violation.ts` 解析官方原因与明确扣分，播放控制器持有独立通知状态，`ui/violation-notice.ts` 在主屏左上角显示小型半透明提示。
 
 自动网页全屏复用 `room-page/controller.ts` 对 `/betard/<rid>` 的结果，仅对当前房间已开播且非轮播的状态执行。资料显示关闭时，播放功能仍可请求必要状态。
 

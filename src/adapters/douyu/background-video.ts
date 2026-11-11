@@ -1,5 +1,5 @@
 import type { PlayerStore } from './player';
-import { unsafeWindow } from '$';
+import { dispatchPlayerAction } from './player-actions';
 import { diagnostics } from '../../core/diagnostics';
 
 interface Policy { switch: number | boolean; st: number; ct: number }
@@ -48,25 +48,7 @@ function mainPlayback(): PlaybackRef | undefined {
 }
 
 function reloadVideo() {
-  const queue = (unsafeWindow as any).sharkLivePlayerJsonp;
-  if (Array.isArray(queue) && queue.push !== Array.prototype.push) {
-    let runtime: any;
-    const id = `guanyu-background-${Date.now()}`;
-    queue.push([[id], { [id]: (_module: any, _exports: any, require: any) => { runtime = require; } }, [[id]]]);
-    if (runtime?.c && runtime.m) {
-      delete runtime.m[id]; delete runtime.c[id];
-      for (const [key, module] of Object.entries(runtime.c) as [string, any][]) {
-        const source = String(runtime.m[key]);
-        if (!source.includes('awakeFirstVideoAcj') || !source.includes('lianmaireloadVideo')) continue;
-        const dispatch = Object.values(module.exports).find((value: any) => typeof value === 'function' && value.length === 1);
-        if (typeof dispatch !== 'function') continue;
-        // 新主屏只接收官方跨播放器动作桥，旧控制栏的 actions.call 不会转发到这里。
-        dispatch({ id: 'LoadVideoNet', action: 'reloadVideo', data: [{ isnoLoading: true, isSmooth: true }] });
-        return;
-      }
-    }
-  }
-  throw new Error('原生视频恢复入口尚未就绪');
+  dispatchPlayerAction({ id: 'LoadVideoNet', action: 'reloadVideo', data: [{ isnoLoading: true, isSmooth: true }] });
 }
 
 export function mountBackgroundVideo(player: PlayerStore, report: (message: string) => void) {
