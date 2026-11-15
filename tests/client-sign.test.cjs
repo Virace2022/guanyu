@@ -25,7 +25,7 @@ const { createClientSignApi } = load('src/adapters/douyu/client-sign.ts', {
 });
 const { runClientSign, clientSignDetail } = load('src/features/sign/client.ts');
 const day = '2026-11-10';
-const signed = { signedOn: day, days: 7, totalDays: 2230 };
+const signed = { signed: true, signedOn: day, days: 7, totalDays: 2230 };
 const missing = { signedOn: day, days: 1, missedDays: 5, remaining: 5,
   calendar: [{ date: '11.04', signed: true }, ...['11.05', '11.06', '11.07', '11.08', '11.09'].map(date => ({ date, signed: false })), { date: '11.10', signed: true }] };
 const current = () => {};
@@ -46,15 +46,58 @@ test('缺少官方连续天数字段时报告异常，不把今日签到标志�
   await assert.rejects(api.status(), /sign_rd/);
 });
 
+test('2026-11-15 官方日期为今天但 sign_cnt=0 时仍须签到，提交后重查今日标志', async () => {
+  const today = '2026-11-15';
+  let submits = 0, result;
+  const api = createClientSignApi({ async request(url) {
+    if (url.endsWith('sendSign')) { submits++; return { error: 0, data: {} }; }
+    if (url.endsWith('getRemedySign')) return { error: 0, data: { sign_today: today, sign_running_days: 1,
+      sign_omit_days: 2, sign_remedy_cnt: 0, sign_schedule_list: [{ ds: '11.15', sf: 1 }] } };
+    return { error: '0', data: { sign_today: today, sign_cnt: String(submits), sign_sum: String(2232 + submits), sign_rd: String(submits) } };
+  } });
+  await runClientSign(api, today, () => true, current, value => { result = value; });
+  assert.equal(submits, 1);
+  assert.equal(result.signed, true); assert.equal(result.days, 1); assert.equal(result.totalDays, 2233);
+});
+
+test('签到提交成功但官方今日标志仍为 0 时不能报完成', async () => {
+  let result;
+  await assert.rejects(runClientSign({ async status() { return { signed: false, signedOn: day, days: 0, totalDays: 2232 }; },
+    async sign() { return { rewards: '' }; }, remedyStatus() { assert.fail('今日未确认时不能进入补签'); },
+  }, day, () => true, current, value => { result = value; }), /尚未确认客户端今日签到/);
+  assert.equal(result, undefined);
+});
+
 test('首次签到确认后不消耗补签机会', async () => {
   let submitted = false, result;
   await runClientSign({
-    async status() { return submitted ? { signedOn: day, days: 1, totalDays: 1 } : { signedOn: '', days: 0, totalDays: 0 }; },
+    async status() { return submitted ? { signed: true, signedOn: day, days: 1, totalDays: 1 } : { signed: false, signedOn: '', days: 0, totalDays: 0 }; },
     async sign() { submitted = true; return { rewards: '' }; },
     async remedyStatus() { return missing; }, remedy() { assert.fail('首次签到不得补签'); },
   }, day, () => true, current, value => { result = value; });
   assert.equal(result.days, 1); assert.equal(result.remedyChecked, true);
   assert.equal(result.remaining, 5);
+});
+
+test('错误提示在后台重试时合并，关闭后不重复打扰，恢复后再次失败重新提示', () => {
+  const { diagnostics } = load('src/core/diagnostics.ts');
+  let errors = [];
+  diagnostics.start('test'); diagnostics.enable('sign.client', '每日任务', '客户端签到');
+  const stop = diagnostics.subscribeErrors(value => { errors = value; });
+  diagnostics.report('sign.client', 'error', '官方尚未确认客户端今日签到', '任务');
+  assert.equal(errors.length, 1); assert.equal(errors[0].name, '客户端签到');
+  diagnostics.report('sign.client', 'waiting', '等待重试', '任务');
+  diagnostics.report('sign.client', 'error', '官方尚未确认客户端今日签到', '任务');
+  assert.equal(errors.length, 1);
+  diagnostics.dismissError(errors[0].key); assert.equal(errors.length, 0);
+  diagnostics.report('sign.client', 'waiting', '等待重试', '任务');
+  diagnostics.report('sign.client', 'error', '官方尚未确认客户端今日签到', '任务');
+  assert.equal(errors.length, 0);
+  diagnostics.report('sign.client', 'applied', '今日已签', '任务');
+  diagnostics.report('sign.client', 'error', '官方尚未确认客户端今日签到', '任务');
+  assert.equal(errors.length, 1);
+  diagnostics.enable('sign.client', '每日任务', '客户端签到', false); assert.equal(errors.length, 0);
+  stop(); diagnostics.stop();
 });
 
 test('关闭自动补签时仍显示官方剩余次数，不重复签到或提交补签', async () => {

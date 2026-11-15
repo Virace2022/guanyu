@@ -380,7 +380,7 @@ export class SignYubaController {
         const signed = groups.filter(group => group.status === "signed").length;
         const already = groups.filter(group => group.status === "already").length;
         const error = this.state.list.error || pending.find(group => group.error)?.error;
-        this.status(`北京时间 ${this.state.day}：成功 ${signed} 个，已签到 ${already} 个，待确认 ${pending.length} 个。${this.state.list.done ? "" : "关注名单尚未读取完整。"}${this.waiting ? "其他页面正在处理。" : ""}${error ? ` 最近失败：${error}。` : ""}进度自动保存，失败项静默重试。`);
+        this.status(`北京时间 ${this.state.day}：成功 ${signed} 个，已签到 ${already} 个，待确认 ${pending.length} 个。${this.state.list.done ? "" : "关注名单尚未读取完整。"}${this.waiting ? "其他页面正在处理。" : ""}${error ? ` 最近失败：${error}。` : ""}进度自动保存，失败项按间隔重试。`);
     }
 
     schedule() {

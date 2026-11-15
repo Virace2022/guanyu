@@ -32,9 +32,10 @@ export function createSign(settings: SettingsStore, roomId: () => string,
   function report(controller: SignYubaController, message: string) {
     const progress = controller.state, groups = Object.values(progress?.groups || {}) as any[];
     const pending = groups.filter(group => group.status === 'pending');
-    if (progress?.list.error) diagnostics.report('sign.yuba', 'error', progress.list.error, '关注名单');
-    for (const group of groups) if (group.error || group.supplementError) diagnostics.report('sign.yuba', 'error', group.error || group.supplementError, `鱼吧 ${group.id}`);
-    yubaRow = { id: 'yuba', label: '鱼吧签到', status: progress?.list.done && !pending.length ? 'done' : 'waiting',
+    const failures = [progress?.list.error ? `关注名单：${progress.list.error}` : '',
+      ...groups.map(group => group.error || group.supplementError ? `${group.name}（${group.id}）：${group.error || `补签失败：${group.supplementError}`}` : '')].filter(Boolean);
+    if (progress && !controller.storageError) diagnostics.report('sign.yuba', 'applied', '鱼吧调度进度已读取并保存', '调度');
+    yubaRow = { id: 'yuba', label: '鱼吧签到', status: failures.length ? 'error' : progress?.list.done && !pending.length ? 'done' : 'waiting', error: failures.join('；'),
       detail: message, nextAt: Math.min(...pending.map(group => Math.max(group.nextAt || 0, progress?.requestAt || 0)), Infinity), attempts: 0 };
     yubaDetails = [];
     if (progress?.list.error) yubaDetails.push(`关注名单第 ${progress.list.page} 页：${progress.list.error}；已尝试 ${progress.list.attempts} 次`);
@@ -55,7 +56,14 @@ export function createSign(settings: SettingsStore, roomId: () => string,
     const enabled = value.sign.enabled && value.sign.yuba;
     if (enabled && !yuba) {
       yuba = new SignYubaController(settings, createTaskRequest(), report,
-        (message: string) => { notice = message; publish(); },
+        (message: string, level?: string) => {
+          notice = message;
+          if (level === 'error') {
+            yubaRow = { ...yubaRow, status: 'error', error: message };
+            diagnostics.report('sign.yuba', 'error', message, '调度');
+          }
+          publish();
+        },
         async ({ title, content }: { title: string; content: string }) => {
           if (await reminder(title, content)) GM_openInTab('https://yuba.douyu.com/', { active: true });
         }, runner);
@@ -73,9 +81,10 @@ export function createSign(settings: SettingsStore, roomId: () => string,
         if (!settings.value.sign.enabled) { notice = '签到已关闭，请开启并保存后再检查'; publish(); return; }
         retryAccount();
         runner.submit(uid);
+        diagnostics.report('sign', 'applied', '已提交手动检查请求', '检查请求');
         notice = '已提交检查请求，未完成任务将由当前调度页面处理'; publish();
         await Promise.all([daily.run(), yuba?.wake(true), packet.run()]);
-      } catch (cause) { notice = `检查请求提交失败：${String(cause)}`; publish(); }
+      } catch (cause) { notice = `检查请求提交失败：${String(cause)}`; diagnostics.report('sign', 'error', notice, '检查请求'); publish(); }
     },
     dispose() { stopped = true; stopSettings(); stopDaily(); stopPacket(); packet.dispose(); yuba?.dispose(); daily.dispose(); runner.dispose(); },
   };

@@ -11,7 +11,7 @@ import { diagnostics } from '../../core/diagnostics';
 import { createClientSignApi } from '../../adapters/douyu/client-sign';
 import { runClientSign, clientSignDetail, type ClientProgress } from './client';
 
-export interface SignRow { id: string; label: string; status: 'pending' | 'done' | 'waiting' | 'error' | 'disabled'; detail: string; nextAt: number; attempts: number }
+export interface SignRow { id: string; label: string; status: 'pending' | 'done' | 'waiting' | 'error' | 'disabled'; detail: string; error?: string; nextAt: number; attempts: number }
 interface Lane extends SignRow {
   targets?: TaskRoom[]; results?: Record<string, string>; signed?: boolean;
   submitted?: Record<string, boolean>;
@@ -40,7 +40,11 @@ export function createDailyTasks(settings: SettingsStore, roomId: () => string, 
   function persist() { current(); localStorage.setItem(key(), JSON.stringify(state)); }
   function publish() {
     view.set({ uid, day: state?.day || taskDay(), running, waiting, error,
-      rows: Object.values(state?.lanes || {}).map(row => ({ ...row, status: settings.value.sign.enabled && settings.value.sign[row.id as SignTask] ? row.status : 'disabled' })),
+      rows: Object.values(state?.lanes || {}).map(row => {
+        const failures = (row.targets || []).filter(room => row.failures?.[room.id]).map(room => `${room.name}（${room.id}）：${row.failures![room.id]!.error}`);
+        const error = failures.join('；');
+        return { ...row, error, status: settings.value.sign.enabled && settings.value.sign[row.id as SignTask] ? error ? 'error' : row.status : 'disabled' };
+      }),
       tasks: [...state?.tasks || []], restore: restore ? `${restore.name}（${restore.id}）等待恢复未关注状态` : '' });
   }
   function summarizeFansHome(lane: Lane) {
@@ -83,8 +87,9 @@ export function createDailyTasks(settings: SettingsStore, roomId: () => string, 
     state!.lanes = Object.fromEntries(signTasks.filter(task => task.id !== 'yuba' && task.id !== 'starPacket').map(task => [task.id,
       state!.lanes[task.id] || { id: task.id, label: task.label, status: 'pending', detail: '等待按间隔处理', nextAt: 0, attempts: 0 }]));
     const clientLane = state!.lanes.client!;
-    if (clientLane.status === 'done' && (clientLane.client?.remaining === undefined || settings.value.sign.clientRemedy && !clientLane.client.remedyChecked)) {
+    if (clientLane.status === 'done' && (clientLane.client?.signed !== true || clientLane.client.remaining === undefined || settings.value.sign.clientRemedy && !clientLane.client.remedyChecked)) {
       clientLane.status = 'pending'; clientLane.nextAt = 0;
+      if (clientLane.client?.signed !== true) clientLane.detail = '旧版完成记录待核验，正在重新查询官方今日签到状态';
     }
     return restoreFansHome();
   }

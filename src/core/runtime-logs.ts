@@ -22,7 +22,7 @@ export function observeRuntimeLogs(team: TeamController, multi: MultiscreenContr
     }),
     sign.subscribe(value => {
       diagnostics.report('sign', value.error ? 'error' : !value.uid ? 'idle' : value.running ? 'ready' : 'waiting', value.error || (!value.uid ? '等待登录，尚未执行任务' : value.running ? '本页正在执行账号任务' : '等待账号调度权、任务间隔或其他页面同步'), '调度');
-      for (const row of value.rows) if (row.status !== 'disabled') diagnostics.report(`sign.${row.id}`, row.status === 'done' ? 'applied' : row.status === 'error' ? 'error' : 'waiting', row.detail || '等待调度执行', '任务');
+      for (const row of value.rows) if (row.status !== 'disabled') diagnostics.report(`sign.${row.id}`, row.status === 'done' ? 'applied' : row.status === 'error' ? 'error' : 'waiting', row.error || row.detail || '等待调度执行', '任务');
     }),
   ];
   return () => { for (const stop of stops) stop(); };
