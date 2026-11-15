@@ -1,6 +1,6 @@
 import { accountToken, assertResponse, confirmedResult, cookie, type TaskRequest } from './task-request';
 
-export interface ClientSignStatus { signedOn: string; days: number; totalDays: number }
+export interface ClientSignStatus { signed: boolean; signedOn: string; days: number; totalDays: number }
 export interface ClientRemedyStatus {
   signedOn: string; days: number; missedDays: number; remaining: number;
   calendar: { date: string; signed: boolean }[];
@@ -35,7 +35,7 @@ export function createClientSignApi(http: TaskRequest, current = () => {}) {
     async status(): Promise<ClientSignStatus> {
       const result = await request('sign/getSign'); assertResponse(result);
       const data = result.data;
-      return { signedOn: signedOn(data?.sign_today), days: count(data?.sign_rd, 'sign_rd'), totalDays: count(data?.sign_sum, 'sign_sum') };
+      return { signed: count(data?.sign_cnt, 'sign_cnt') > 0, signedOn: signedOn(data?.sign_today), days: count(data?.sign_rd, 'sign_rd'), totalDays: count(data?.sign_sum, 'sign_sum') };
     },
     async remedyStatus(): Promise<ClientRemedyStatus> {
       const result = await request('Sign/getRemedySign'); assertResponse(result);

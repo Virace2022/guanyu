@@ -37,13 +37,14 @@ test('粉丝家园真正失败仍保留错误，不误报今日完成', async ()
   await assert.rejects(api.signFansHome('71415'), /签到失败.*error=-1/);
 });
 
-async function restoreFansHome(error) {
+async function restoreFansHome(error, withPending = false) {
   const day = '2026-11-06', nextAt = Date.now() + 300000;
   const targets = Array.from({ length: 15 }, (_, index) => ({ id: String(index + 1), name: index === 14 ? 'CSTG' : `房间${index + 1}`, live: false }));
   const lane = { id: 'fansHome', label: '粉丝家园签到', status: 'error', attempts: 4, nextAt,
     detail: `14 / 15 个房间已确认，继续按间隔处理；CSTG：${error}`,
     targets, results: Object.fromEntries(targets.slice(0, 14).map(room => [room.id, 'signed'])),
     failures: { 15: { attempts: 4, nextAt, error } } };
+  if (withPending) { lane.status = 'pending'; delete lane.results['14']; }
   const key = 'guanyu:daily-tasks:v1:test-account';
   const values = new Map([[key, JSON.stringify({ day, lanes: { fansHome: lane }, readIds: [], tasks: [] })]]);
   const requests = [];
@@ -99,6 +100,55 @@ test('历史真正失败仍显示 14/15 并保留重试记录', async () => {
     assert.equal(saved().results['15'], undefined);
     assert.equal(saved().failures['15'].error, message);
     assert.deepEqual(requests, []);
+  } finally { daily.dispose(); }
+});
+
+test('部分房间失败且其他房间仍待处理时，任务中心也必须显示错误及具体房间', async () => {
+  const { daily, saved } = await restoreFansHome('签到失败，请稍后重试（error=-1）', true);
+  try {
+    const row = daily.value.rows.find(row => row.id === 'fansHome');
+    assert.equal(row.status, 'error');
+    assert.match(row.error, /CSTG（15）：签到失败/);
+    assert.equal(saved().status, 'pending');
+  } finally { daily.dispose(); }
+});
+
+test('旧版当天客户端完成记录缺少今日标志时重查，不能继续沿用误判', async () => {
+  const day = '2026-11-15', key = 'guanyu:daily-tasks:v1:test-account';
+  const old = { id: 'client', label: '客户端签到', status: 'done', nextAt: 0, attempts: 0,
+    detail: '连续签到第 0 天 · 累计签到 2232 天',
+    client: { signedOn: day, days: 0, totalDays: 2232, remaining: 0, remedyChecked: true } };
+  const values = new Map([[key, JSON.stringify({ day, lanes: { client: old }, readIds: [], tasks: [] })]]);
+  let submits = 0, reads = 0;
+  const core = load('src/core/state.ts');
+  const { createDailyTasks } = load('src/features/sign/daily.ts', {
+    localStorage: { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, value) },
+    navigator: { onLine: true, locks: { request: async (_key, _options, run) => run({}) } },
+    window: { addEventListener() {}, removeEventListener() {} }, document: { addEventListener() {}, removeEventListener() {} },
+    setTimeout() { return 0; }, clearTimeout() {},
+  }, {
+    '../../core/state': core, '../../config/sign': load('src/config/sign.ts'),
+    '../../adapters/douyu/task-request': { ...requestHelpers, taskDay: () => day, accountReady: () => true,
+      createTaskRequest: () => ({ async request(url) {
+        if (url.endsWith('sendSign')) { submits++; return { error: '0', data: { sign_pl: [] } }; }
+        if (url.endsWith('getSign')) { reads++; return { error: '0', data: { sign_today: day, sign_cnt: String(submits), sign_rd: String(submits), sign_sum: String(2232 + submits) } }; }
+        if (url.endsWith('getRemedySign')) return { error: 0, data: { sign_today: day, sign_running_days: 5, sign_omit_days: 2,
+          sign_remedy_cnt: 0, sign_schedule_list: [{ ds: '11.15', sf: 1 }] } };
+        assert.fail(`本场景不应请求 ${url}`);
+      }, dispose() {} }) },
+    '../../adapters/douyu/tasks': { createDouyuTasks }, '../../adapters/douyu/client-sign': { createClientSignApi }, './client': clientSign,
+    './points': { checkPoints }, './fan-chat': { runFanChat },
+    '../../adapters/douyu/chat-session': { rememberChatRuntime() {}, createChatSessions: () => ({ cancel() {}, dispose() {} }) },
+  });
+  const daily = createDailyTasks(core.createState({ sign: { enabled: true, client: true, clientRemedy: true } }), () => '71415',
+    { claim: async () => true, room: () => '71415', take: () => false });
+  await new Promise(resolve => setImmediate(resolve));
+  try {
+    assert.equal(submits, 1); assert.equal(reads, 2);
+    const row = daily.value.rows.find(row => row.id === 'client');
+    assert.equal(row.status, 'done'); assert.match(row.detail, /今日已签到.*连续签到第 1 天.*2233/);
+    assert.equal(JSON.parse(values.get(key)).lanes.client.client.signed, true);
+    await daily.run(); assert.equal(submits, 1);
   } finally { daily.dispose(); }
 });
 

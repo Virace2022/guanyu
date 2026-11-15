@@ -37,10 +37,10 @@
 | 优先级 | 安装入口 | 境内速度参考 | 安全推荐 | 区别与选择建议 |
 | --- | --- | :---: | :---: | --- |
 | 1 | [GitHub Release](https://github.com/Virace2022/guanyu/releases/latest/download/douyu.guanyu.user.js) | ★★☆☆☆ | ★★★★★ | 项目直接发布的附件，优先选择；部分网络访问较慢或无法连接。 |
-| 2 | [jsDelivr · Fastly](https://fastly.jsdelivr.net/npm/guanyu-douyu@2026.1112.1/dist/douyu.guanyu.user.js) | ★★★★☆ | ★★★★☆ | 通过 jsDelivr 分发官方 npm 包，使用 Fastly 节点。 |
-| 3 | [jsDelivr · Quantil](https://quantil.jsdelivr.net/npm/guanyu-douyu@2026.1112.1/dist/douyu.guanyu.user.js) | ★★★★☆ | ★★★★☆ | 同一 npm 包的另一个 jsDelivr 节点，前一入口不可用时尝试。 |
-| 4 | [jsDelivr · 默认节点](https://cdn.jsdelivr.net/npm/guanyu-douyu@2026.1112.1/dist/douyu.guanyu.user.js) | ★★★★☆ | ★★★★☆ | 同一 npm 包，由 jsDelivr 默认域名调度节点。 |
-| 5 | [jsdmirror · 中国境内第三方镜像](https://cdn.jsdmirror.com/npm/guanyu-douyu@2026.1112.1/dist/douyu.guanyu.user.js) | ★★★★★ | 未知 | 境内加速可作为备选；由第三方运营，内容完整性与防篡改保障未经本项目核验，存在供应链投毒风险。 |
+| 2 | [jsDelivr · Fastly](https://fastly.jsdelivr.net/npm/guanyu-douyu@2026.1115.1/dist/douyu.guanyu.user.js) | ★★★★☆ | ★★★★☆ | 通过 jsDelivr 分发官方 npm 包，使用 Fastly 节点。 |
+| 3 | [jsDelivr · Quantil](https://quantil.jsdelivr.net/npm/guanyu-douyu@2026.1115.1/dist/douyu.guanyu.user.js) | ★★★★☆ | ★★★★☆ | 同一 npm 包的另一个 jsDelivr 节点，前一入口不可用时尝试。 |
+| 4 | [jsDelivr · 默认节点](https://cdn.jsdelivr.net/npm/guanyu-douyu@2026.1115.1/dist/douyu.guanyu.user.js) | ★★★★☆ | ★★★★☆ | 同一 npm 包，由 jsDelivr 默认域名调度节点。 |
+| 5 | [jsdmirror · 中国境内第三方镜像](https://cdn.jsdmirror.com/npm/guanyu-douyu@2026.1115.1/dist/douyu.guanyu.user.js) | ★★★★★ | 未知 | 境内加速可作为备选；由第三方运营，内容完整性与防篡改保障未经本项目核验，存在供应链投毒风险。 |
 
 中间三个入口只是 jsDelivr 的节点不同，哪个能用就用哪个。jsdmirror 的速度推荐较高，但安全性未知，放在最后作为备选；这不表示已发现其篡改内容。
 

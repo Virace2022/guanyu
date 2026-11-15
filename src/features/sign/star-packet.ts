@@ -103,6 +103,7 @@ export function createStarPacket(settings: SettingsStore, roomId: () => string) 
       if (stopped || generation !== expected || uid !== accountId() || room !== roomId() || day !== taskDay() || !enabled()) throw interrupted();
     };
     const save = () => { current(); localStorage.setItem(key(), JSON.stringify(progress)); };
+    let stage = '查询';
     running = true; publish();
     try {
       if (!navigator.locks) throw new Error('自动领取红包需要支持 Web Locks 的新版浏览器');
@@ -129,7 +130,7 @@ export function createStarPacket(settings: SettingsStore, roomId: () => string) 
           }
           value.checked = true; value.nextPollAt = Date.now() + pollInterval; save();
           error = '';
-          diagnostics.report('sign.starPacket', 'waiting', pending(value).length ? `发现 ${pending(value).length} 个红包，预计开抢前两秒开始抢领` : '当前房间暂无待领红包，一分钟后检查', '红包');
+          diagnostics.report('sign.starPacket', 'ready', pending(value).length ? `发现 ${pending(value).length} 个红包，预计开抢前两秒开始抢领` : '当前房间暂无待领红包，一分钟后检查', '查询');
         };
         const next = pending(value).sort((a, b) => due(value, a) - due(value, b))[0];
         const missing = next && !packets.has(next.id);
@@ -140,12 +141,14 @@ export function createStarPacket(settings: SettingsStore, roomId: () => string) 
         const bag = pending(value).find(bag => due(value, bag) <= Date.now());
         const packet = bag && packets.get(bag.id);
         if (bag && packet) {
+          stage = '红包';
           value.records[bag.id] = { status: 'sending', detail: '正在抢领星推荐红包', nextAt: bag.readyAt + graceTime, attempts: 0 }; save();
           const result = await claimBurst(api, room, { ...packet, readyAt: bag.readyAt }, current);
           value.records[bag.id] = result;
           error = result.status === 'failed' ? result.detail : '';
           diagnostics.report('sign.starPacket', result.status === 'received' ? 'applied' : result.status === 'exhausted' ? 'idle' : 'error', result.detail, '红包');
           save();
+          stage = '查询';
           await refresh();
           error = result.status === 'failed' ? result.detail : '';
         }
@@ -155,7 +158,7 @@ export function createStarPacket(settings: SettingsStore, roomId: () => string) 
     } catch (cause: any) {
       if (generation === expected && !cause.interrupted) {
         error = cause.message || String(cause); wakeAt = Date.now() + pollInterval;
-        diagnostics.report('sign.starPacket', 'error', error, '红包');
+        diagnostics.report('sign.starPacket', 'error', error, stage);
       }
     } finally { if (generation === expected) { running = false; publish(); schedule(); } }
   }

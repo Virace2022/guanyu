@@ -5,7 +5,7 @@
   let { value = $bindable(), sign, saved }: { value: SignOptions; sign: SignController; saved: SignOptions } = $props();
   let runtime = $state(untrack(() => sign.value));
   onMount(() => sign.subscribe(next => { runtime = next; }));
-  const statusName = { pending: '等待', done: '完成', waiting: '待检查', error: '重试中', disabled: '已关闭' };
+  const statusName = { pending: '等待', done: '完成', waiting: '待检查', error: '执行失败', disabled: '已关闭' };
   const unsaved = $derived(JSON.stringify(value) !== JSON.stringify(saved));
 </script>
 
@@ -21,7 +21,7 @@
   {#if runtime.restore}<p class="error" role="alert">{runtime.restore}；恢复操作优先于其他任务。</p>{/if}
   <div class="sign-progress" aria-live="polite">
     {#each runtime.rows as row (row.id)}
-      <div class="sign-progress-row"><div><strong>{row.label}</strong><span class:error-text={row.status === 'error'}>{statusName[row.status]}</span></div><p>{row.detail}</p></div>
+      <div class="sign-progress-row"><div><strong>{row.label}</strong><span class:error-text={row.status === 'error'}>{statusName[row.status]}</span></div><p>{row.detail}</p>{#if row.error && row.error !== row.detail}<p class="error-text">{row.error}</p>{/if}</div>
     {/each}
   </div>
   {#if runtime.yubaDetails.length}<details><summary>鱼吧未完成与补签详情（{runtime.yubaDetails.length}）</summary><ul class="sign-details">{#each runtime.yubaDetails as detail}<li>{detail}</li>{/each}</ul></details>{/if}
