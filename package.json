@@ -23,6 +23,7 @@
     "test:release": "node --test tests/release-version.test.mjs",
     "version:next": "node scripts/version.mjs",
     "release:check": "node scripts/version.mjs --check-tag",
+    "release:verify": "node scripts/check-distribution.mjs",
     "release:publish": "node scripts/publish.mjs",
     "build": "npm run check && node scripts/build.mjs"
   },

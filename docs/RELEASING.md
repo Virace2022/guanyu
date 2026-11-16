@@ -10,32 +10,57 @@
 
 | 产物 | 用途 |
 | --- | --- |
-| `dist/douyu.guanyu.user.js` | 完整安装脚本 |
-| `dist/douyu.guanyu.meta.js` | 仅含用户脚本元数据，供管理器检查更新 |
-| `dist/guanyu-douyu-<版本>.tgz` | 精简 npm 包，只有当版脚本、元数据、发布清单、README 和 LICENSE |
+| `dist/douyu.guanyu.user.js` | GitHub 渠道完整安装脚本 |
+| `dist/douyu.guanyu.meta.js` | GitHub 渠道更新元数据 |
+| `dist/guanyu-douyu-<版本>.tgz` | 精简 npm 包，包含当版四套 CDN 脚本、元数据、发布清单、README 和 LICENSE |
 | `dist/SHA256SUMS` | 上述三个文件的 SHA-256 |
 | `dist/npm/` | npm 打包的生成目录，不是源码包 |
 
-构建检查完整脚本与更新元数据一致、脚本语法、必要许可及 npm 的实际打包清单。源码、截图、开发依赖和历史版本不进入 npm 包，所有产物不提交到 Git。
+构建只编译、压缩一次功能代码，再为四个 CDN 生成对应元数据。检查各渠道脚本与元数据一致、版本与安装身份相同、除更新地址外的元数据与功能代码相同、脚本语法、必要许可及 npm 的实际打包清单。源码、截图、开发依赖和历史版本不进入 npm 包，所有产物不提交到 Git。
 
 ## 安装与更新地址
 
-首次安装链接使用具体版本，例如：
+五个渠道分别提供安装、检查更新与下载新版入口。CDN 首次安装链接使用具体版本，避免 `latest` 缓存导致新安装仍取得旧版；检查更新和下载新版使用本渠道稳定的 `@latest` 地址。GitHub 安装与更新都使用 latest Release 附件。准备版本时同步 README 中的 CDN 安装版本。
 
-```text
-https://cdn.jsdelivr.net/npm/guanyu-douyu@2026.1108.7/dist/douyu.guanyu.user.js
-```
+| 渠道 | 首次安装 | 检查更新 | 下载新版 |
+| --- | --- | --- | --- |
+| GitHub Release | [user.js](https://github.com/Virace2022/guanyu/releases/latest/download/douyu.guanyu.user.js) | [meta.js](https://github.com/Virace2022/guanyu/releases/latest/download/douyu.guanyu.meta.js) | [user.js](https://github.com/Virace2022/guanyu/releases/latest/download/douyu.guanyu.user.js) |
+| jsDelivr · Fastly | [user.js](https://fastly.jsdelivr.net/npm/guanyu-douyu@2026.1117.2/dist/fastly/douyu.guanyu.user.js) | [meta.js](https://fastly.jsdelivr.net/npm/guanyu-douyu@latest/dist/fastly/douyu.guanyu.meta.js) | [user.js](https://fastly.jsdelivr.net/npm/guanyu-douyu@latest/dist/fastly/douyu.guanyu.user.js) |
+| jsDelivr · Quantil | [user.js](https://quantil.jsdelivr.net/npm/guanyu-douyu@2026.1117.2/dist/quantil/douyu.guanyu.user.js) | [meta.js](https://quantil.jsdelivr.net/npm/guanyu-douyu@latest/dist/quantil/douyu.guanyu.meta.js) | [user.js](https://quantil.jsdelivr.net/npm/guanyu-douyu@latest/dist/quantil/douyu.guanyu.user.js) |
+| jsDelivr · 默认节点 | [user.js](https://cdn.jsdelivr.net/npm/guanyu-douyu@2026.1117.2/dist/douyu.guanyu.user.js) | [meta.js](https://cdn.jsdelivr.net/npm/guanyu-douyu@latest/dist/douyu.guanyu.meta.js) | [user.js](https://cdn.jsdelivr.net/npm/guanyu-douyu@latest/dist/douyu.guanyu.user.js) |
+| jsdmirror | [user.js](https://cdn.jsdmirror.com/npm/guanyu-douyu@2026.1117.2/dist/jsdmirror/douyu.guanyu.user.js) | [meta.js](https://cdn.jsdmirror.com/npm/guanyu-douyu@latest/dist/jsdmirror/douyu.guanyu.meta.js) | [user.js](https://cdn.jsdmirror.com/npm/guanyu-douyu@latest/dist/jsdmirror/douyu.guanyu.user.js) |
 
-生产脚本和元数据包含固定入口：
+GitHub 附件的元数据为：
 
 ```js
-// @updateURL   https://cdn.jsdelivr.net/npm/guanyu-douyu@latest/dist/douyu.guanyu.meta.js
-// @downloadURL https://cdn.jsdelivr.net/npm/guanyu-douyu@latest/dist/douyu.guanyu.user.js
+// @updateURL   https://github.com/Virace2022/guanyu/releases/latest/download/douyu.guanyu.meta.js
+// @downloadURL https://github.com/Virace2022/guanyu/releases/latest/download/douyu.guanyu.user.js
 ```
 
-管理器读取元数据中的新版本，再下载完整脚本。具体版本路径可长期缓存，不覆盖旧版本内容；`@latest` 由 jsDelivr 解析，[别名缓存](https://github.com/jsdelivr/jsdelivr#caching)可持续 7 天，更新受缓存与管理器检查周期影响。工作流只向官方 npm 发包，不调用其他镜像同步或 CDN purge 服务。开发服务不使用生产更新地址。
+例如 Fastly 专用脚本的元数据为：
 
-国内实际网络的安装与旧版升级需分别验收。GitHub Release 可直接下载同版完整脚本；原来使用旧更新地址的 `.6` 及更早版本需重新安装一次，才能切换到 jsDelivr。
+```js
+// @updateURL   https://fastly.jsdelivr.net/npm/guanyu-douyu@latest/dist/fastly/douyu.guanyu.meta.js
+// @downloadURL https://fastly.jsdelivr.net/npm/guanyu-douyu@latest/dist/fastly/douyu.guanyu.user.js
+```
+
+管理器读取本渠道元数据中的新版本，再下载同渠道完整脚本。四套 npm 脚本位于 `dist/fastly/`、`dist/quantil/`、`dist/` 和 `dist/jsdmirror/`；默认节点保留原有 `dist/` 路径，使已安装的默认 jsDelivr 版本可沿旧地址升级。不能用其他域名直接替换路径，否则脚本内的渠道仍由该文件的元数据决定。
+
+具体版本路径可长期缓存，不覆盖旧版本内容；`@latest` 由 jsDelivr 解析，[别名缓存](https://github.com/jsdelivr/jsdelivr#caching)可持续 7 天，更新受缓存与管理器检查周期影响。工作流只向官方 npm 发包，不调用其他镜像同步或 CDN purge 服务。开发服务不使用生产更新地址。
+
+切换渠道时，从目标入口覆盖安装同名脚本。旧版已写入统一 jsDelivr 更新地址，无法追溯原来点击的下载域名；从 GitHub 或其他节点安装的旧版也需重新安装渠道版，才能改用所选更新源。脚本的 `@name` 与 `@namespace` 不变，不创建第二套安装身份或迁移用户数据。
+
+### 远程验收
+
+新版本发布并可从 CDN 读取后，运行：
+
+```powershell
+npm run release:verify
+```
+
+该命令分别请求五个公开渠道的首次安装脚本、更新元数据和新版下载脚本（GitHub 安装与下载相同，只请求一次），记录 HTTP 状态，并核对当前 `version.json` 版本、安装身份、本渠道更新地址，以及安装、更新和跨渠道功能代码的一致性。HTTP 错误、旧缓存版本、统一更新源或内容不一致都会返回失败；远程检查独立于本地构建，不自动发布、清缓存或重试。只有验证通过的渠道才在 README 启用安装链接。真实网络下的管理器安装与旧版升级仍需分别验收。
+
+2026 年 11 月 17 日，本次修复发布前实测：四个 CDN 首次请求返回 HTTP 502，jsDelivr 提示从 npm 获取失败；随后均恢复为 HTTP 200。GitHub 和四个 CDN 的现有脚本正文 SHA-256 相同，均携带默认 jsDelivr 更新地址；官方 npm registry 与压缩包可读，压缩包 integrity 一致。新渠道验收中，默认 jsDelivr 通过，GitHub 因旧更新地址失败，Fastly、Quantil、jsdmirror 的专用目录返回 HTTP 404。专用目录须由包含修复的新版本提供，不能覆盖已公开的同版附件或 npm 包。README 暂停这三个渠道的安装链接，发布后按上述命令重新验收并更新可用性。
 
 管理器图标 `@icon` 使用仓库中的 `assets/brand/guanyu.svg`，经 jsDelivr 的 GitHub 路径按当前发布 tag 访问。图标不另存副本，也不加入 npm 发布包；页面内的小鱼继续内联，保留主题与悬停变色。
 
@@ -62,7 +87,7 @@ git tag "v$releaseVersion"
 git push origin "v$releaseVersion"
 ```
 
-tag 工作流核对版本与 main 归属，运行全部现有契约检查和一次构建；先准备带四个附件的 Release 草稿，再发布 npm，最后公开 Release 并标为 latest。CI 不回写源码、版本或 tag。GitHub Release 使用自动生成的更新说明。
+tag 工作流核对版本与 main 归属，运行全部现有契约检查和一次构建；先准备带四个附件的 Release 草稿，再发布 npm，最后公开 Release 并标为 latest。CI 不回写源码、版本或 tag。GitHub Release 使用自动生成的更新说明。公开后运行 `npm run release:verify`，并根据实测结果维护 README 安装入口；CDN 缓存未更新时不得报告该渠道通过。
 
 ## 失败与重跑
 
