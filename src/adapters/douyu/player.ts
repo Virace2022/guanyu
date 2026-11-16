@@ -1,5 +1,6 @@
 import { createState } from '../../core/state';
 import { diagnostics } from '../../core/diagnostics';
+import { mainPlayback } from './player-actions';
 
 interface DouyuPage {
   room_id?: string | number;
@@ -43,11 +44,9 @@ export function observePlayer(page: Window & DouyuPage) {
       ?? root?.querySelector('video') ?? null;
     const volume = controls?.querySelector('[class*="VolumeBar-"]')?.parentElement
       ?? controls?.querySelector('.volume-07c230') ?? null;
-    const canonical = document.querySelector<HTMLLinkElement>('link[rel="canonical"]')?.href;
-    const roomId = roomNumber(page.room_id) ?? roomNumber(page.$ROOM?.room_id)
-      ?? broadcastRoom()
-      ?? (canonical ? roomNumber(new URL(canonical, location.href).pathname.slice(1)) : null)
-      ?? (video ? roomNumber(location.pathname.slice(1)) : null);
+    // 地址栏与 canonical 可能是靓号，资料接口须等待官方真实房间号。
+    const roomId = roomNumber(mainPlayback()?.service?.constructor.baseParams?.rid)
+      ?? roomNumber(page.room_id) ?? roomNumber(page.$ROOM?.room_id) ?? broadcastRoom();
     const next = { roomId, video, volume };
     diagnostics.report('player', !root ? 'unmatched' : !roomId || !video ? 'waiting' : 'ready',
       !root ? '未找到 #room-html5-player，继续等待页面宿主' : !roomId ? '尚未识别真实房间号' : !video ? '未找到主媒体：#js-player-video-first video / .layout-Player-videoEntity video / #room-html5-player video；未开播时可能没有媒体' : '已识别真实房间号和主媒体');

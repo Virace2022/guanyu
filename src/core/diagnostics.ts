@@ -6,6 +6,7 @@ const errors = new Map<string, DiagnosticError>();
 const listeners = new Set<(value: DiagnosticError[]) => void>();
 const labels: Record<Status, string> = { ready: '已就绪', applied: '已生效', waiting: '等待中', idle: '待触发 / 不适用', unmatched: '未匹配', error: '执行失败' };
 let running = false;
+let verbose = false;
 
 function publishErrors() {
   const value = [...errors.values()].filter(item => !item.dismissed);
@@ -21,8 +22,13 @@ function reportError(id: string, category: string, name: string, stage: string, 
 
 export const diagnostics = {
   start(version: string) {
-    entries.clear(); errors.clear(); running = true; publishErrors();
-    console.info(`%c><(((°>  观鱼 v${version}\n脚本已加载，功能日志随实际运行输出；控制台筛选「观鱼」可查看。`, 'color:#ff5d23;font-weight:bold');
+    entries.clear(); errors.clear(); running = true; verbose = false; publishErrors();
+    console.info(`%c><(((°>  观鱼 v${version}\n脚本已加载，详细功能日志可在「通用 → 诊断」中开启。`, 'color:#ff5d23;font-weight:bold');
+  },
+  setVerbose(value: boolean) {
+    if (verbose === value) return;
+    verbose = value;
+    if (verbose) for (const entry of entries.values()) entry.results.clear();
   },
   enable(id: string, category: string, name: string, enabled = true) {
     if (!running) return;
@@ -33,7 +39,7 @@ export const diagnostics = {
       for (const [key, error] of errors) if (error.id === id) errors.delete(key);
       publishErrors();
     }
-    if (enabled || previous?.enabled) console.info(`[观鱼][${category}][${name}] ${enabled ? '已开启' : '已关闭'}`);
+    if (verbose && (enabled || previous?.enabled)) console.info(`[观鱼][${category}][${name}] ${enabled ? '已开启' : '已关闭'}`);
   },
   report(id: string, status: Status, detail: string, stage = '适配') {
     const entry = entries.get(id);
@@ -47,7 +53,7 @@ export const diagnostics = {
     entry.results.set(stage, signature);
     const message = `[观鱼][${entry.category}][${entry.name}][${stage}] ${labels[status]}：${detail}`;
     if (status === 'error') console.error(message);
-    else console.info(message);
+    else if (verbose) console.info(message);
   },
   failure(scope: string, cause: unknown) {
     const detail = cause instanceof Error ? cause.message : String(cause);

@@ -16,9 +16,10 @@ export function createMultiscreenMenu(quality: MultiQuality, replace: (id: numbe
   const heading = document.createElement('div'); heading.className = 'guanyu-label-menu-title';
   const rates = document.createElement('button'); rates.type = 'button'; rates.className = 'guanyu-label-menu-item'; rates.setAttribute('role', 'menuitem'); rates.setAttribute('aria-haspopup', 'menu');
   const submenu = document.createElement('div'); submenu.className = 'guanyu-label-menu-rates'; submenu.setAttribute('role', 'menu'); submenu.hidden = true;
+  const refresh = document.createElement('button'); refresh.type = 'button'; refresh.className = 'guanyu-label-menu-item'; refresh.textContent = '刷新此画面'; refresh.setAttribute('role', 'menuitem');
   const change = document.createElement('button'); change.type = 'button'; change.className = 'guanyu-label-menu-item'; change.textContent = '更换直播间…'; change.setAttribute('role', 'menuitem');
   const status = document.createElement('div'); status.className = 'guanyu-label-menu-status'; status.setAttribute('role', 'status');
-  node.append(heading, rates, change, status, submenu);
+  node.append(heading, refresh, rates, change, status, submenu);
   let target: LabelMenuTarget | null = null, signature = '';
   function valid() { return !!target?.anchor.isConnected && target.slot.isConnected && Number(target.anchor.dataset.guanyuAudioRoom) === target.id; }
   function close(focus = false) {
@@ -43,7 +44,8 @@ export function createMultiscreenMenu(quality: MultiQuality, replace: (id: numbe
     if (!target) return;
     if (!valid()) { close(); return; }
     const value = quality.get(target.id), current = value.rates.find(rate => rate.rate === value.rate)?.name;
-    const detail = value.pending ? '切换中…' : current ?? (value.loading ? '读取中…' : '');
+    refresh.textContent = value.refreshing ? '刷新中…' : '刷新此画面'; refresh.disabled = value.pending;
+    const detail = value.pending && !value.refreshing ? '切换中…' : current ?? (value.loading ? '读取中…' : '');
     rates.textContent = `清晰度${detail ? `　${detail}` : ''}　›`;
     rates.setAttribute('aria-expanded', String(!submenu.hidden));
     status.textContent = value.error; status.hidden = !value.error;
@@ -71,6 +73,8 @@ export function createMultiscreenMenu(quality: MultiQuality, replace: (id: numbe
     if (focus) submenu.querySelector<HTMLElement>('button:not(:disabled)')?.focus({ preventScroll: true });
   }
   rates.onmouseenter = () => expand(); rates.onclick = () => expand(true);
+  refresh.onmouseenter = change.onmouseenter = () => { submenu.hidden = true; rates.setAttribute('aria-expanded', 'false'); };
+  refresh.onclick = () => { if (valid() && target) void quality.refresh(target.id).then(render); };
   change.onclick = () => { if (!valid() || !target || target.main) return; const id = target.id; close(); replace(id); };
   function keydown(event: KeyboardEvent) {
     event.stopPropagation();
@@ -101,7 +105,7 @@ export function createMultiscreenMenu(quality: MultiQuality, replace: (id: numbe
       close(); target = next; next.lock(true); heading.textContent = next.name + (next.main ? ' · 当前' : ''); change.hidden = next.main;
       const bounds = node.parentElement!.getBoundingClientRect();
       node.style.left = `${x - bounds.left}px`; node.style.top = `${y - bounds.top}px`; node.hidden = false;
-      render(); if (keyboard) rates.focus({ preventScroll: true });
+      render(); if (keyboard) node.querySelector<HTMLElement>(':scope > button:not(:disabled)')?.focus({ preventScroll: true });
     },
     close,
     check() { if (target && !valid()) close(); },

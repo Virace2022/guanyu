@@ -16,7 +16,7 @@ export async function runFanChat(lane: RoomProgress, api: DouyuTasks, sessions: 
   const results = lane.results!, failures = lane.failures, submitted = lane.submitted;
   const targets = lane.targets.filter(room => !results[room.id] && (failures[room.id]?.nextAt || 0) <= Date.now()).slice(0, 2);
   const failure = (room: TaskRoom, cause: any) => {
-    if (cause.interrupted) throw cause;
+    if (cause.interrupted || cause.loginRequired) throw cause;
     current(); const attempts = (failures[room.id]?.attempts || 0) + 1;
     failures[room.id] = { attempts, nextAt: Date.now() + taskDelay(attempts), error: cause.message || String(cause) };
     changed();

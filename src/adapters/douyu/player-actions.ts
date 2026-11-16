@@ -2,6 +2,26 @@ import { unsafeWindow } from '$';
 
 interface PlayerAction { id: string; action: string; data?: unknown[] }
 let cached: { queue: any; runtime: any } | undefined;
+export function mainPlayback(): any {
+  const host = document.getElementById('js-player-video-first');
+  const key = host && Object.keys(host).find(name => name.startsWith('__reactFiber$') || name.startsWith('__reactInternalInstance$'));
+  let fiber = key ? (host as any)[key] : undefined, root = fiber;
+  while (root?.return) root = root.return;
+  if (root?.stateNode?.current === root?.alternate && fiber?.alternate) fiber = fiber.alternate;
+  for (; fiber; fiber = fiber.return) {
+    for (let hook = fiber.memoizedState; hook; hook = hook.next) {
+      const ref = hook.memoizedState, value = ref?.current;
+      if (typeof value?.jieliuReqTime === 'number' && value.player && value.service?._memberRef === ref) {
+        return value;
+      }
+    }
+  }
+}
+
+export function isMainPlayerReady() {
+  const value = mainPlayback();
+  return value?.isReady === true && !value.player._isUpdatingSource && !value.service._isSwitching;
+}
 
 function runtime() {
   const queue = (unsafeWindow as any).sharkLivePlayerJsonp;

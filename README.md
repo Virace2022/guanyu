@@ -20,7 +20,7 @@
 | 团播分组 | 自定义团长、队长、队员和队伍颜色，保存、分享名单，预览成员直播 |
 | 官方多屏 | 在任意直播间启用官方多屏，最多四屏；补充副屏发声、独立音量、逐路画质和定点换房 |
 | 页面与弹幕整理 | 隐藏顶图、礼物栏、活动浮窗和播放器下方的大块内容，整理聊天区和弹幕标记 |
-| 声音与播放 | 额外音量增益按房间记忆，自动选最高画质、进入网页全屏，滚轮调音量 |
+| 声音与播放 | 额外音量增益按房间记忆，自动选最高画质、进入网页全屏，滚轮调音量；改善画质、线路与编码切换体验 |
 | 房间与背包资料 | 查看开播时长、公会、道具到期、背包价值和粉丝牌天数，手动用荧光棒续牌 |
 | 签到与快捷操作 | 自动鱼吧签到、粉丝牌每日弹幕等任务，自定义播放器右键菜单 |
 
@@ -37,10 +37,10 @@
 | 优先级 | 安装入口 | 境内速度参考 | 安全推荐 | 区别与选择建议 |
 | --- | --- | :---: | :---: | --- |
 | 1 | [GitHub Release](https://github.com/Virace2022/guanyu/releases/latest/download/douyu.guanyu.user.js) | ★★☆☆☆ | ★★★★★ | 项目直接发布的附件，优先选择；部分网络访问较慢或无法连接。 |
-| 2 | [jsDelivr · Fastly](https://fastly.jsdelivr.net/npm/guanyu-douyu@2026.1115.1/dist/douyu.guanyu.user.js) | ★★★★☆ | ★★★★☆ | 通过 jsDelivr 分发官方 npm 包，使用 Fastly 节点。 |
-| 3 | [jsDelivr · Quantil](https://quantil.jsdelivr.net/npm/guanyu-douyu@2026.1115.1/dist/douyu.guanyu.user.js) | ★★★★☆ | ★★★★☆ | 同一 npm 包的另一个 jsDelivr 节点，前一入口不可用时尝试。 |
-| 4 | [jsDelivr · 默认节点](https://cdn.jsdelivr.net/npm/guanyu-douyu@2026.1115.1/dist/douyu.guanyu.user.js) | ★★★★☆ | ★★★★☆ | 同一 npm 包，由 jsDelivr 默认域名调度节点。 |
-| 5 | [jsdmirror · 中国境内第三方镜像](https://cdn.jsdmirror.com/npm/guanyu-douyu@2026.1115.1/dist/douyu.guanyu.user.js) | ★★★★★ | 未知 | 境内加速可作为备选；由第三方运营，内容完整性与防篡改保障未经本项目核验，存在供应链投毒风险。 |
+| 2 | [jsDelivr · Fastly](https://fastly.jsdelivr.net/npm/guanyu-douyu@2026.1117.1/dist/douyu.guanyu.user.js) | ★★★★☆ | ★★★★☆ | 通过 jsDelivr 分发官方 npm 包，使用 Fastly 节点。 |
+| 3 | [jsDelivr · Quantil](https://quantil.jsdelivr.net/npm/guanyu-douyu@2026.1117.1/dist/douyu.guanyu.user.js) | ★★★★☆ | ★★★★☆ | 同一 npm 包的另一个 jsDelivr 节点，前一入口不可用时尝试。 |
+| 4 | [jsDelivr · 默认节点](https://cdn.jsdelivr.net/npm/guanyu-douyu@2026.1117.1/dist/douyu.guanyu.user.js) | ★★★★☆ | ★★★★☆ | 同一 npm 包，由 jsDelivr 默认域名调度节点。 |
+| 5 | [jsdmirror · 中国境内第三方镜像](https://cdn.jsdmirror.com/npm/guanyu-douyu@2026.1117.1/dist/douyu.guanyu.user.js) | ★★★★★ | 未知 | 境内加速可作为备选；由第三方运营，内容完整性与防篡改保障未经本项目核验，存在供应链投毒风险。 |
 
 中间三个入口只是 jsDelivr 的节点不同，哪个能用就用哪个。jsdmirror 的速度推荐较高，但安全性未知，放在最后作为备选；这不表示已发现其篡改内容。
 
@@ -81,6 +81,7 @@
 | 只听一路，默认模式 | 点主播头像上的喇叭切换发声房间，底部播放器音量控制这一路 |
 | 分别调节每一路 | 开启“独立控制各直播间音量”，悬停头像显示滑条；底部音量作为总比例 |
 | 切换画质 | 右键主播头像或名字，进入“清晰度”；只切换所选画面 |
+| 刷新卡住的画面 | 右键该主播头像或名字，选“刷新此画面”；保留位置、画质和音量 |
 | 原地更换副屏 | 右键副屏标签，选“更换直播间”，保留这个位置 |
 | 减少标签遮挡 | 在多屏设置中选择始终显示、仅显示头像或全部隐藏；隐藏后悬停原头像位置可唤出 |
 
@@ -106,6 +107,8 @@
 | 主播标签仅显示头像 | <a href="docs/images/multiscreen-avatar-before.png"><img src="docs/images/multiscreen-avatar-before.png" alt="" width="260" /></a> | <a href="docs/images/multiscreen-avatar-after.png"><img src="docs/images/multiscreen-avatar-after.png" alt="" width="260" /></a> | 减少常驻遮挡，头像位置固定；另可选择全部隐藏、悬停唤出。 |
 
 ## 其他功能
+
+- **切换体验优化**：主屏切换画质、线路或编码时，在后台准备画面后再交接，减少加载遮罩、明显回跳和播放中断；切换仍可能短暂停顿、跳帧或发生直播时间跳转。
 
 - **声音与播放**：在播放器增益按钮上调额外音量，按房间记住选择；额外增益上限可设为 +100%～+500%。自动最高画质、网页全屏和滚轮调音量也可分别设置。临时整改时保留画面与声音，在左上角显示官方原因和扣分，整改结束后撤下提示。
 - **页面与弹幕**：按需保留顶图、礼物栏和活动内容，隐藏不想看的弹幕标记、进场提示或含链接消息。

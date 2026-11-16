@@ -91,6 +91,7 @@ export function createGain(player: PlayerStore, settings: SettingsStore, storage
     subscribe: state.subscribe,
     get value() { return state.value; },
     setAmount,
+    handoffAudio: (video: HTMLVideoElement, signal: AbortSignal) => audio.handoff(video, signal),
     toggle: () => setAmount(state.value.amount > 100 ? 100 : lastAmount > 100 ? lastAmount : clamp(120)),
     dispose() {
       stopPlayer(); stopSettings(); audio.dispose();

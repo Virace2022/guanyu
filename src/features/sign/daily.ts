@@ -1,7 +1,7 @@
 import type { SettingsStore } from '../../config/settings';
 import { signTasks, type SignTask } from '../../config/sign';
 import { createState } from '../../core/state';
-import { accountId, accountReady, createTaskRequest, taskDay, taskDelay, interrupted, alreadySigned, type TaskRequest } from '../../adapters/douyu/task-request';
+import { accountId, accountReady, accountWaitMessage, createTaskRequest, taskDay, taskDelay, interrupted, alreadySigned, type TaskRequest } from '../../adapters/douyu/task-request';
 import { createDouyuTasks, type LevelTask, type TaskRoom } from '../../adapters/douyu/tasks';
 import type { TaskRunner } from '../../adapters/douyu/task-runner';
 import { checkPoints } from './points';
@@ -86,12 +86,22 @@ export function createDailyTasks(settings: SettingsStore, roomId: () => string, 
     }
     state!.lanes = Object.fromEntries(signTasks.filter(task => task.id !== 'yuba' && task.id !== 'starPacket').map(task => [task.id,
       state!.lanes[task.id] || { id: task.id, label: task.label, status: 'pending', detail: '等待按间隔处理', nextAt: 0, attempts: 0 }]));
+    let restoredWait = false;
+    for (const lane of Object.values(state!.lanes)) {
+      let waitingLogin = lane.detail === accountWaitMessage;
+      for (const [id, failure] of Object.entries(lane.failures || {})) {
+        if (failure.error === accountWaitMessage) { delete lane.failures![id]; waitingLogin = true; restoredWait = true; }
+      }
+      if (waitingLogin && lane.status === 'error') {
+        lane.status = 'waiting'; lane.nextAt = 0; restoredWait = true;
+      }
+    }
     const clientLane = state!.lanes.client!;
     if (clientLane.status === 'done' && (clientLane.client?.signed !== true || clientLane.client.remaining === undefined || settings.value.sign.clientRemedy && !clientLane.client.remedyChecked)) {
       clientLane.status = 'pending'; clientLane.nextAt = 0;
       if (clientLane.client?.signed !== true) clientLane.detail = '旧版完成记录待核验，正在重新查询官方今日签到状态';
     }
-    return restoreFansHome();
+    return restoreFansHome() || restoredWait;
   }
   async function restoreFollow() {
     if (!restore) return;
@@ -124,7 +134,7 @@ export function createDailyTasks(settings: SettingsStore, roomId: () => string, 
         const result = await api.signFansHome(target.id);
         current(); lane.results![target.id] = result; delete lane.failures[target.id]; persist();
       } catch (cause: any) {
-        if (cause.interrupted) throw cause;
+        if (cause.interrupted || cause.loginRequired) throw cause;
         current(); const attempts = (lane.failures[target.id]?.attempts || 0) + 1;
         lane.failures[target.id] = { attempts, nextAt: Date.now() + taskDelay(attempts), error: cause.message || String(cause) };
         persist();
@@ -259,13 +269,19 @@ export function createDailyTasks(settings: SettingsStore, roomId: () => string, 
           if (lane.status === 'pending') lane.nextAt = 0;
         } catch (cause: any) {
           if (cause.interrupted) throw cause;
-          current(); lane.status = 'error'; lane.detail = cause.message || String(cause); lane.nextAt = Date.now() + taskDelay(lane.attempts);
-          if (lane.id === 'client' && lane.client) lane.detail = `${clientSignDetail(lane.client)}；${lane.detail}`;
-          diagnostics.report(`sign.${lane.id}`, 'error', lane.detail, '任务');
+          current(); lane.detail = cause.message || String(cause);
+          if (cause.loginRequired) {
+            waiting = true; lane.status = 'waiting'; lane.nextAt = 0;
+            diagnostics.report(`sign.${lane.id}`, 'waiting', lane.detail, '任务');
+          } else {
+            lane.status = 'error'; lane.nextAt = Date.now() + taskDelay(lane.attempts);
+            if (lane.id === 'client' && lane.client) lane.detail = `${clientSignDetail(lane.client)}；${lane.detail}`;
+            diagnostics.report(`sign.${lane.id}`, 'error', lane.detail, '任务');
+          }
         }
         persist();
       });
-    } catch (cause: any) { if (!cause.interrupted) error = cause.message || String(cause); }
+    } catch (cause: any) { if (cause.loginRequired) waiting = true; else if (!cause.interrupted) error = cause.message || String(cause); }
     finally { running = false; active = undefined; if (!stopped) { publish(); schedule(); } }
   }
   function schedule() {

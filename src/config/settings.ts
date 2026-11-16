@@ -16,6 +16,7 @@ export type SettingsPreview = Pick<Settings, 'theme' | 'accentColor' | 'optimiza
 export interface Settings {
   theme: Theme;
   accentColor: string;
+  debugLogs: boolean;
   maxMultiplier: number;
   gainPresets: number[];
   optimization: OptimizationOptions;
@@ -31,7 +32,7 @@ export interface Settings {
 }
 
 export const settingsKey = 'guanyu:settings:v1';
-export const defaults: Settings = { theme: 'page', accentColor: '#ff5d23', maxMultiplier: 2,
+export const defaults: Settings = { theme: 'page', accentColor: '#ff5d23', debugLogs: false, maxMultiplier: 2,
   gainPresets: [0, 50, 100, 150], optimization: { ...optimizationDefaults }, barrage: { ...barrageDefaults }, nativeShield: { ...nativeShieldDefaults },
   team: { ...teamDefaults }, multi: { ...multiDefaults, custom: [] }, playerMenu: [...menuDefaults], sign: { ...signDefaults },
   playback: { ...playbackDefaults }, room: { ...roomDefaults }, backpack: { ...backpackDefaults } };
@@ -50,7 +51,8 @@ function validate(value: Settings): Settings {
   if (!Number.isFinite(value.maxMultiplier) || value.maxMultiplier < 1 || value.maxMultiplier > 5) {
     throw new Error('额外倍率上限应为 1.0～5.0 倍');
   }
-  return { ...value, maxMultiplier: Math.round(value.maxMultiplier * 10) / 10, gainPresets: validatePresets(value.gainPresets),
+  return { ...value, debugLogs: typeof value.debugLogs === 'boolean' ? value.debugLogs : defaults.debugLogs,
+    maxMultiplier: Math.round(value.maxMultiplier * 10) / 10, gainPresets: validatePresets(value.gainPresets),
     optimization: readOptions(value.optimization, optimizationDefaults), barrage: readOptions(value.barrage, barrageDefaults),
     nativeShield: readOptions(value.nativeShield, nativeShieldDefaults), team: readTeamOptions(value.team), multi: readMultiOptions(value.multi), playerMenu: readPlayerMenu(value.playerMenu), sign: readSignOptions(value.sign),
     playback: readPlayback(value.playback), room: readRoom(value.room), backpack: readBackpack(value.backpack) };
@@ -60,7 +62,7 @@ function read(storage: Storage): Settings {
   const raw = storage.getItem(settingsKey);
   if (raw === null) return { ...defaults, gainPresets: [...defaults.gainPresets] };
   const value = JSON.parse(raw);
-  return validate({ theme: value.theme, accentColor: value.accentColor ?? defaults.accentColor,
+  return validate({ theme: value.theme, accentColor: value.accentColor ?? defaults.accentColor, debugLogs: value.debugLogs,
     maxMultiplier: value.maxMultiplier, gainPresets: value.gainPresets ?? defaults.gainPresets,
     optimization: value.optimization, barrage: value.barrage, nativeShield: value.nativeShield,
     team: value.team, multi: value.multi, playerMenu: value.playerMenu, sign: value.sign,

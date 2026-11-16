@@ -37,7 +37,7 @@ test('粉丝家园真正失败仍保留错误，不误报今日完成', async ()
   await assert.rejects(api.signFansHome('71415'), /签到失败.*error=-1/);
 });
 
-async function restoreFansHome(error, withPending = false) {
+async function restoreFansHome(error, withPending = false, ready = true) {
   const day = '2026-11-06', nextAt = Date.now() + 300000;
   const targets = Array.from({ length: 15 }, (_, index) => ({ id: String(index + 1), name: index === 14 ? 'CSTG' : `房间${index + 1}`, live: false }));
   const lane = { id: 'fansHome', label: '粉丝家园签到', status: 'error', attempts: 4, nextAt,
@@ -59,7 +59,7 @@ async function restoreFansHome(error, withPending = false) {
   }, {
     '../../core/state': core,
     '../../config/sign': load('src/config/sign.ts'),
-    '../../adapters/douyu/task-request': { ...requestHelpers, taskDay: () => day,
+    '../../adapters/douyu/task-request': { ...requestHelpers, taskDay: () => day, accountReady: () => ready,
       createTaskRequest: () => ({ async request(url) { requests.push(url); throw new Error('本场景不应重新请求签到'); }, dispose() {} }) },
     '../../adapters/douyu/tasks': { createDouyuTasks },
     '../../adapters/douyu/client-sign': { createClientSignApi }, './client': clientSign,
@@ -99,6 +99,19 @@ test('历史真正失败仍显示 14/15 并保留重试记录', async () => {
     assert.match(row.detail, /^14 \/ 15 个房间已确认/);
     assert.equal(saved().results['15'], undefined);
     assert.equal(saved().failures['15'].error, message);
+    assert.deepEqual(requests, []);
+  } finally { daily.dispose(); }
+});
+
+test('历史登录等待恢复为待登录，保留未完成房间且不重发请求', async () => {
+  const { daily, requests, saved } = await restoreFansHome(requestHelpers.accountWaitMessage, false, false);
+  try {
+    const row = daily.value.rows.find(row => row.id === 'fansHome');
+    assert.equal(row.status, 'waiting');
+    assert.equal(row.error, '');
+    assert.equal(daily.value.waiting, true);
+    assert.equal(saved().results['15'], undefined);
+    assert.equal(saved().failures['15'].error, requestHelpers.accountWaitMessage);
     assert.deepEqual(requests, []);
   } finally { daily.dispose(); }
 });

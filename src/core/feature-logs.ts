@@ -6,6 +6,7 @@ import { diagnostics } from './diagnostics';
 export function configureFeatureLogs(settings: SettingsStore) {
   function sync() {
     const saved = settings.value, preview = settings.runtime.value;
+    diagnostics.setVerbose(saved.debugLogs);
     const room = location.pathname !== '/member/cp/getFansBadgeList';
     diagnostics.enable('theme', '通用', '外观主题');
     function options<T extends object>(prefix: string, category: string, names: Record<string, string>, values: T, applicable = room) {
@@ -23,6 +24,7 @@ export function configureFeatureLogs(settings: SettingsStore) {
     diagnostics.enable('barrage.linked', '弹幕与特效', '过滤活动及链接消息', room && saved.barrage.linked);
     options('shield', '弹幕与特效', Object.fromEntries(nativeShieldChoices.map(item => [item.key, item.label])), preview.nativeShield);
     options('playback', '播放', { autoWebFullscreen: '自动网页全屏', highestQuality: '自动最高画质', volumeWheel: '滚轮音量', keepBackgroundVideo: '后台保持视频流', keepViolationPlayback: '整改期间继续播放' }, saved.playback);
+    diagnostics.enable('playback.switch', '播放', '平滑切换', room);
     options('room', '房间信息', { duration: '开播时长', guild: '公会资料', lastLive: '上次开播' }, saved.room);
     options('room', '页面整理', { closeRecommendation: '关闭下播推荐', hideUnread: '隐藏未读提示' }, saved.room);
     options('backpack', '背包与权益', { details: '道具到期与价值', monthCost: '月消费', vipExpiry: 'VIP 到期', pocket: '主播口袋', glow: '荧光棒续牌' }, saved.backpack);

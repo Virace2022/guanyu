@@ -2,6 +2,7 @@ import { unsafeWindow } from '$';
 
 const credentialNames = ['acf_uid', 'acf_biz', 'acf_stk', 'acf_ct', 'acf_ltkid'];
 let rejectedToken = '';
+export const accountWaitMessage = '等待斗鱼登录就绪；观鱼不会自动登录或刷新页面';
 
 interface AccountPage extends Window {
   socketProxy?: { info?: { user?: { userId?: string | number }; barrage?: { isUserLogied?: boolean } } };
@@ -28,7 +29,7 @@ export function accountReady() {
 export function retryAccount() { rejectedToken = ''; }
 
 export function requireAccount() {
-  if (!accountReady()) throw Object.assign(new Error('等待斗鱼登录就绪；观鱼不会自动登录或刷新页面'), { loginRequired: true });
+  if (!accountReady()) throw Object.assign(new Error(accountWaitMessage), { loginRequired: true });
 }
 
 export function observeAccountResponse(result: any, token: string) {

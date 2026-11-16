@@ -2,6 +2,7 @@ import type { PlaybackOptions } from '../../config/enhancements';
 import type { PlayerStore } from './player';
 import { diagnostics } from '../../core/diagnostics';
 import { accountId, accountReady } from './account';
+import { isMainPlayerReady } from './player-actions';
 
 function component(node: Element | null, accepts: (value: any) => boolean): any {
   if (!node) return null;
@@ -17,6 +18,25 @@ function component(node: Element | null, accepts: (value: any) => boolean): any 
 
 export function mountPlayback(player: PlayerStore, isLive: () => boolean, report: (message: string) => void) {
   let options: PlaybackOptions, fullscreenApplied = false, qualityApplied = false, room = '', volume: Element | null = null;
+  let qualityControl: any, restoreQuality: (() => void) | undefined;
+  function releaseQuality() {
+    restoreQuality?.(); restoreQuality = undefined; qualityControl = undefined;
+  }
+  function watchQuality(control: any) {
+    if (qualityControl === control) return;
+    releaseQuality();
+    if (!control) return;
+    const original = control.onMultirateChange;
+    const change = function(this: any, ...args: any[]) {
+      qualityApplied = true;
+      releaseQuality();
+      diagnostics.report('playback.highestQuality', 'idle', '已手动选择画质，本页不再自动切到最高画质');
+      return original.apply(this, args);
+    };
+    control.onMultirateChange = change;
+    qualityControl = control;
+    restoreQuality = () => { if (control.onMultirateChange === change) control.onMultirateChange = original; };
+  }
   function wheel(event: Event) {
     const e = event as WheelEvent;
     if (!options.volumeWheel || !e.deltaY || e.ctrlKey || e.target instanceof Element && e.target.closest('[data-guanyu-gain]')) return;
@@ -44,7 +64,7 @@ export function mountPlayback(player: PlayerStore, isLive: () => boolean, report
   }
   function sync() {
     if (!options) return;
-    if (room !== player.value.roomId) { room = player.value.roomId || ''; fullscreenApplied = qualityApplied = false; }
+    if (room !== player.value.roomId) { releaseQuality(); room = player.value.roomId || ''; fullscreenApplied = qualityApplied = false; }
     const nextVolume = options.volumeWheel ? player.value.volume : null;
     if (nextVolume !== volume) { volume?.removeEventListener('wheel', wheel, true); volume = nextVolume; volume?.addEventListener('wheel', wheel, { passive: false, capture: true }); }
     const bar = document.getElementById('js-player-controlbar');
@@ -66,18 +86,32 @@ export function mountPlayback(player: PlayerStore, isLive: () => boolean, report
       }
     }
     if (options.highestQuality && !qualityApplied) {
+      const rate = component(bar, value => typeof value.onMultirateChange === 'function' && Array.isArray(value.props?.multirates));
+      watchQuality(rate);
       if (accountId() && !accountReady()) {
         diagnostics.report('playback.highestQuality', 'waiting', '等待官方确认账号登录后再自动切换画质');
         return;
       }
-      const rate = component(bar, value => typeof value.onMultirateChange === 'function' && Array.isArray(value.props?.multirates));
       const highest = rate?.props.multirates[0];
       if (!highest) diagnostics.report('playback.highestQuality', 'unmatched', !bar ? '未找到 #js-player-controlbar' : !rate ? '未找到带 onMultirateChange / props.multirates 的原生画质组件' : '官方 multirates 尚未提供画质档位');
       if (highest) {
-        qualityApplied = true;
-        // 原生画质项悬停后才渲染，直接复用同一处理器，保留钻粉等档位的官方检查。
-        if (Number(rate.props.rate) !== Number(highest.type)) void Promise.resolve().then(() => rate.onMultirateChange(highest)).then(() => diagnostics.report('playback.highestQuality', 'ready', '已调用官方最高优先级档位处理器，播放结果与权限由官方处理', '操作')).catch(error => { diagnostics.report('playback.highestQuality', 'error', `画质切换失败：${String(error)}`, '操作'); report(`画质切换失败：${String(error)}`); });
-        else diagnostics.report('playback.highestQuality', 'applied', '当前已是官方最高优先级档位');
+        if (!rate.props.isAllReady) {
+          diagnostics.report('playback.highestQuality', 'waiting', '等待官方控制栏完成初始化');
+          return;
+        }
+        const video = player.value.video;
+        if (!video || video.paused || video.seeking || video.readyState < HTMLMediaElement.HAVE_FUTURE_DATA
+          || video.currentTime <= 0 || video.getVideoPlaybackQuality?.().totalVideoFrames === 0) {
+          diagnostics.report('playback.highestQuality', 'waiting', '等待当前视频开始播放并有可用缓冲，再使用官方平滑画质切换');
+          return;
+        }
+        if (!isMainPlayerReady()) {
+          diagnostics.report('playback.highestQuality', 'waiting', '等待官方主播放器就绪并完成当前切流');
+          return;
+        }
+        releaseQuality(); qualityApplied = true;
+        // 完整提交官方选择以记住偏好，并阻止官方启动计时器稍后恢复旧档位。
+        void Promise.resolve().then(() => rate.onMultirateChange(highest)).then(result => diagnostics.report('playback.highestQuality', result === false ? 'idle' : 'ready', result === false ? '本次自动选择未完成切流，继续当前播放，可手动重新选择画质' : '已在当前视频播放后执行官方最高画质入口', '操作')).catch(error => { diagnostics.report('playback.highestQuality', 'error', `画质切换失败：${String(error)}`, '操作'); report(`画质切换失败：${String(error)}`); });
       }
     }
   }
@@ -86,8 +120,9 @@ export function mountPlayback(player: PlayerStore, isLive: () => boolean, report
     apply(value: PlaybackOptions) {
       if (options && !options.autoWebFullscreen && value.autoWebFullscreen) fullscreenApplied = false;
       if (options && !options.highestQuality && value.highestQuality) qualityApplied = false;
+      if (!value.highestQuality) releaseQuality();
       options = value; sync();
     },
-    dispose() { stop(); clearInterval(timer); volume?.removeEventListener('wheel', wheel, true); },
+    dispose() { stop(); clearInterval(timer); releaseQuality(); volume?.removeEventListener('wheel', wheel, true); },
   };
 }
