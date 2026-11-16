@@ -34,21 +34,21 @@
 
 各入口提供对应渠道的脚本：从 GitHub 安装，后续就在 GitHub 检查更新和下载新版；选择 Fastly、Quantil、默认 jsDelivr 或 jsdmirror，也始终沿用所选渠道。
 
-渠道分流从包含此修复的新版本开始提供。2026 年 11 月 17 日复核，线上旧版的五个下载入口均返回 HTTP 200，脚本正文一致，但它们都使用默认 jsDelivr 更新地址。Fastly、Quantil 和 jsdmirror 的专用路径尚待新版本发布，当前返回 HTTP 404，因此暂不提供安装链接。
+自 `2026.1117.2` 起，各渠道使用对应的更新地址。旧版已经写入统一的默认 jsDelivr 更新地址；需要改用 GitHub 或其他节点更新时，从目标渠道覆盖安装一次。
 
 五个入口按推荐优先级排列。星级越多越推荐；速度以中国境内网络的一般访问体验作参考，未经逐节点测速，实际以你的网络为准。安全星级表示分发链路的相对信任优先级。
 
 | 优先级 | 安装入口 | 境内速度参考 | 安全推荐 | 区别与选择建议 |
 | --- | --- | :---: | :---: | --- |
 | 1 | [GitHub Release](https://github.com/Virace2022/guanyu/releases/latest/download/douyu.guanyu.user.js) | ★★☆☆☆ | ★★★★★ | 项目直接发布的附件，优先选择；部分网络访问较慢或无法连接。 |
-| 2 | jsDelivr · Fastly（待发布） | ★★★★☆ | ★★★★☆ | 通过 jsDelivr 分发官方 npm 包，使用 Fastly 节点。 |
-| 3 | jsDelivr · Quantil（待发布） | ★★★★☆ | ★★★★☆ | 同一 npm 包的另一个 jsDelivr 节点。 |
-| 4 | [jsDelivr · 默认节点](https://cdn.jsdelivr.net/npm/guanyu-douyu@2026.1117.2/dist/douyu.guanyu.user.js) | ★★★★☆ | ★★★★☆ | 同一 npm 包，由 jsDelivr 默认域名调度节点；当前安装与更新地址对应。 |
-| 5 | jsdmirror · 中国境内第三方镜像（待发布） | ★★★★★ | 未知 | 由第三方运营，内容完整性与防篡改保障未经本项目核验。 |
+| 2 | [jsDelivr · Fastly](https://fastly.jsdelivr.net/npm/guanyu-douyu@2026.1117.2/dist/fastly/douyu.guanyu.user.js) | ★★★★☆ | ★★★★☆ | 通过 jsDelivr 分发官方 npm 包，使用 Fastly 节点。 |
+| 3 | [jsDelivr · Quantil](https://quantil.jsdelivr.net/npm/guanyu-douyu@2026.1117.2/dist/quantil/douyu.guanyu.user.js) | ★★★★☆ | ★★★★☆ | 同一 npm 包的另一个 jsDelivr 节点，前一入口不可用时尝试。 |
+| 4 | jsDelivr · 默认节点（等待更新缓存） | ★★★★☆ | ★★★★☆ | 固定版本已可下载，`latest` 更新入口仍返回旧版；暂用其他渠道。 |
+| 5 | [jsdmirror · 中国境内第三方镜像](https://cdn.jsdmirror.com/npm/guanyu-douyu@2026.1117.2/dist/jsdmirror/douyu.guanyu.user.js) | ★★★★★ | 未知 | 由第三方运营，当前内容与项目产物一致，但运营方的长期防篡改保障未知。 |
 
-渠道安装地址与更新地址见[发布说明](docs/RELEASING.md#安装与更新地址)。新版本发布并完成远程验收后，再启用表中其余三个安装链接。中间三个入口使用不同的 jsDelivr 节点；jsdmirror 由第三方运营，作为最后备选。
+2026 年 11 月 17 日已核验 GitHub、Fastly、Quantil 和 jsdmirror 的首次安装、检查更新与下载新版，均返回当前版本，功能代码一致。默认 jsDelivr 的更新缓存尚未刷新，验收通过后再启用安装链接。完整地址见[发布说明](docs/RELEASING.md#安装与更新地址)。中间三个入口使用不同的 jsDelivr 节点；jsdmirror 由第三方运营，作为最后备选。
 
-脚本同时通过 npm 包 [`guanyu-douyu`](https://www.npmjs.com/package/guanyu-douyu) 分发。需要切换渠道时，从目标入口重新安装；脚本名称和安装身份相同，覆盖原安装项。旧版已经写入统一更新地址，需重新安装渠道版才能改用对应更新源。
+脚本同时通过 npm 包 [`guanyu-douyu`](https://www.npmjs.com/package/guanyu-douyu) 分发。各渠道的脚本名称和安装身份相同，覆盖安装可保留原设置。
 
 先按自己的习惯调整“播放”“页面整理”和“每日任务”：首次安装默认整理页面、在开播后进入网页全屏，并开启每日任务。普通设置可跨分类修改，最后点“保存全部”；关闭时可选择放弃。团播名单单独保存。
 
