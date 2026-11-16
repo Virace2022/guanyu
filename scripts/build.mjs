@@ -3,19 +3,16 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { build } from 'vite';
 import { transform } from 'esbuild';
-import { metaFile, scriptFile, version } from './release-config.mjs';
+import { githubChannel, metaFile, scriptFile, version } from './release-config.mjs';
 import { packRelease } from './package.mjs';
+import { verifyDistribution } from './distribution.mjs';
 
 const root = new URL('../', import.meta.url);
 await build({ root: fileURLToPath(root) });
 const bundled = await readFile(new URL(`dist/${scriptFile}`, root), 'utf8');
 const metadata = await readFile(new URL(`dist/${metaFile}`, root), 'utf8');
-const header = bundled.match(/^\/\/ ==UserScript==\r?\n[\s\S]*?^\/\/ ==\/UserScript==/m)?.[0];
-const metadataVersion = header?.match(/^\/\/\s+@version\s+(\S+)/m)?.[1];
-if (!header || metadata.trim() !== header || metadataVersion !== version) {
-  throw new Error('完整脚本与更新元数据不一致');
-}
-const { code } = await transform(bundled.slice(header.length), {
+const { header, body } = verifyDistribution(bundled, metadata, githubChannel);
+const { code } = await transform(body, {
   loader: 'js',
   minifyWhitespace: true,
   minifySyntax: false,
