@@ -1,6 +1,6 @@
 import { GM_xmlhttpRequest } from '$';
 import { accountId, accountToken, observeAccountResponse, requireAccount } from './account';
-export { cookie, accountId, accountToken, accountReady, requireAccount, retryAccount, observeAccountResponse } from './account';
+export { cookie, accountId, accountToken, accountReady, accountWaitMessage, requireAccount, retryAccount, observeAccountResponse } from './account';
 export const taskGap = () => 3000 + Math.floor(Math.random() * 2001);
 export const taskTimeout = (attempt = 1) => Math.min(60000, 10000 * 2 ** Math.min(3, Math.max(0, attempt - 1)));
 export const taskDay = (now = Date.now()) => new Date(now + 8 * 3600000).toISOString().slice(0, 10);

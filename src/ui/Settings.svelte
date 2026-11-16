@@ -43,6 +43,7 @@
   let saved = $state(initial);
   let theme = $state<Theme>(initial.theme);
   let accentColor = $state(initial.accentColor);
+  let debugLogs = $state(initial.debugLogs);
   let maxMultiplier = $state<number | undefined>(initial.maxMultiplier);
   let gainPresets = $state([...initial.gainPresets]);
   let presetExtra = $state<number | undefined>(undefined);
@@ -66,7 +67,7 @@
   let error = $state('');
   let outsideChange = $state(false);
   let clearSearchTarget = () => {};
-  const generalDirty = $derived(theme !== saved.theme || accentColor !== saved.accentColor);
+  const generalDirty = $derived(theme !== saved.theme || accentColor !== saved.accentColor || debugLogs !== saved.debugLogs);
   const soundDirty = $derived(maxMultiplier !== saved.maxMultiplier || JSON.stringify(gainPresets) !== JSON.stringify(saved.gainPresets));
   const optimizationDirty = $derived(JSON.stringify(optimization) !== JSON.stringify(saved.optimization)
     || roomOptions.closeRecommendation !== saved.room.closeRecommendation || roomOptions.hideUnread !== saved.room.hideUnread);
@@ -115,6 +116,7 @@
     saved = { ...settings.value };
     theme = saved.theme;
     accentColor = saved.accentColor;
+    debugLogs = saved.debugLogs;
     maxMultiplier = saved.maxMultiplier;
     gainPresets = [...saved.gainPresets];
     optimization = { ...saved.optimization }; barrage = { ...saved.barrage };
@@ -199,7 +201,7 @@
       try { check(); } catch (cause) { void locateError(target, selector, cause instanceof Error ? cause.message : String(cause)); return; }
     }
     try {
-      settings.save({ ...settings.value, theme, accentColor, maxMultiplier, gainPresets: [...gainPresets],
+      settings.save({ ...settings.value, theme, accentColor, debugLogs, maxMultiplier, gainPresets: [...gainPresets],
         optimization: { ...optimization }, barrage: { ...barrage }, nativeShield: { ...nativeShield }, team: { ...teamOptions }, multi: { ...multiOptions, custom: [...multiOptions.custom] }, playerMenu: [...playerMenu], sign: { ...signOptions },
         playback: { ...playbackOptions }, room: { ...roomOptions }, backpack: { ...backpackOptions } });
       reset();
@@ -239,7 +241,7 @@
     const stopSettings = settings.subscribe(value => {
       if (JSON.stringify(value) === JSON.stringify(saved)) return;
       if (dirtyCount) outsideChange = true;
-      else { saved = { ...value }; theme = value.theme; accentColor = value.accentColor; maxMultiplier = value.maxMultiplier; gainPresets = [...value.gainPresets]; optimization = { ...value.optimization }; barrage = { ...value.barrage }; nativeShield = { ...value.nativeShield }; teamOptions = { ...value.team }; multiOptions = { ...value.multi, custom: [...value.multi.custom] }; playerMenu = [...value.playerMenu]; signOptions = { ...value.sign }; playbackOptions = { ...value.playback }; roomOptions = { ...value.room }; backpackOptions = { ...value.backpack }; }
+      else { saved = { ...value }; theme = value.theme; accentColor = value.accentColor; debugLogs = value.debugLogs; maxMultiplier = value.maxMultiplier; gainPresets = [...value.gainPresets]; optimization = { ...value.optimization }; barrage = { ...value.barrage }; nativeShield = { ...value.nativeShield }; teamOptions = { ...value.team }; multiOptions = { ...value.multi, custom: [...value.multi.custom] }; playerMenu = [...value.playerMenu]; signOptions = { ...value.sign }; playbackOptions = { ...value.playback }; roomOptions = { ...value.room }; backpackOptions = { ...value.backpack }; }
     });
     const stopGain = gain.subscribe(value => { sound = value; });
     const stopTheme = pageTheme.subscribe(value => { detectedTheme = value; });
@@ -302,6 +304,10 @@
             </div>
           </fieldset>
           <AccentPicker bind:value={accentColor} />
+        </section>
+        <section>
+          <h2>诊断</h2>
+          <label class="option-row"><span><strong>输出详细功能日志</strong><small>在控制台输出功能状态与适配信息，排查问题时开启。错误始终保留。</small></span><input type="checkbox" data-setting="general.debugLogs" bind:checked={debugLogs} /></label>
         </section>
       {:else if section === 'optimization'}
         <OptimizationSettings bind:value={optimization} bind:room={roomOptions} />

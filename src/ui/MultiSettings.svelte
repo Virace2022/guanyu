@@ -24,7 +24,7 @@
 <label><input type="radio" name="multi-label-display" value="avatar" bind:group={value.labelDisplay} /><span><strong>仅显示头像</strong><small>悬停时展开名字</small></span></label>
 <label><input type="radio" name="multi-label-display" value="hover" bind:group={value.labelDisplay} /><span><strong>全部隐藏</strong><small>悬停原位置时显示标签</small></span></label>
 </fieldset>
-<p class="help">立即预览，保存后保留，放弃更改时恢复。右键头像或名字可调画质，副屏还可更换直播间。</p>
+<p class="help">立即预览，保存后保留，放弃更改时恢复。右键头像或名字可刷新此画面、调画质，副屏还可更换直播间。</p>
 <label class="option-row"><span><strong>标签集中到画面中间</strong><small>头像和音量入口贴近画面中间，名字向外排列。关闭后所有标签回到各自画面的左下角。</small></span><input type="checkbox" data-setting="multi.centerLabels" bind:checked={value.centerLabels} /></label></section>
 <section><h2>选房与候选</h2><div class="option-list">
 <label class="option-row"><span><strong>使用关注名单</strong><small>在普通直播间中，把已关注的主播加入选房候选。</small></span><input type="checkbox" data-setting="multi.useFollow" bind:checked={value.useFollow} /></label>

@@ -46,7 +46,7 @@ export function start() {
   const openTeam = () => { if (team.value.source) teamEditor.open(); else settingsWindow.open('team'); };
   const sign = createSign(settings, () => player.value.roomId || '', (title, content) => confirmAction(title, content, '前往鱼吧', '继续自动重试'));
   const roomPage = createRoomPage(settings, player);
-  const playback = createPlayback(settings, player, () => roomPage.value.roomId === player.value.roomId && roomPage.value.live === true);
+  const playback = createPlayback(settings, player, () => roomPage.value.roomId === player.value.roomId && roomPage.value.live === true, gain.handoffAudio);
   const removeViolationNotice = mountViolationNotice(player, playback.violation);
   let openGlow = () => {};
   const backpack = createBackpack(settings, player, () => settingsWindow.open('backpack'), () => openGlow());
@@ -90,7 +90,7 @@ export function start() {
   };
   const context = mountPlayerMenu(settings, actions, message => { void confirmAction('操作未完成', message, '知道了'); });
   multi.start();
-  console.info('[观鱼][基础] 初始化完成，后续日志随功能运行输出', { sameWindow: monkeyWindow === unsafeWindow });
+  if (settings.value.debugLogs) console.info('[观鱼][基础] 初始化完成，后续日志随功能运行输出', { sameWindow: monkeyWindow === unsafeWindow });
   function onPageHide(event: PageTransitionEvent) { if (!event.persisted) dispose(); }
   function dispose() {
     stopRuntimeLogs();

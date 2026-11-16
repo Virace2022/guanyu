@@ -76,6 +76,7 @@ const catalog: SettingResult[] = [
   ...menuActions.map(value => item('menu', '可编排动作', value.label, '在播放器右键菜单中添加、移除或排序此动作。', `[data-menu-action="${value.id}"]`)),
   item('general', '观鱼外观', '主题', '调整观鱼窗口与工具的明暗主题：跟随页面、浅色、深色。', '.theme-picker'),
   item('general', '观鱼外观', '主题色', '斗鱼橙、青绿、湖蓝、藤紫、玫红，调整观鱼窗口与工具的颜色。', '.accent-picker'),
+  item('general', '诊断', '输出详细功能日志', '在控制台输出功能状态与适配信息，排查问题时开启。错误始终保留。', '[data-setting="general.debugLogs"]'),
 ];
 
 export function searchTerms(query: string) {

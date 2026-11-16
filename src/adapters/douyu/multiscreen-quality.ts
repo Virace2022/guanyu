@@ -15,6 +15,7 @@ interface Binding {
 
 export function createNativeMultiQuality(getNative: () => MultiScreenNative): QualityPort {
   const bindings = new Map<number, Binding>();
+  let mainRefresh: { id: number; slot: Element; cancel: () => void } | undefined;
   let receive = (_id: number, _value: QualitySnapshot) => {};
   const publish = (binding: Binding) => receive(binding.id, { ...binding.snapshot });
   async function readRates(binding: Binding) {
@@ -85,19 +86,41 @@ export function createNativeMultiQuality(getNative: () => MultiScreenNative): Qu
   function mainRate() {
     return getNative().component(document.getElementById('js-player-controlbar'), (value: any) => typeof value.onMultirateChange === 'function' && Array.isArray(value.props?.multirates));
   }
-  async function switchStream(binding: Binding, rate: number) {
-    binding.desired = rate;
+  async function reloadStream(binding: Binding, action: () => void, timeout: string) {
     await new Promise<void>((resolve, reject) => {
-      const timer = setTimeout(() => binding.finish?.(new Error('切换画质超时，请重试')), 15000);
+      const timer = setTimeout(() => binding.finish?.(new Error(timeout)), 15000);
       binding.finish = error => { clearTimeout(timer); binding.finish = undefined; error ? reject(error) : resolve(); };
-      try { binding.component.play(binding.id); }
+      try { action(); }
       catch (cause) { binding.finish?.(cause instanceof Error ? cause : new Error(String(cause))); }
+    });
+  }
+  function switchStream(binding: Binding, rate: number) {
+    binding.desired = rate;
+    return reloadStream(binding, () => binding.component.play(binding.id), '切换画质超时，请重试');
+  }
+  async function refreshMain(native: MultiScreenNative) {
+    const slot = native.container?.children[native.order().indexOf(native.roomId)];
+    const control = native.component(document.getElementById('js-player-video-case'), (value: any) => typeof value.onReplayer === 'function');
+    if (!slot || !control) throw new Error('官方主屏刷新尚未就绪');
+    await new Promise<void>((resolve, reject) => {
+      const finish = (error?: Error) => {
+        clearTimeout(timer); slot.removeEventListener('playing', playing, true); mainRefresh = undefined;
+        error ? reject(error) : resolve();
+      };
+      const playing = (event: Event) => { if (event.target === slot.querySelector('video')) finish(); };
+      const timer = setTimeout(() => finish(new Error('刷新超时，请重试此画面')), 15000);
+      mainRefresh = { id: native.roomId, slot, cancel: () => finish(new Error('分屏已变化，请重新选择')) };
+      slot.addEventListener('playing', playing, true);
+      try { control.onReplayer(); }
+      catch (cause) { finish(cause instanceof Error ? cause : new Error(String(cause))); }
     });
   }
   return {
     listen(next) { receive = next; },
     sync() {
       const native = getNative(), ids = native.order();
+      if (mainRefresh && (mainRefresh.id !== native.roomId || !mainRefresh.slot.isConnected || !native.active()
+        || native.container?.children[ids.indexOf(native.roomId)] !== mainRefresh.slot)) mainRefresh.cancel();
       for (const [id, binding] of bindings) if (!ids.includes(id) || !binding.component.contDom?.isConnected) { binding.restore(); bindings.delete(id); }
       const rate = mainRate();
       if (rate) receive(native.roomId, { rates: rate.props.multirates.map((item: any) => ({ ...item, rate: Number(item.type ?? item.rate) })), rate: Number(rate.props.rate), ready: true, loading: false, error: '' });
@@ -111,6 +134,16 @@ export function createNativeMultiQuality(getNative: () => MultiScreenNative): Qu
       }
     },
     async read(id) { const binding = bindings.get(id); if (binding) await readRates(binding); },
+    async refresh(id) {
+      const native = getNative();
+      if (!native.active() || !native.order().includes(id)) throw new Error('分屏已变化，请重新选择');
+      if (id === native.roomId) { await refreshMain(native); return; }
+      const binding = bindings.get(id);
+      if (!binding || !binding.component.contDom?.isConnected || typeof binding.component.reloadHandler !== 'function') throw new Error('官方副屏刷新尚未就绪');
+      // 官方未开播分支不会调用 play 初始化 rid，重载前补齐，避免请求到 undefined。
+      binding.component.rid = id;
+      await reloadStream(binding, () => binding.component.reloadHandler(), '刷新超时，请重试此画面');
+    },
     async change(id, rate) {
       const native = getNative();
       if (!native.active() || !native.order().includes(id)) throw new Error('分屏已变化，请重新选择');
@@ -130,6 +163,6 @@ export function createNativeMultiQuality(getNative: () => MultiScreenNative): Qu
         throw cause;
       }
     },
-    dispose() { for (const binding of bindings.values()) binding.restore(); bindings.clear(); },
+    dispose() { mainRefresh?.cancel(); for (const binding of bindings.values()) binding.restore(); bindings.clear(); },
   };
 }

@@ -151,7 +151,7 @@ export function mountMultiscreenLabels(getNative: () => MultiScreenNative, audio
       label.anchor.style.top = `${y}px`;
       const action = value.independent ? selected ? '静音' : '恢复声音' : selected && !value.muted ? '静音' : '切换声音到';
       label.button.setAttribute('aria-label', `${action}${name}`); label.button.setAttribute('aria-pressed', String(audible));
-      label.button.title = `${name} · ${value.independent ? '悬停调节音量' : '点击切换声音'} · 右键调画质${label.id === getNative().roomId ? '' : ' / 换房'}`;
+      label.button.title = `${name} · ${value.independent ? '悬停调节音量' : '点击切换声音'} · 右键刷新 / 调画质${label.id === getNative().roomId ? '' : ' / 换房'}`;
       const markup = icon?.innerHTML || ''; if (label.button.innerHTML !== markup) label.button.innerHTML = markup;
       label.panel.hidden = !value.independent; label.slider.setAttribute('aria-label', `${name}独立音量`);
       const level = Math.round((value.levels.get(label.id) ?? 0) * 100);
@@ -170,7 +170,7 @@ export function mountMultiscreenLabels(getNative: () => MultiScreenNative, audio
     let seen = false; try { seen = localStorage.getItem(hintKey) === '1'; } catch { /* 存储不可用时只影响提示记忆。 */ }
     const duration = seen ? 1500 : 4000;
     if (!seen) {
-      hint = document.createElement('div'); hint.className = 'guanyu-label-hint'; hint.textContent = '右键主播标签，可调画质、换房'; layer!.append(hint);
+      hint = document.createElement('div'); hint.className = 'guanyu-label-hint'; hint.textContent = '右键主播标签，可刷新、调画质、换房'; layer!.append(hint);
       try { localStorage.setItem(hintKey, '1'); } catch { /* 首次引导仍可在本页正常显示。 */ }
       hintTimer = window.setTimeout(() => { hint?.remove(); hint = null; }, duration);
     }

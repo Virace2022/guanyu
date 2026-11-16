@@ -100,7 +100,7 @@ export class MultiScreenController {
                 for (const room of this.official?.battleList || team) this.rooms.remember(room);
                 if (!this.official && !team.length && this.settings.useFollow) {
                     try { await this.rooms.follow(); diagnostics.report('multi.useFollow', 'ready', '已读取完整关注候选', '接口'); }
-                    catch (error) { warning = error.message; diagnostics.report('multi.useFollow', 'error', error.message, '接口'); }
+                    catch (error) { warning = error.message; diagnostics.report('multi.useFollow', error.loginRequired ? 'waiting' : 'error', error.message, '接口'); }
                 }
                 if (revision !== this.revision) return;
                 const ids = [roomId, ...team.map(room => room.rid), ...this.settings.custom, ...this.rooms.temporary, ...this.native.order()];
