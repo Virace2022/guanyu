@@ -19,6 +19,7 @@ import { createMultiWindow } from '../ui/multi-window';
 import { mountPlayerMenu, type PlayerAction } from '../adapters/douyu/player-menu';
 import { confirmAction } from '../ui/confirm';
 import { createPlayerInfo } from '../ui/player-info';
+import { createScreenMenu } from '../ui/multiscreen-menu';
 import type { MenuAction } from '../config/player-menu';
 import type { OptimizationOptions } from '../config/options';
 import { createSign } from '../features/sign/feature';
@@ -53,7 +54,7 @@ export function start() {
   const glowWindow = createGlowWindow(backpack, settings); openGlow = glowWindow.open;
   const settingsWindow = createSettingsWindow(settings, gain, pageTheme, pageTools, team, multi, sign, backpack, playback, roomPage, openTeam);
   const stopRuntimeLogs = observeRuntimeLogs(team, multi, sign);
-  const info = createPlayerInfo(player, settings);
+  const info = createPlayerInfo(multi.screens), screenMenu = createScreenMenu(multi);
   const removeGainControl = mountGainControl(player, gain, settings);
   const removeTeamLayout = mountTeamLayout(team, openTeam, player);
   const removeTopBanner = mountTopBanner(settings, team);
@@ -66,10 +67,10 @@ export function start() {
     await toggleTeamPreview(team, player.value.roomId || '', openTeam);
   }
   const actions: Partial<Record<MenuAction, PlayerAction>> = {
-    roomInfo: { label: () => '主播配置信息', submenu: info.submenu, enabled: () => !!player.value.video },
+    roomInfo: { label: () => '主播配置信息', submenu: info.submenu, enabled: () => !!multi.screens.current()?.video },
     hideGiftBar: { label: () => '隐藏礼物栏', checked: () => settings.value.optimization.hideGiftBar, run: pageTools.toggleGiftBar },
     collapseChat: { label: () => '收起聊天活动区', checked: () => settings.value.optimization.collapseChat, run: pageTools.toggleChat },
-    mirror: { label: () => '画面镜像', checked: () => pageTools.value.mirrored, run: pageTools.toggleMirror },
+    mirror: { label: () => '画面镜像', checked: multi.screens.mirrored, run: multi.screens.toggleMirror, enabled: () => !!multi.screens.current()?.video },
     settings: { label: () => '观鱼设置', run: () => settingsWindow.open() },
     team: { label: () => '团播名单', run: openTeam, enabled: hasTeam },
     preview: { label: () => '团播预览', checked: () => team.value.preview, run: preview, enabled: hasTeam },
@@ -88,7 +89,7 @@ export function start() {
     menuSettings: { label: () => '右键菜单设置', run: () => settingsWindow.open('menu') },
     signSettings: { label: () => '每日任务', run: () => settingsWindow.open('sign') },
   };
-  const context = mountPlayerMenu(settings, actions, message => { void confirmAction('操作未完成', message, '知道了'); });
+  const context = mountPlayerMenu(settings, actions, message => { void confirmAction('操作未完成', message, '知道了'); }, screenMenu.context);
   multi.start();
   if (settings.value.debugLogs) console.info('[观鱼][基础] 初始化完成，后续日志随功能运行输出', { sameWindow: monkeyWindow === unsafeWindow });
   function onPageHide(event: PageTransitionEvent) { if (!event.persisted) dispose(); }
@@ -97,7 +98,7 @@ export function start() {
     stopDiagnostics();
     for (const menu of menus) GM_unregisterMenuCommand(menu);
     settingsWindow.dispose();
-    context.dispose(); multi.dispose(); multiWindow.dispose(); info.dispose(); sign.dispose(); removeViolationNotice(); playback.dispose(); roomPage.dispose(); glowWindow.dispose(); backpack.dispose();
+    context.dispose(); screenMenu.dispose(); multi.dispose(); multiWindow.dispose(); info.dispose(); sign.dispose(); removeViolationNotice(); playback.dispose(); roomPage.dispose(); glowWindow.dispose(); backpack.dispose();
     removeTopBanner();
     removeRoomLayout();
     removeQuickDock(); barrage.dispose(); pageTools.dispose(); removeTeamLayout(); teamEditor.dispose(); team.dispose(); teamSource.dispose();

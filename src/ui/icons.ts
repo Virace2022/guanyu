@@ -1,3 +1,7 @@
+const giftControl = '<path d="M4 11v10h9M20 11v2M3 7h18v4H3zM12 7v14M12 7H8a2.5 2.5 0 1 1 2.5-2.5L12 7zm0 0h4a2.5 2.5 0 1 0-2.5-2.5L12 7z"/>';
+const pkControl = '<path d="M3 18V6h4a3 3 0 0 1 0 6H3m10-6v12m6-12-6 6 2 2"/>';
+const shown = '<path d="m15 19 3 3 5-6"/>';
+const hidden = '<circle cx="19" cy="19" r="4"/><path d="m16.2 16.2 5.6 5.6"/>';
 const paths = {
   clock: '<circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/>',
   guild: '<path d="M12 3 4 6v6c0 5 8 9 8 9s8-4 8-9V6z"/><path d="M8 9h8m-4 0v7m-2-4h4"/>',
@@ -8,6 +12,11 @@ const paths = {
   crown: '<path d="m3 7 4 3 5-6 5 6 4-3-2 13H5z"/>',
   diamond: '<path d="m3 8 4-5h10l4 5-9 13zM3 8h18M7 3l5 18 5-18"/>',
   close: '<path d="m6 6 12 12M18 6 6 18"/>',
+  gift: '<path d="M4 11h16v10H4zM3 7h18v4H3zM12 7v14"/><path d="M12 7H8a2.5 2.5 0 1 1 2.5-2.5L12 7zm0 0h4a2.5 2.5 0 1 0-2.5-2.5L12 7z"/>',
+  giftShown: giftControl + shown,
+  giftHidden: giftControl + hidden,
+  pkShown: pkControl + shown,
+  pkHidden: pkControl + hidden,
 };
 
 export function createIcon(name: keyof typeof paths) {

@@ -9,6 +9,7 @@ const classes: Record<keyof OptimizationOptions, string> = {
   hideTopBanner: 'guanyu-hide-top-banner',
   hideRoomExtras: 'guanyu-hide-room-extras',
   hideGiftBar: 'guanyu-hide-gift-bar', hidePk: 'guanyu-hide-pk', hideActivities: 'guanyu-hide-activities',
+  hideRoomWatermark: 'guanyu-hide-room-watermark',
   collapseChat: 'guanyu-chat-collapsed', autoHideHeader: 'guanyu-auto-header',
 };
 
@@ -21,7 +22,6 @@ export function mountPageTools(toggleChat: () => void) {
   let rank: Element | null = null;
   let previousY = Math.max(0, scrollY), direction = 0, distance = 0;
   let frame = 0;
-  let mirrored = false;
   const summary = document.createElement('div'); summary.className = 'guanyu-chat-summary';
   const counts = document.createElement('span'); counts.className = 'guanyu-chat-counts';
   const rankItems = ['贵宾', '钻粉'].map((name, index) => {
@@ -53,7 +53,6 @@ export function mountPageTools(toggleChat: () => void) {
       root.classList.toggle(classes[key], enabled); changed = true;
     }
     if (!room) showHeader();
-    if (root.classList.contains('guanyu-video-mirror') !== mirrored) root.classList.toggle('guanyu-video-mirror', mirrored);
     syncChat();
     for (const key of ['hideAds', 'hideGiftBar', 'hidePk', 'hideActivities'] as const) if (options[key]) {
       reportStyleMatches(`optimization.${key}`, style, `html.${classes[key]} `, '隐藏规则已挂载，当前没有匹配内容，继续观察');
@@ -134,9 +133,8 @@ export function mountPageTools(toggleChat: () => void) {
   const timer = setInterval(syncPage, 1000);
 
   return {
-    apply(value: OptimizationOptions, mirror: boolean, accentColor: string) {
+    apply(value: OptimizationOptions, accentColor: string) {
       options = value;
-      mirrored = mirror;
       summary.style.setProperty('--guanyu-page-accent', accentColor);
       collapse.style.setProperty('--guanyu-page-accent', accentColor);
       if (!value.autoHideHeader) showHeader();
@@ -147,7 +145,7 @@ export function mountPageTools(toggleChat: () => void) {
       clearInterval(timer); cancelAnimationFrame(frame); rankObserver.disconnect(); pageObserver.disconnect();
       window.removeEventListener('scroll', onScroll); document.removeEventListener('fullscreenchange', showHeader); document.removeEventListener('focusin', onFocus);
       window.removeEventListener('resize', syncChat);
-      root.classList.remove(...Object.values(classes), 'guanyu-header-hidden', 'guanyu-video-mirror');
+      root.classList.remove(...Object.values(classes), 'guanyu-header-hidden');
       summary.remove(); collapse.remove(); status.remove(); style.parentNode?.removeChild(style);
       window.dispatchEvent(new Event('resize'));
     },

@@ -1,13 +1,15 @@
 import { createState } from '../../core/state';
 
 export interface QualityRate { rate: number; name: string; diamondFan?: number }
-export interface QualitySnapshot { rates: QualityRate[]; rate: number | null; ready: boolean; loading: boolean; error: string }
+export interface QualityLine { cdn: string; name: string }
+export interface QualitySnapshot { rates: QualityRate[]; rate: number | null; lines?: QualityLine[]; line?: string; ready: boolean; loading: boolean; error: string }
 export interface QualityRoom extends QualitySnapshot { pending: boolean; refreshing: boolean }
 export interface QualityPort {
   listen: (receive: (id: number, value: QualitySnapshot) => void) => void;
   sync: () => void;
   read: (id: number) => Promise<void>;
   change: (id: number, rate: number) => Promise<void>;
+  changeLine: (id: number, cdn: string) => Promise<void>;
   refresh: (id: number) => Promise<void>;
   dispose: () => void;
 }
@@ -56,6 +58,11 @@ export function createMultiQuality(port: QualityPort) {
       await run(id, false, () => port.change(id, rate));
     },
     refresh: (id: number) => run(id, true, () => port.refresh(id)),
+    async changeLine(id: number, cdn: string) {
+      const value = state.value.get(id) ?? empty();
+      if (value.pending || value.ready && value.line === cdn || !value.lines?.some(line => line.cdn === cdn)) return;
+      await run(id, false, () => port.changeLine(id, cdn));
+    },
     dispose() { port.dispose(); revisions.clear(); errors.clear(); state.set(new Map()); },
   };
 }

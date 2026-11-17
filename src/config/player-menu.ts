@@ -13,7 +13,7 @@ export const menuActions = [
   { id: 'signSettings', label: '每日任务' },
 ] as const;
 export type MenuAction = typeof menuActions[number]['id'];
-export const menuDefaults: MenuAction[] = ['roomInfo', 'hideGiftBar', 'mirror', 'settings', 'multi'];
+export const menuDefaults: MenuAction[] = ['roomInfo', 'mirror', 'settings', 'multi'];
 export function readPlayerMenu(input: unknown): MenuAction[] {
   if (input === undefined) return [...menuDefaults];
   if (!Array.isArray(input) || input.some(id => id !== 'replaceScreen' && !menuActions.some(action => action.id === id)) || new Set(input).size !== input.length) throw new Error('右键菜单配置无效');

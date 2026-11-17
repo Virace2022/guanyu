@@ -90,5 +90,5 @@
     </ul>
   </section>
 </div>
-<p class="help" id="guanyu-menu-help">也可聚焦功能后用方向键排序，Enter 在两栏间移动。原生菜单项保留；团播或副屏动作按当前房间状态显示。</p>
+<p class="help" id="guanyu-menu-help">也可聚焦功能后用方向键排序，Enter 在两栏间移动。多屏会固定补充当前画面的刷新、清晰度、换房和线路。</p>
 <p class="menu-announcement" role="status" aria-live="polite">{announcement}</p>

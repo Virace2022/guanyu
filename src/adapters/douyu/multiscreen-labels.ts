@@ -3,7 +3,6 @@ import type { MultiQuality } from '../../features/multiscreen/quality';
 import type { LabelDisplay } from '../../config/multiscreen';
 import type { MultiScreenNative } from './multiscreen';
 import type { RoomData } from './rooms';
-import { createMultiscreenMenu } from '../../ui/multiscreen-menu';
 import styles from '../../ui/multiscreen-audio.css?style';
 import labelStyles from '../../ui/multiscreen-labels.css?style';
 import { diagnostics } from '../../core/diagnostics';
@@ -15,12 +14,13 @@ interface Label {
   offset: { left: number; bottom: number }; reveal: (duration: number) => void; dispose: () => void;
   openMenu: (x: number, y: number, keyboard?: boolean) => void;
   leavePage: () => void;
+  menuLock: (open: boolean) => void;
 }
 
 export function mountMultiscreenLabels(getNative: () => MultiScreenNative, audio: MultiAudio, quality: MultiQuality,
-  room: (id: number) => RoomData | undefined, replace: (id: number) => void) {
+  room: (id: number) => RoomData | undefined, openScreenMenu: (id: number, anchor: HTMLElement, x: number, y: number, keyboard?: boolean) => void) {
   const sheets = [styles, labelStyles].map(source => source.cloneNode(true)); sheets.forEach(sheet => document.head.append(sheet));
-  const labels = new Map<HTMLElement, Label>(), menu = createMultiscreenMenu(quality, replace);
+  const labels = new Map<HTMLElement, Label>();
   let layer: HTMLElement | null = null, container: HTMLElement | null = null;
   let enabled = true, centered = true, display: LabelDisplay = 'always', frame = 0, syncing = false, session = false, hintTimer = 0;
   let hint: HTMLElement | null = null, introduced = false, pointerInput = false;
@@ -78,11 +78,8 @@ export function mountMultiscreenLabels(getNative: () => MultiScreenNative, audio
       const focused = document.activeElement;
       if (pointerInput && focused instanceof HTMLElement && anchor.contains(focused)) focused.blur();
     }
-    const lock = (open: boolean) => { menuOpen = open; node.classList.toggle('guanyu-audio-menu-open', open); if (open) { show(); if (hint) hint.remove(); } else leave(); };
     const openMenu = (x: number, y: number, keyboard = false) => {
-      const nativeMenu = native.component(document.querySelector('.menu-da2a9e:not(.subMenu-de1c61)'), (value: any) => typeof value.showMenu === 'function' && typeof value.hideMenu === 'function');
-      nativeMenu?.hideMenu({ which: 1, target: button });
-      show(); menu.open({ id, name: name.textContent || `房间 ${id}`, main, anchor, slot, lock }, x, y, keyboard);
+      show(); openScreenMenu(id, anchor, x, y, keyboard);
     };
     anchor.onpointerenter = () => { hovered = true; node.classList.remove('guanyu-audio-dismissed'); show(); };
     anchor.onpointerleave = () => { hovered = false; leave(); };
@@ -111,6 +108,7 @@ export function mountMultiscreenLabels(getNative: () => MultiScreenNative, audio
     for (const type of ['pointerdown', 'mousedown', 'mouseup', 'dblclick', 'click']) anchor.addEventListener(type, stop);
     anchor.dataset.expanded = String(visible);
     return { id, slot, anchor, node, source, name, avatar, button, panel, slider, output, fill, thumb, offset, openMenu,
+      menuLock(open) { if (menuOpen === open) return; menuOpen = open; node.classList.toggle('guanyu-audio-menu-open', open); if (open) { show(); hint?.remove(); } else leave(); },
       leavePage() { hovered = false; node.classList.remove('guanyu-audio-keyboard'); node.classList.add('guanyu-audio-dismissed'); leave(); },
       reveal(duration) { show(); clearTimeout(revealTimer); revealTimer = window.setTimeout(leave, duration); },
       dispose() {
@@ -130,7 +128,10 @@ export function mountMultiscreenLabels(getNative: () => MultiScreenNative, audio
     const controls = document.querySelector<HTMLElement>('#js-player-controlbar > [class*="ControlBar-"]');
     const controlsTop = controls && !controls.classList.contains('is-hidden') ? bounds.bottom - controls.offsetHeight : bounds.bottom;
     const icon = document.querySelector('.volume-07c230 > i');
+    const menu = document.querySelector<HTMLElement>('.menu-da2a9e:not(.subMenu-de1c61)');
+    const menuTarget = menu && getComputedStyle(menu).visibility !== 'hidden' ? Number(menu.dataset.guanyuScreenId) : null;
     for (const label of labels.values()) {
+      label.menuLock(menuTarget === label.id);
       const rect = label.slot.getBoundingClientRect();
       const left = !centered || rect.left + rect.width / 2 > bounds.left + bounds.width / 2;
       const top = centered && rect.top + rect.height / 2 > bounds.top + bounds.height / 2;
@@ -161,16 +162,16 @@ export function mountMultiscreenLabels(getNative: () => MultiScreenNative, audio
     }
   }
   function detach(end: boolean) {
-    observer.disconnect(); resize.disconnect(); menu.close(); clearTimeout(hintTimer); hint?.remove(); hint = null;
+    observer.disconnect(); resize.disconnect(); clearTimeout(hintTimer); hint?.remove(); hint = null;
     for (const label of labels.values()) label.dispose(); labels.clear();
-    menu.node.remove(); layer?.remove(); layer = null; container = null;
+    layer?.remove(); layer = null; container = null;
     if (end) { session = false; introduced = false; quality.sync([]); }
   }
   function introduce() {
     let seen = false; try { seen = localStorage.getItem(hintKey) === '1'; } catch { /* 存储不可用时只影响提示记忆。 */ }
     const duration = seen ? 1500 : 4000;
     if (!seen) {
-      hint = document.createElement('div'); hint.className = 'guanyu-label-hint'; hint.textContent = '右键主播标签，可刷新、调画质、换房'; layer!.append(hint);
+      hint = document.createElement('div'); hint.className = 'guanyu-label-hint'; hint.textContent = '右键任意画面，可刷新、调画质、换房'; layer!.append(hint);
       try { localStorage.setItem(hintKey, '1'); } catch { /* 首次引导仍可在本页正常显示。 */ }
       hintTimer = window.setTimeout(() => { hint?.remove(); hint = null; }, duration);
     }
@@ -183,13 +184,13 @@ export function mountMultiscreenLabels(getNative: () => MultiScreenNative, audio
       const native = getNative();
       if (!enabled || !native.service || !native.core || !native.active() || !native.container?.isConnected) { diagnostics.report('multi.labels', 'idle', '等待开启官方多屏'); diagnostics.report('multi.centerLabels', 'idle', '等待开启官方多屏'); detach(true); return; }
       const ids = native.order(); if (ids.length < 2) { detach(true); return; }
-      if (native.service.$dragBox) { menu.close(); return; }
+      if (native.service.$dragBox) return;
       if (container && (container !== native.container || !layer?.isConnected)) detach(false);
       const editor = document.querySelector<HTMLElement>('[class*="mutiPlayerEditPanel-"]'); if (!editor) { diagnostics.report('multi.labels', 'unmatched', '多屏已开启，未找到标签叠层锚点 [class*="mutiPlayerEditPanel-"]'); return; }
       if (!layer) {
         container = native.container; layer = document.createElement('div'); layer.className = 'guanyu-audio-layer';
         const overlay = editor.parentElement!, barrage = overlay.querySelector<HTMLElement>(':scope > [class^="comment-"]');
-        overlay.insertBefore(layer, barrage?.nextSibling ?? editor); layer.append(menu.node);
+        overlay.insertBefore(layer, barrage?.nextSibling ?? editor);
         observer.observe(container!, { subtree: true, childList: true }); resize.observe(container!);
         const bar = document.getElementById('js-player-controlbar'); if (bar) observer.observe(bar, { subtree: true, attributes: true, attributeFilter: ['class'] });
       }
@@ -197,39 +198,29 @@ export function mountMultiscreenLabels(getNative: () => MultiScreenNative, audio
       const template = container!.querySelector<HTMLElement>('.multi-screen-nick-icon');
       for (const [index, slot] of slots.entries()) {
         const id = ids[index], existing = labels.get(slot);
-        if (existing && (existing.id !== id || !existing.anchor.isConnected || existing.source && !existing.source.isConnected)) { menu.close(); existing.dispose(); labels.delete(slot); }
+        if (existing && (existing.id !== id || !existing.anchor.isConnected || existing.source && !existing.source.isConnected)) { existing.dispose(); labels.delete(slot); }
         if (!labels.has(slot) && template && (id === native.roomId || slot.querySelector('.multi-screen-nick-icon'))) labels.set(slot, makeLabel(slot, id, id === native.roomId, template));
       }
-      for (const [slot, label] of labels) if (!alive.has(slot)) { menu.close(); label.dispose(); labels.delete(slot); }
-      quality.sync(ids); paint(); menu.check();
-      diagnostics.report('multi.labels', labels.size === ids.length ? 'applied' : 'unmatched', labels.size === ids.length ? '所有画面均已挂载主播标签与专用菜单' : '部分画面缺少 .multi-screen-nick-icon 模板，继续等待官方标签');
+      for (const [slot, label] of labels) if (!alive.has(slot)) { label.dispose(); labels.delete(slot); }
+      quality.sync(ids); paint();
+      diagnostics.report('multi.labels', labels.size === ids.length ? 'applied' : 'unmatched', labels.size === ids.length ? '所有画面均已挂载主播标签与统一画面菜单入口' : '部分画面缺少 .multi-screen-nick-icon 模板，继续等待官方标签');
       diagnostics.report('multi.centerLabels', labels.size === ids.length ? 'applied' : 'waiting', labels.size === ids.length ? '已按画面位置集中排列标签' : '等待所有画面的官方标签模板');
       session = true; if (!introduced && labels.size === ids.length) introduce();
     } finally { syncing = false; }
   }
-  const context = (event: MouseEvent) => {
-    if (menu.node.contains(event.target as Node)) { event.preventDefault(); event.stopImmediatePropagation(); return; }
-    const anchor = (event.target as Element)?.closest<HTMLElement>('.guanyu-label-anchor');
-    if (!anchor || !layer?.contains(anchor)) return;
-    // window 捕获先于原生 document 菜单监听，避免同一次右键同时打开两份菜单。
-    event.preventDefault(); event.stopImmediatePropagation();
-    [...labels.values()].find(label => label.anchor === anchor)?.openMenu(event.clientX, event.clientY);
-  };
   const keyboard = (event: KeyboardEvent) => {
     if (event.type === 'keydown') pointerInput = false;
     const anchor = (event.target as Element)?.closest<HTMLElement>('.guanyu-label-anchor');
-    const inMenu = menu.node.contains(event.target as Node);
-    if (!inMenu && (!anchor || !layer?.contains(anchor))) return;
+    if (!anchor || !layer?.contains(anchor)) return;
     // 原生播放器也监听 keyup；成对隔离，避免菜单的 Escape 同时退出网页全屏。
     event.stopImmediatePropagation();
     if (event.type === 'keyup') { event.preventDefault(); return; }
-    if (inMenu) menu.keydown(event); else anchor?.onkeydown?.call(anchor, event);
+    anchor.onkeydown?.call(anchor, event);
   };
   const leavePage = (event: Event) => {
     if (event.type === 'pointerout' && (event as PointerEvent).relatedTarget) return;
     for (const label of labels.values()) label.leavePage();
   };
-  window.addEventListener('contextmenu', context, true);
   window.addEventListener('keydown', keyboard, true); window.addEventListener('keyup', keyboard, true);
   window.addEventListener('pointerout', leavePage, true); window.addEventListener('blur', leavePage);
   const stop = audio.subscribe(paint), timer = setInterval(sync, 500);
@@ -238,6 +229,6 @@ export function mountMultiscreenLabels(getNative: () => MultiScreenNative, audio
       const changed = display !== options.labelDisplay; enabled = options.enabled; centered = options.centerLabels; display = options.labelDisplay;
       sync(); if (changed && session) for (const label of labels.values()) label.reveal(1500);
     },
-    dispose() { clearInterval(timer); cancelAnimationFrame(frame); detach(true); stop(); menu.dispose(); window.removeEventListener('contextmenu', context, true); window.removeEventListener('keydown', keyboard, true); window.removeEventListener('keyup', keyboard, true); window.removeEventListener('pointerout', leavePage, true); window.removeEventListener('blur', leavePage); sheets.forEach(sheet => sheet.parentNode?.removeChild(sheet)); },
+    dispose() { clearInterval(timer); cancelAnimationFrame(frame); detach(true); stop(); window.removeEventListener('keydown', keyboard, true); window.removeEventListener('keyup', keyboard, true); window.removeEventListener('pointerout', leavePage, true); window.removeEventListener('blur', leavePage); sheets.forEach(sheet => sheet.parentNode?.removeChild(sheet)); },
   };
 }

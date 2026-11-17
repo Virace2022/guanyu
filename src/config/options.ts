@@ -4,6 +4,7 @@ export const optimizationDefaults = {
   hideRoomExtras: true,
   hideGiftBar: true,
   hidePk: true,
+  hideRoomWatermark: true,
   hideActivities: true,
   collapseChat: true,
   autoHideHeader: true,

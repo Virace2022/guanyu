@@ -244,14 +244,20 @@ input[type="range"] { width: 100%; margin: 0; height: 32px; accent-color: var(--
 .compact-footer { display: flex; flex: none; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; padding: 12px 20px; border-top: 1px solid var(--line); }
 .compact-footer > span { flex: 1 1 160px; color: var(--muted); font-size: 12px; }
 .compact-window .button { min-height: 34px; padding: 6px 12px; font-size: 13px; }
-.multi-prompt main > .help { margin: 0 0 10px; font-size: 12px; }
-.multi-prompt .edit-title { font-size: 13px; }
-.multi-prompt h3 { display: flex; align-items: baseline; justify-content: space-between; margin: 16px 0 10px; font-size: 13px; }
+.multi-prompt { width: min(440px, calc(100vw - 32px)); }
+.multi-prompt main { display: flex; flex-direction: column; overflow: hidden; }
+.multi-search input { box-sizing: border-box; width: 100%; height: 36px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); color: var(--ink); font: inherit; font-size: 13px; }
+.multi-search input::placeholder { color: var(--muted); opacity: 1; }
+.multi-picker-options { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 16px; margin: 8px 0 12px; }
+.multi-prompt h3 { display: flex; align-items: baseline; justify-content: space-between; margin: 0 0 10px; font-size: 13px; }
 .multi-prompt h3 small { color: var(--muted); font-size: 12px; font-weight: 400; }
-.multi-prompt .filter { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 12px; }
+.multi-prompt .filter { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 12px; }
 .multi-prompt .filter input { margin: 0; accent-color: var(--accent); }
-.multi-candidates { max-height: min(340px, 48dvh); overflow-y: auto; overscroll-behavior: contain; }
-.multi-candidates > .help { grid-column: 1 / -1; margin: 0; padding: 8px 0; font-size: 12px; }
+.multi-candidates { min-height: 0; max-height: min(400px, 58dvh); overflow-y: auto; overscroll-behavior: contain; }
+.multi-prompt .multi-candidate-section { margin: 0; padding: 0; border: 0; }
+.multi-prompt .multi-candidate-section + .multi-candidate-section { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+.multi-candidates .help { margin: 0; padding: 8px 0; font-size: 12px; }
+.multi-search-more { display: block; margin: 10px auto 0; }
 .candidate-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 0; border: 0; border-bottom: 1px solid var(--line); background: transparent; color: var(--ink); text-align: left; }
 .candidate-row small { color: var(--muted); flex: none; }
 .candidate-row:hover { color: var(--accent-text); }

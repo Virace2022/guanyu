@@ -5,6 +5,8 @@ export class MultiScreenPanel {
         this.owner = owner;
         this.frame = null;
         this.open = false;
+        this.decorations = [];
+        this.orders = new Map();
         this.keydown = event => {
             const card = event.target.closest('[class^="item-"][role="checkbox"]');
             if (!owner.settings.enabled || !card || !["Enter", " "].includes(event.key) || card.getAttribute("aria-disabled") === "true") return;
@@ -83,30 +85,42 @@ export class MultiScreenPanel {
             }
         }
         const allRooms = owner.native.config().battleList || [];
-        const offline = allRooms.filter(room => Number(room.showStatus) !== 1);
-        const offlineSignature = JSON.stringify(offline);
-        if (offlineSignature !== this.offlineSignature) {
-            this.offlineSignature = offlineSignature;
-            this.offline?.remove();
-            this.offline = document.createElement("div"); this.offline.className = "guanyu-multi-offline";
-            for (const room of offline) {
-                const card = document.createElement("div"), text = document.createElement("span");
-                card.setAttribute("role", "checkbox"); card.setAttribute("aria-disabled", "true"); card.setAttribute("aria-checked", "false");
-                card.title = `${room.nn} · 未开播`; text.textContent = card.title;
-                if (room.roomSrcSixteen) card.style.backgroundImage = `url("${room.roomSrcSixteen.replace(/["\\\n\r]/g, "")}")`;
-                card.appendChild(text); this.offline.appendChild(card);
-            }
-            node.querySelector('[class*="listPanel-"]').appendChild(this.offline);
-        }
         const choices = allRooms.filter(room => Number(room.showStatus) === 1);
+        const grid = node.querySelector('[class*="listPanel-"] > [class^="list-"]');
+        const groupSignature = JSON.stringify(owner.groups);
+        if (grid && (groupSignature !== this.groupSignature || this.decorations.some(item => item.parentElement !== grid))) {
+            this.groupSignature = groupSignature;
+            this.decorations.forEach(item => item.remove()); this.decorations = [];
+            let order = 0;
+            for (const group of owner.groups) {
+                const title = document.createElement("div"); title.className = "guanyu-multi-group-title";
+                title.toggleAttribute("data-first", order === 0);
+                title.textContent = `${group.label} · ${group.rooms.length}`; title.style.order = String(order++);
+                grid.append(title); this.decorations.push(title);
+                for (const room of group.rooms) {
+                    if (Number(room.showStatus) === 1) { order++; continue; }
+                    const card = document.createElement("div"), text = document.createElement("span");
+                    card.className = "guanyu-multi-offline-card"; card.style.order = String(order++);
+                    card.setAttribute("aria-disabled", "true");
+                    card.title = `${room.nn} · 未开播`; text.textContent = card.title;
+                    if (room.roomSrcSixteen) card.style.backgroundImage = `url("${room.roomSrcSixteen.replace(/["\\\n\r]/g, "")}")`;
+                    card.append(text); grid.append(card); this.decorations.push(card);
+                }
+            }
+        }
+        const orderById = new Map(); let order = 0;
+        for (const group of owner.groups) { order++; for (const room of group.rooms) orderById.set(Number(room.rid), order++); }
         node.querySelectorAll('[class^="item-"]').forEach((card, index) => {
             const room = choices[index];
             if (!room) return;
+            if (!this.orders.has(card)) this.orders.set(card, card.style.order);
+            card.style.order = owner.settings.compact ? String(orderById.get(Number(room.rid))) : this.orders.get(card);
             card.tabIndex = 0; card.setAttribute("role", "checkbox");
             card.setAttribute("aria-label", `${room.nn}${Number(room.showStatus) === 1 ? "" : "，未开播"}`);
             card.setAttribute("aria-checked", String(ids.includes(Number(room.rid))));
             card.setAttribute("aria-disabled", String(Number(room.rid) === owner.native.roomId || Number(room.showStatus) !== 1));
         });
+        for (const card of this.orders.keys()) if (!card.isConnected) this.orders.delete(card);
         this.measure();
         diagnostics.report('multi.compact', 'applied', '已匹配官方选房面板并启用紧凑布局');
     }
@@ -136,6 +150,9 @@ export class MultiScreenPanel {
                 card.removeAttribute("role"); card.removeAttribute("tabindex"); card.removeAttribute("aria-label"); card.removeAttribute("aria-checked"); card.removeAttribute("aria-disabled");
             });
         }
-        this.bar?.remove(); this.offline?.remove(); this.bar = this.node = this.offline = null; this.open = false; this.signature = this.offlineSignature = "";
+        this.decorations.forEach(item => item.remove()); this.decorations = [];
+        for (const [card, order] of this.orders) card.style.order = order;
+        this.orders.clear();
+        this.bar?.remove(); this.bar = this.node = null; this.open = false; this.signature = this.groupSignature = "";
     }
 }
