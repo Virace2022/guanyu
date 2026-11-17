@@ -1,5 +1,4 @@
 import { unsafeWindow } from '$';
-import type { QualityRate } from '../../features/multiscreen/quality';
 
 interface StreamServices { encode: (...args: any[]) => void; config: any; events: any }
 let runtime: any, services: StreamServices | undefined, sequence = 0;
@@ -19,7 +18,7 @@ function streamServices(): StreamServices {
   runtime = current; services = { encode, config, events }; return services;
 }
 
-export async function readMultiscreenRates(stream: any, id: number, signal: AbortSignal): Promise<QualityRate[]> {
+export async function readMultiscreenStream(stream: any, id: number, signal: AbortSignal, rate = 2, cdn = 'undefined') {
   const { encode, config, events } = streamServices();
   const key = `guanyu-quality-${++sequence}`, event = `encryptionOK_${key}`;
   const signature = await new Promise<{ qs: string; t1: number }>((resolve, reject) => {
@@ -32,13 +31,13 @@ export async function readMultiscreenRates(stream: any, id: number, signal: Abor
     try {
       // 独立签名事件没有播放监听；恢复 SDK 的默认上下文，不干扰正在播放的实例。
       config.setRid(id, key); config.setDid(stream.config.did, key);
-      encode(undefined, 2, key);
+      encode(undefined, rate, key);
     } catch (cause) { cleanup(); reject(cause); }
     finally { config.setRid(previousId); config.setDid(previousDid); }
   });
   if (signal.aborted) throw signal.reason;
   const body = new URLSearchParams(signature.qs);
-  for (const [name, value] of Object.entries({ cdn: 'undefined', rate: 2, ver: 'streamSdk20200804b', iar: 0, ive: 0, sov: 1,
+  for (const [name, value] of Object.entries({ cdn, rate, ver: 'streamSdk20200804b', iar: 0, ive: 0, sov: 1,
     tt: signature.t1, did: stream.config.did, from: stream.config.from, aid: stream.config.aid })) body.set(name, String(value));
   const response = await fetch(`/lapi/live/getH5Play/${id}`, { method: 'POST', body, credentials: 'include', signal });
   if (!response.ok) throw new Error(`读取清晰度失败（HTTP ${response.status}）`);
@@ -46,5 +45,13 @@ export async function readMultiscreenRates(stream: any, id: number, signal: Abor
   if (Number(result.error) !== 0) throw new Error(result.msg || '读取清晰度失败');
   const data = typeof result.data === 'string' ? JSON.parse(result.data) : result.data;
   if (!Array.isArray(data?.multirates) || !data.multirates.length) throw new Error('此直播间暂未提供可选清晰度');
-  return data.multirates.map((item: any) => ({ rate: Number(item.rate), name: String(item.name), diamondFan: Number(item.diamondFan) }));
+  return data;
+}
+
+export function playMultiscreenStream(stream: any, data: any) {
+  if (!data.rtmp_url || !data.rtmp_live) throw new Error('这条线路未返回可播放的视频流');
+  const { events, config } = streamServices(), key = stream.uuidKey;
+  events.emit(`streamdata_${key}`, { error: 0, data: JSON.stringify(data) });
+  config.setVideoModulePlayer({ p2pCids: data.p2pCids, p2pMeta: data.p2pMeta }, key);
+  events.emit(`playURL_${key}`, `${data.rtmp_url}/${data.rtmp_live}`);
 }

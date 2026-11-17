@@ -4,3 +4,10 @@
 .menu-da2a9e .guanyu-player-info > li { overflow-wrap: anywhere; }
 .guanyu-submenu [role="menuitem"]:focus-visible { outline: 1px solid currentColor; outline-offset: -2px; }
 .menu-da2a9e .guanyu-player-info > li { cursor: default; user-select: text; }
+.menu-da2a9e .guanyu-player-info > li { display: flex; gap: 16px; justify-content: space-between; padding: 5px 12px; }
+.guanyu-info-label { flex: none; opacity: .75; }
+.guanyu-info-value { min-width: 0; text-align: right; overflow-wrap: anywhere; }
+.menu-da2a9e .guanyu-device-info > li, .guanyu-device-info span { display: block; }
+.guanyu-device-info .guanyu-info-value { text-align: left; }
+.menu-da2a9e .guanyu-context-title { padding: 6px 12px; max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: .7; cursor: default; }
+.guanyu-submenu .guanyu-menu-error { max-width: 240px; white-space: normal; overflow-wrap: anywhere; color: var(--guanyu-page-accent, #ff5d23); }

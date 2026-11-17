@@ -23,9 +23,10 @@ export function mountPlayerSubmenu(item: HTMLElement, submenu: PlayerSubmenu, re
   function prepare() {
     if (!enabled()) return;
     list.style.visibility = ''; position(); item.setAttribute('aria-expanded', 'true');
-    Promise.resolve().then(submenu.prepare).catch(error => report(String(error instanceof Error ? error.message : error)));
+    Promise.resolve().then(submenu.prepare).then(position).catch(error => report(String(error instanceof Error ? error.message : error)));
   }
   function expanded() { queueMicrotask(() => {
+    if (item.getAttribute('aria-expanded') === 'false') return;
     const open = enabled() && item.matches(':hover, :focus-within');
     list.style.visibility = open ? '' : 'hidden'; item.setAttribute('aria-expanded', String(open));
   }); }
@@ -38,16 +39,20 @@ export function mountPlayerSubmenu(item: HTMLElement, submenu: PlayerSubmenu, re
     if (event.target === item && ['ArrowRight', 'Enter', ' '].includes(event.key)) {
       event.preventDefault(); event.stopPropagation(); prepare(); (list.firstElementChild as HTMLElement | null)?.focus({ preventScroll: true });
     } else if (['ArrowLeft', 'Escape'].includes(event.key) && list.contains(event.target as Node)) {
-      event.preventDefault(); event.stopPropagation(); item.focus({ preventScroll: true });
+      event.preventDefault(); event.stopPropagation(); list.style.visibility = 'hidden'; item.setAttribute('aria-expanded', 'false'); item.focus({ preventScroll: true });
     }
   }
-  const resize = new ResizeObserver(() => { if (item.matches(':hover, :focus-within')) position(); }); resize.observe(list);
+  const resize = new ResizeObserver(() => { if (item.getAttribute('aria-expanded') === 'true') position(); }); resize.observe(list);
+  // 官方在 document.mouseup 收起菜单，子菜单内的点击需先留给自身处理。
+  const stopMouseup = (event: MouseEvent) => event.stopPropagation();
+  item.addEventListener('mouseup', stopMouseup);
   item.addEventListener('mouseenter', prepare); item.addEventListener('mouseleave', expanded);
-  item.addEventListener('focusin', prepare); item.addEventListener('focusout', expanded);
+  const focusin = (event: FocusEvent) => { if (event.target !== item) prepare(); };
+  item.addEventListener('focusin', focusin); item.addEventListener('focusout', expanded);
   item.addEventListener('click', click); item.addEventListener('keydown', keydown);
   return () => {
-    resize.disconnect(); item.removeEventListener('mouseenter', prepare); item.removeEventListener('mouseleave', expanded);
-    item.removeEventListener('focusin', prepare); item.removeEventListener('focusout', expanded);
+    resize.disconnect(); item.removeEventListener('mouseup', stopMouseup); item.removeEventListener('mouseenter', prepare); item.removeEventListener('mouseleave', expanded);
+    item.removeEventListener('focusin', focusin); item.removeEventListener('focusout', expanded);
     item.removeEventListener('click', click); item.removeEventListener('keydown', keydown);
   };
 }

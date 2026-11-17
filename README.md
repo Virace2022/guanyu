@@ -41,12 +41,12 @@
 | 优先级 | 安装入口 | 境内速度参考 | 安全推荐 | 区别与选择建议 |
 | --- | --- | :---: | :---: | --- |
 | 1 | [GitHub Release](https://github.com/Virace2022/guanyu/releases/latest/download/douyu.guanyu.user.js) | ★★☆☆☆ | ★★★★★ | 项目直接发布的附件，优先选择；部分网络访问较慢或无法连接。 |
-| 2 | [jsDelivr · Fastly](https://fastly.jsdelivr.net/npm/guanyu-douyu@2026.1117.2/dist/fastly/douyu.guanyu.user.js) | ★★★★☆ | ★★★★☆ | 通过 jsDelivr 分发官方 npm 包，使用 Fastly 节点。 |
-| 3 | [jsDelivr · Quantil](https://quantil.jsdelivr.net/npm/guanyu-douyu@2026.1117.2/dist/quantil/douyu.guanyu.user.js) | ★★★★☆ | ★★★★☆ | 同一 npm 包的另一个 jsDelivr 节点，前一入口不可用时尝试。 |
+| 2 | [jsDelivr · Fastly](https://fastly.jsdelivr.net/npm/guanyu-douyu@2026.1117.3/dist/fastly/douyu.guanyu.user.js) | ★★★★☆ | ★★★★☆ | 通过 jsDelivr 分发官方 npm 包，使用 Fastly 节点。 |
+| 3 | [jsDelivr · Quantil](https://quantil.jsdelivr.net/npm/guanyu-douyu@2026.1117.3/dist/quantil/douyu.guanyu.user.js) | ★★★★☆ | ★★★★☆ | 同一 npm 包的另一个 jsDelivr 节点，前一入口不可用时尝试。 |
 | 4 | jsDelivr · 默认节点（等待更新缓存） | ★★★★☆ | ★★★★☆ | 固定版本已可下载，`latest` 更新入口仍返回旧版；暂用其他渠道。 |
-| 5 | [jsdmirror · 中国境内第三方镜像](https://cdn.jsdmirror.com/npm/guanyu-douyu@2026.1117.2/dist/jsdmirror/douyu.guanyu.user.js) | ★★★★★ | 未知 | 由第三方运营，当前内容与项目产物一致，但运营方的长期防篡改保障未知。 |
+| 5 | [jsdmirror · 中国境内第三方镜像](https://cdn.jsdmirror.com/npm/guanyu-douyu@2026.1117.3/dist/jsdmirror/douyu.guanyu.user.js) | ★★★★★ | 未知 | 由第三方运营，当前内容与项目产物一致，但运营方的长期防篡改保障未知。 |
 
-2026 年 11 月 17 日已核验 GitHub、Fastly、Quantil 和 jsdmirror 的首次安装、检查更新与下载新版，均返回当前版本，功能代码一致。默认 jsDelivr 的更新缓存尚未刷新，验收通过后再启用安装链接。完整地址见[发布说明](docs/RELEASING.md#安装与更新地址)。中间三个入口使用不同的 jsDelivr 节点；jsdmirror 由第三方运营，作为最后备选。
+2026 年 11 月 17 日已核验 GitHub、Fastly、Quantil 和 jsdmirror 的 `2026.1117.2` 首次安装、检查更新与下载新版，功能代码一致；新版本发布后再核验各渠道缓存。默认 jsDelivr 的更新缓存尚未刷新，验收通过后再启用安装链接。完整地址见[发布说明](docs/RELEASING.md#安装与更新地址)。中间三个入口使用不同的 jsDelivr 节点；jsdmirror 由第三方运营，作为最后备选。
 
 脚本同时通过 npm 包 [`guanyu-douyu`](https://www.npmjs.com/package/guanyu-douyu) 分发。各渠道的脚本名称和安装身份相同，覆盖安装可保留原设置。
 
@@ -78,15 +78,18 @@
 
 在“设置 → 多屏”中点“开启 / 编辑多屏”，选择候选房间；点“添加房间”可输入房间号或链接。候选会合并活动成员、关注和常用房间，添加候选后再选择播放。画面支持拖动排序。多屏增强默认开启，副屏由你手动选择后播放。
 
+添加和更换直播间时，可用同一个搜索框搜索昵称、房间号或链接。候选匹配置顶，其他斗鱼搜索结果放在分割线下，只显示正在直播的房间。团播和关注名单分别分区；关注候选默认开启，可在选房小窗或多屏设置中关闭。
+
 ![](docs/images/multiscreen.png)
 
 | 操作 | 怎么用 |
 | --- | --- |
 | 只听一路，默认模式 | 点主播头像上的喇叭切换发声房间，底部播放器音量控制这一路 |
 | 分别调节每一路 | 开启“独立控制各直播间音量”，悬停头像显示滑条；底部音量作为总比例 |
-| 切换画质 | 右键主播头像或名字，进入“清晰度”；只切换所选画面 |
-| 刷新卡住的画面 | 右键该主播头像或名字，选“刷新此画面”；保留位置、画质和音量 |
-| 原地更换副屏 | 右键副屏标签，选“更换直播间”，保留这个位置 |
+| 切换画质或线路 | 右键任意画面或主播标签，进入“清晰度”或“线路”；只切换所选房间 |
+| 刷新卡住的画面 | 右键该画面，选“刷新此画面”；保留位置、画质、线路和音量 |
+| 原地更换副屏 | 右键副屏画面，选“更换直播间”，保留这个位置 |
+| 单路镜像与资料 | 右键该画面切换镜像、查看主播配置；点击官方“查看视频参考信息”，在原浮层查看该画面的中文参数 |
 | 减少标签遮挡 | 在多屏设置中选择始终显示、仅显示头像或全部隐藏；隐藏后悬停原头像位置可唤出 |
 
 独立音量下，房间设为 60%、底部总音量为 50%，实际音量就是 30%。标签默认集中在画面交界处，也可以改到各画面左下角。取消最后一个副屏即可回到单屏。

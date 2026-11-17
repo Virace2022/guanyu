@@ -1,14 +1,16 @@
 import type { MultiScreenNative } from './multiscreen';
 import type { QualityPort, QualitySnapshot } from '../../features/multiscreen/quality';
-import { readMultiscreenRates } from './multiscreen-rates';
+import { playMultiscreenStream, readMultiscreenStream } from './multiscreen-rates';
 
 interface Binding {
   id: number;
   component: any;
   stream: any;
   desired: number | null;
+  desiredLine?: string;
   snapshot: QualitySnapshot;
   request?: AbortController;
+  playRequest?: AbortController;
   finish?: (error?: Error) => void;
   restore: () => void;
 }
@@ -25,15 +27,21 @@ export function createNativeMultiQuality(getNative: () => MultiScreenNative): Qu
     binding.snapshot.loading = true; binding.snapshot.error = ''; publish(binding);
     const timer = setTimeout(() => request.abort(new Error('读取清晰度超时，请重试')), 15000);
     try {
-      const rates = await readMultiscreenRates(binding.stream, binding.id, request.signal);
+      const data = await readMultiscreenStream(binding.stream, binding.id, request.signal);
       // 独立请求只补档位列表，不能把它的返回档位当成当前视频已经生效的画质。
-      if (active() && !binding.snapshot.rates.length) binding.snapshot.rates = rates;
+      if (active()) {
+        if (!binding.snapshot.rates.length) binding.snapshot.rates = data.multirates.map((item: any) => ({ rate: Number(item.rate), name: String(item.name), diamondFan: Number(item.diamondFan) }));
+        if (!binding.snapshot.lines?.length) binding.snapshot.lines = streamLines(data);
+      }
     } catch (cause) {
       if (active() && !binding.snapshot.rates.length) binding.snapshot.error = cause instanceof Error ? cause.message : String(cause);
     } finally {
       clearTimeout(timer);
       if (active()) { binding.request = undefined; binding.snapshot.loading = false; publish(binding); }
     }
+  }
+  function streamLines(data: any) {
+    return (Array.isArray(data.cdnsWithName) ? data.cdnsWithName : []).filter((line: any) => typeof line.cdn === 'string' && typeof line.name === 'string').map((line: any) => ({ cdn: line.cdn, name: line.name }));
   }
   function bind(component: any, id: number): Binding {
     const stream = component.baseStream;
@@ -44,8 +52,22 @@ export function createNativeMultiQuality(getNative: () => MultiScreenNative): Qu
     const active = () => bindings.get(id) === binding;
     const play = function(this: any, options: any) {
       if (active()) { response = undefined; binding.snapshot.ready = false; publish(binding); }
+      binding.playRequest?.abort(); binding.playRequest = undefined;
       // 官方刷新仍调用固定档位；只在当前实例上覆盖本次会话已选择的画质。
-      return originals.play.call(this, active() && Number(options?.rid) === id && binding.desired !== null ? { ...options, rate: binding.desired } : options);
+      const next = active() && Number(options?.rid) === id && binding.desired !== null ? { ...options, rate: binding.desired } : options;
+      // 官方副屏固定走自动线路；只有明确选线后才替换本路取流，其他实例仍走原生路径。
+      if (!active() || Number(options?.rid) !== id || !binding.desiredLine) return originals.play.call(this, next);
+      originals.play.call(this, { ...next, type: 0, url: '' });
+      const request = new AbortController(); binding.playRequest = request;
+      const timer = setTimeout(() => request.abort(new Error('切换线路超时')), 15000);
+      void readMultiscreenStream(stream, id, request.signal, Number(next.rate ?? 2), binding.desiredLine).then(result => {
+        if (!active() || binding.playRequest !== request) return;
+        playMultiscreenStream(stream, result);
+      }).catch(cause => {
+        if (!active() || binding.playRequest !== request) return;
+        const error = cause instanceof Error ? cause : new Error(String(cause));
+        binding.snapshot.ready = false; binding.snapshot.error = error.message; publish(binding); binding.finish?.(error);
+      }).finally(() => { clearTimeout(timer); if (binding.playRequest === request) binding.playRequest = undefined; });
     };
     const data = function(this: any, result: any) {
       if (active()) {
@@ -54,7 +76,7 @@ export function createNativeMultiQuality(getNative: () => MultiScreenNative): Qu
           response = typeof result.data === 'string' ? JSON.parse(result.data) : result.data;
           if (!Array.isArray(response?.multirates) || !Number.isFinite(Number(response.rate))) throw new Error('官方尚未提供清晰度');
           binding.snapshot = { rates: response.multirates.map((item: any) => ({ rate: Number(item.rate), name: String(item.name), diamondFan: Number(item.diamondFan) })),
-            rate: Number(response.rate), ready: false, loading: !!binding.request, error: '' }; publish(binding);
+            rate: Number(response.rate), lines: streamLines(response), line: response.rtmp_cdn, ready: false, loading: !!binding.request, error: '' }; publish(binding);
         } catch (cause) {
           response = undefined; const error = cause instanceof Error ? cause : new Error(String(cause));
           binding.snapshot = { ...binding.snapshot, ready: false, error: error.message }; publish(binding); binding.finish?.(error);
@@ -75,6 +97,7 @@ export function createNativeMultiQuality(getNative: () => MultiScreenNative): Qu
     stream.play = play; stream.stramDataCallback = data; stream.onreadyBackFunction = ready; stream.errBackFunction = error;
     binding.restore = () => {
       binding.request?.abort(); binding.request = undefined;
+      binding.playRequest?.abort(); binding.playRequest = undefined;
       binding.finish?.(new Error('分屏已变化，请重新选择'));
       if (stream.play === play) stream.play = originals.play;
       if (stream.stramDataCallback === data) stream.stramDataCallback = originals.data;
@@ -123,7 +146,7 @@ export function createNativeMultiQuality(getNative: () => MultiScreenNative): Qu
         || native.container?.children[ids.indexOf(native.roomId)] !== mainRefresh.slot)) mainRefresh.cancel();
       for (const [id, binding] of bindings) if (!ids.includes(id) || !binding.component.contDom?.isConnected) { binding.restore(); bindings.delete(id); }
       const rate = mainRate();
-      if (rate) receive(native.roomId, { rates: rate.props.multirates.map((item: any) => ({ ...item, rate: Number(item.type ?? item.rate) })), rate: Number(rate.props.rate), ready: true, loading: false, error: '' });
+      if (rate) receive(native.roomId, { rates: rate.props.multirates.map((item: any) => ({ ...item, rate: Number(item.type ?? item.rate) })), rate: Number(rate.props.rate), lines: streamLines(rate.props), line: rate.props.cdn, ready: true, loading: false, error: '' });
       for (const slot of Array.from(native.container?.children ?? [])) {
         const component = native.component(slot, (value: any) => !!value.baseStream && typeof value.play === 'function');
         const id = Number(component?.props.rid);
@@ -159,6 +182,27 @@ export function createNativeMultiQuality(getNative: () => MultiScreenNative): Qu
       catch (cause) {
         if (previous !== null && bindings.get(id) === binding && binding.component.contDom?.isConnected) {
           try { await switchStream(binding, previous); } catch { throw new Error('切换失败，原画质也未能恢复，请重连此画面'); }
+        }
+        throw cause;
+      }
+    },
+    async changeLine(id, cdn) {
+      const native = getNative();
+      if (!native.active() || !native.order().includes(id)) throw new Error('分屏已变化，请重新选择');
+      if (id === native.roomId) {
+        const control = mainRate(), line = control?.props.cdnsWithName?.find((item: any) => item.cdn === cdn);
+        if (!line || typeof control.selectXL !== 'function') throw new Error('原生线路尚未就绪');
+        await control.selectXL({ target: { value: line.cdn, name: line.name } }); return;
+      }
+      const binding = bindings.get(id);
+      if (!binding) throw new Error('官方副屏尚未就绪');
+      const previous = binding.desiredLine, rate = binding.snapshot.rate ?? binding.desired ?? 2;
+      binding.desiredLine = cdn;
+      try { await switchStream(binding, rate); }
+      catch (cause) {
+        if (bindings.get(id) === binding && binding.component.contDom?.isConnected) {
+          binding.desiredLine = previous;
+          try { await switchStream(binding, rate); } catch { throw new Error('线路切换失败，原画面未能恢复，请刷新此画面'); }
         }
         throw cause;
       }

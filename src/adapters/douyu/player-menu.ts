@@ -3,8 +3,10 @@ import type { MenuAction } from '../../config/player-menu';
 import { mountPlayerSubmenu, type PlayerSubmenu } from './player-submenu';
 import styles from '../../ui/player-menu.css?style';
 import { diagnostics } from '../../core/diagnostics';
+import type { ScreenController } from '../../features/multiscreen/screens';
 
-export interface PlayerAction { label: () => string; run?: () => void | Promise<unknown>; enabled?: () => boolean; checked?: () => boolean; submenu?: PlayerSubmenu }
+export interface PlayerAction { label: () => string; run?: () => void | Promise<unknown>; enabled?: () => boolean; visible?: () => boolean; checked?: () => boolean; submenu?: PlayerSubmenu }
+export interface PlayerMenuContext { screens: ScreenController; actions: Record<string, PlayerAction> }
 export interface NativeMenuEntry { label: string; separator: boolean; disabled: boolean; submenu: boolean }
 export function readNativeMenu(): { items: NativeMenuEntry[]; style: string } {
   const menu = document.querySelector('.menu-da2a9e:not(.subMenu-de1c61)');
@@ -16,12 +18,14 @@ export function readNativeMenu(): { items: NativeMenuEntry[]; style: string } {
   }));
   return { items, style: appearance ? `--guanyu-native-menu-color:${appearance.color};--guanyu-native-menu-font:${appearance.fontFamily};--guanyu-native-menu-background:${appearance.backgroundColor};--guanyu-native-menu-border:${appearance.borderColor}` : '' };
 }
-export function mountPlayerMenu(settings: SettingsStore, actions: Partial<Record<MenuAction, PlayerAction>>, report: (message: string) => void) {
-  const nodes = new Map<MenuAction, HTMLElement>();
-  const labels = new Map<MenuAction, HTMLElement>(), release = new Map<MenuAction, () => void>();
+export function mountPlayerMenu(settings: SettingsStore, configured: Partial<Record<MenuAction, PlayerAction>>, report: (message: string) => void, context?: PlayerMenuContext) {
+  const actions: Record<string, PlayerAction> = { ...configured, ...context?.actions };
+  const nodes = new Map<string, HTMLElement>();
+  const labels = new Map<string, HTMLElement>(), release = new Map<string, () => void>();
+  const title = document.createElement('li'); title.dataset.guanyuAction = 'screenTarget'; title.className = 'guanyu-context-title';
   const sheet = styles.cloneNode(true);
   document.head.append(sheet);
-  for (const [id, action] of Object.entries(actions) as [MenuAction, PlayerAction][]) {
+  for (const [id, action] of Object.entries(actions)) {
     const item = document.createElement('li'); item.dataset.guanyuAction = id; item.tabIndex = 0; item.setAttribute('role', 'menuitem');
     const label = document.createElement('span'); labels.set(id, label);
     if (action.submenu) { const name = document.createElement('div'); name.className = 'name-2f52df'; name.append(label); item.append(name); }
@@ -36,7 +40,8 @@ export function mountPlayerMenu(settings: SettingsStore, actions: Partial<Record
   }
   function sync() {
     const menu = document.querySelector('.menu-da2a9e:not(.subMenu-de1c61)');
-    const active = settings.value.playerMenu;
+    const contextual = context?.screens.isMulti() && settings.value.multi.enabled ? ['screenRefresh', 'screenQuality', 'screenChange', 'screenLine'] : [];
+    const active = [...contextual, ...settings.value.playerMenu].filter(id => actions[id]?.visible?.() !== false);
     for (const [id, item] of nodes) {
       if (!active.includes(id) || !menu) { item.remove(); continue; }
       const action = actions[id];
@@ -49,20 +54,51 @@ export function mountPlayerMenu(settings: SettingsStore, actions: Partial<Record
       }
     }
     if (!menu) { diagnostics.report('menu', 'idle', '等待打开播放器右键菜单；宿主：.menu-da2a9e:not(.subMenu-de1c61)'); return; }
-    const anchor = [...menu.children].find((node, index) => index > 0 && !(node instanceof HTMLElement && node.dataset.guanyuAction));
+    if (context) {
+      const screen = context.screens.current(), multi = context.screens.isMulti();
+      menu.setAttribute('data-guanyu-screen-id', String(screen?.id ?? ''));
+      title.textContent = `${context.screens.name()}${screen?.main ? ' · 主直播间' : ''}`;
+      if (!multi) title.remove();
+    }
+    const native = [...menu.children].filter(node => !node.hasAttribute('data-guanyu-action'));
+    const header = native[0]?.classList.contains('disable-23f484') && /^Douyu_/.test(native[0].textContent?.trim() ?? '') ? native[0] : undefined;
+    const anchor = header ? native[1] : native[0];
     let next: Element | null = anchor ?? null;
     for (const id of [...active].reverse()) {
       const item = nodes.get(id); if (!item) continue;
       if (item.parentElement !== menu || item.nextElementSibling !== next) menu.insertBefore(item, next);
       next = item;
     }
+    if (context?.screens.isMulti()) menu.insertBefore(title, next ?? anchor ?? null);
     diagnostics.report('menu', 'applied', `已挂载菜单项：${active.map(id => actions[id]?.label() ?? id).join('、')}`);
   }
   let frame = 0;
-  const onContext = () => { cancelAnimationFrame(frame); frame = requestAnimationFrame(() => { sync(); frame = requestAnimationFrame(sync); }); };
-  document.addEventListener('contextmenu', onContext, true);
+  const onContext = (event: MouseEvent) => {
+    if (context?.screens.capture(event)) sync();
+    cancelAnimationFrame(frame); frame = requestAnimationFrame(() => { sync(); frame = requestAnimationFrame(sync); });
+  };
+  const keyup = (event: KeyboardEvent) => { if ((event.target as Element)?.closest?.('.menu-da2a9e [data-guanyu-action]')) event.stopImmediatePropagation(); };
+  const keydown = (event: KeyboardEvent) => {
+    const target = event.target as HTMLElement, item = target.closest?.<HTMLElement>('[data-guanyu-action]');
+    if (!item?.closest('.menu-da2a9e')) return;
+    const submenu = target.closest<HTMLElement>('.guanyu-submenu');
+    if (event.key === 'Escape' || event.key === 'ArrowLeft' && submenu) {
+      event.preventDefault(); event.stopImmediatePropagation();
+      if (submenu) { submenu.style.visibility = 'hidden'; item.setAttribute('aria-expanded', 'false'); item.focus({ preventScroll: true }); }
+      else context?.screens.closeMenu();
+    } else if (['ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) {
+      event.preventDefault(); event.stopImmediatePropagation();
+      const list = submenu ?? item.parentElement!;
+      const rows = [...list.querySelectorAll<HTMLElement>(':scope > [role^="menuitem"]')].filter(row => row.getAttribute('aria-disabled') !== 'true');
+      if (!rows.length) return;
+      const index = rows.indexOf(target.closest<HTMLElement>('[role^="menuitem"]')!);
+      const next = event.key === 'Home' ? 0 : event.key === 'End' ? rows.length - 1 : (index + (event.key === 'ArrowUp' ? -1 : 1) + rows.length) % rows.length;
+      rows[next]?.focus({ preventScroll: true }); rows[next]?.scrollIntoView({ block: 'nearest' });
+    }
+  };
+  window.addEventListener('contextmenu', onContext, true); window.addEventListener('keyup', keyup, true); window.addEventListener('keydown', keydown, true);
   const timer = setInterval(sync, 1000), stop = settings.subscribe(sync);
   return {
-    dispose() { stop(); clearInterval(timer); cancelAnimationFrame(frame); document.removeEventListener('contextmenu', onContext, true); for (const dispose of release.values()) dispose(); for (const item of nodes.values()) item.remove(); sheet.parentNode?.removeChild(sheet); },
+    dispose() { stop(); clearInterval(timer); cancelAnimationFrame(frame); window.removeEventListener('contextmenu', onContext, true); window.removeEventListener('keyup', keyup, true); window.removeEventListener('keydown', keydown, true); for (const dispose of release.values()) dispose(); for (const item of nodes.values()) item.remove(); document.querySelector('.menu-da2a9e[data-guanyu-screen-id]')?.removeAttribute('data-guanyu-screen-id'); title.remove(); sheet.parentNode?.removeChild(sheet); },
   };
 }

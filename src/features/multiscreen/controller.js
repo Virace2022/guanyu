@@ -18,6 +18,7 @@ export class MultiScreenController {
         this.pending = null;
         this.revision = 0;
         this.stopped = false;
+        this.groups = [];
     }
 
     start() {
@@ -98,7 +99,7 @@ export class MultiScreenController {
             try {
                 const team = this.teamRooms();
                 for (const room of this.official?.battleList || team) this.rooms.remember(room);
-                if (!this.official && !team.length && this.settings.useFollow) {
+                if (this.settings.useFollow) {
                     try { await this.rooms.follow(); diagnostics.report('multi.useFollow', 'ready', '已读取完整关注候选', '接口'); }
                     catch (error) { warning = error.message; diagnostics.report('multi.useFollow', error.loginRequired ? 'waiting' : 'error', error.message, '接口'); }
                 }
@@ -125,10 +126,16 @@ export class MultiScreenController {
     rebuild() {
         if (!this.host || !this.settings.enabled || this.stopped || !this.rooms.rooms.has(this.roomId)) return;
         const team = this.teamRooms();
-        const base = this.official?.battleList || (team.length ? team : this.settings.useFollow ? this.rooms.following.map(id => this.rooms.rooms.get(id)).filter(Boolean) : []);
+        const base = this.official?.battleList || team;
         for (const room of this.official?.battleList || []) this.rooms.remember(room);
-        const ids = [...new Set([this.roomId, ...base.map(room => Number(room.rid)), ...this.settings.custom, ...this.rooms.temporary, ...this.native.order()])].filter(id => Number.isSafeInteger(id) && id > 0);
-        const rooms = ids.map(id => this.rooms.rooms.get(id) || { rid: id, nn: `房间 ${id}`, showStatus: "2", avt: "", roomSrcSixteen: "", hot: "0" });
+        const seen = new Set();
+        const group = (id, label, ids) => ({ id, label, rooms: ids.map(Number).filter(id => Number.isSafeInteger(id) && id > 0 && !seen.has(id) && seen.add(id))
+            .map(id => this.rooms.rooms.get(id) || { rid: id, nn: `房间 ${id}`, showStatus: "2", avt: "", roomSrcSixteen: "", hot: "0" })
+            .sort((a, b) => Number(b.showStatus === "1") - Number(a.showStatus === "1")) });
+        this.groups = [group("activity", team.length ? "团播人物" : this.official ? "活动人物" : "当前直播间", [this.roomId, ...base.map(room => room.rid)]),
+            group("following", "关注列表", this.settings.useFollow ? this.rooms.following : []),
+            group("custom", "其他候选", [...this.settings.custom, ...this.rooms.temporary, ...this.native.order()])].filter(group => group.rooms.length);
+        const rooms = this.groups.flatMap(group => group.rooms), ids = rooms.map(room => room.rid);
         const signature = JSON.stringify([this.official?.battleId || "local", rooms]);
         if (signature !== this.signature) {
             this.applying = true;
@@ -175,10 +182,13 @@ export class MultiScreenController {
      * @param {string} input 房间号或链接
      * @param {boolean} save 是否保存为常用候选
      * @param {number|null} oldId 要替换的副屏房间
+     * @param {boolean} liveOnly 快捷选房仅允许正在直播的房间
      */
-    async add(input, save, oldId = null) {
+    async add(input, save, oldId = null, liveOnly = false) {
         const native = this.native;
-        const room = await this.rooms.resolve(input);
+        const revision = this.revision;
+        const room = await this.rooms.resolve(input, liveOnly);
+        if (revision !== this.revision || this.stopped || !this.settings.enabled) throw new Error("当前直播间已变化，请重新选择。");
         if (oldId !== null) {
             if (!this.settings.enabled || !this.host || native !== this.native) throw new Error("当前直播间已变化或增强已关闭，请重新选择分屏。");
             if (this.native.order().includes(room.rid)) throw new Error("这个直播间已在当前多屏中。");
@@ -205,6 +215,7 @@ export class MultiScreenController {
         this.rooms.close();
         this.rooms.temporary.clear();
         this.host = null; this.official = null; this.configValue = null; this.signature = ""; this.appliedRooms = ""; this.lastRefresh = 0; this.pending = null;
+        this.groups = [];
         this.native = new MultiScreenNative();
     }
 

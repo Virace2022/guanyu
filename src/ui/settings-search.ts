@@ -56,7 +56,7 @@ const catalog: SettingResult[] = [
   item('multi', '声音模式', '独立控制各直播间音量', '各画面分别静音和调节音量，底部音量作为总比例；关闭后只听一路。', '[data-setting="multi.independentVolume"]'),
   item('multi', '主播标签', '主播标签显示方式', '始终显示、仅显示头像、全部隐藏；悬停时展开名字或显示标签。', '.label-display-options'),
   item('multi', '主播标签', '标签集中到画面中间', '头像和音量入口贴近画面中间，名字向外排列；关闭后位于左下角。', '[data-setting="multi.centerLabels"]'),
-  item('multi', '选房与候选', '使用关注名单', '在普通直播间中，把已关注的主播加入选房候选。', '[data-setting="multi.useFollow"]'),
+  item('multi', '选房与候选', '使用关注名单', '将关注主播加入普通直播间和团播的选房候选，按来源分区显示。', '[data-setting="multi.useFollow"]'),
   item('multi', '选房与候选', '紧凑选房', '两行 16:9 缩略图，面板内部纵向滚动，关闭恢复原生大图。', '[data-setting="multi.compact"]'),
   item('multi', '常用候选', '添加常用候选房间', '输入房间号或斗鱼直播间链接，添加后不会自动播放。', '#multi-custom-room'),
   ...options('room', '主播与直播资料', 'room', roomChoices),

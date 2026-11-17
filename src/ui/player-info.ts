@@ -1,46 +1,30 @@
-import { readMetadata } from '../features/player-info/metadata';
-import type { PlayerStore } from '../adapters/douyu/player';
-import type { SettingsStore } from '../config/settings';
+import type { ScreenController } from '../features/multiscreen/screens';
 import { diagnostics } from '../core/diagnostics';
 
-interface Metadata { metadata?: Record<string, unknown>; width?: number; height?: number; fps?: number }
-
-export function createPlayerInfo(player: PlayerStore, settings: SettingsStore) {
-  const element = document.createElement('ul'); element.className = 'guanyu-player-info'; element.setAttribute('aria-label', '主播配置信息');
-  let roomId: string | null = null, request: AbortController | undefined, requested = false, loaded = false;
-  function render(rows: string[][]) {
-    const focused = element.contains(document.activeElement);
-    element.replaceChildren();
-    for (const [label, value] of rows) {
-      const row = document.createElement('li'); row.tabIndex = 0; row.setAttribute('role', 'menuitem');
-      row.append(label!);
-      if (value) { row.append(document.createElement('br'), value); row.title = value; }
-      element.append(row);
+export function createPlayerInfo(screens: ScreenController) {
+  const element = document.createElement('ul'); element.className = 'guanyu-player-info guanyu-device-info';
+  element.setAttribute('aria-label', '主播配置信息');
+  let signature = '';
+  function prepare() {
+    const screen = screens.current(), rows: [string, string][] = [];
+    if (!screen) rows.push(['画面已变化', '请重新右键选择直播间']);
+    else {
+      const metadata = screen.info.metadata ?? {};
+      const fields = [['dy_cpu_model', '🤖 CPU'], ['dy_gpu_model', '🎮 显卡'], ['dy_device_model', '📱 设备'], ['dy_os_version', '🖥️ 系统'], ['z_canvas_code', '🎥 场景']];
+      for (const [key, label] of fields) if (metadata[key!] != null) rows.push([label!, String(metadata[key!])]);
+      if (!rows.length) rows.push(['设备信息', '当前直播流未提供']);
+      diagnostics.report('menu.roomInfo', rows[0]?.[0] === '设备信息' ? 'idle' : 'ready', '已直接读取当前画面 SDK 中的主播配置');
     }
-    if (focused) (element.firstElementChild as HTMLElement | null)?.focus({ preventScroll: true });
+    const next = JSON.stringify(rows); if (next === signature) return;
+    const focused = [...element.children].indexOf(document.activeElement as Element);
+    signature = next; element.replaceChildren();
+    for (const [label, value] of rows) {
+      const row = document.createElement('li'); row.tabIndex = -1; row.setAttribute('role', 'menuitem');
+      const name = document.createElement('span'), detail = document.createElement('span'); name.className = 'guanyu-info-label'; detail.className = 'guanyu-info-value';
+      name.textContent = label; detail.textContent = value; row.append(name, detail); element.append(row);
+    }
+    if (focused >= 0) (element.children[Math.min(focused, element.children.length - 1)] as HTMLElement | undefined)?.focus({ preventScroll: true });
   }
-  async function prepare() {
-    if (!roomId || request || loaded) return;
-    const expected = roomId, abort = new AbortController(); request = abort; requested = true;
-    render([['正在读取主播配置信息…']]);
-    try {
-      const info = await readMetadata(expected, abort.signal) as Metadata;
-      if (abort.signal.aborted || expected !== roomId) return;
-      const fields = [['dy_cpu_model', '🤖CPU'], ['dy_gpu_model', '🎮显卡'], ['dy_device_model', '📱设备'], ['dy_os_version', '🖥️系统'], ['z_canvas_code', '🎥场景']];
-      const rows = fields.filter(([key]) => info.metadata?.[key!] != null).map(([key, label]) => [label!, String(info.metadata![key!])]);
-      if (info.width && info.height) rows.push([`📺直播画面 ${info.width} × ${info.height}${info.fps ? ` · ${info.fps} fps` : ''}`]);
-      loaded = true; render(rows);
-      diagnostics.report('menu.roomInfo', rows.length ? 'ready' : 'idle', rows.length ? '已读取并展示直播流中的主播配置' : '直播流未提供可展示的主播配置');
-    } catch (error) {
-      if (!abort.signal.aborted && expected === roomId) { diagnostics.report('menu.roomInfo', 'error', String(error instanceof Error ? error.message : error)); render([[String(error instanceof Error ? error.message : error)], ['再次悬停可重试']]); }
-    } finally { if (request === abort) request = undefined; }
-  }
-  function sync() {
-    const next = player.value.video ? player.value.roomId : null;
-    if (next !== roomId) { request?.abort(); request = undefined; roomId = next; requested = loaded = false; render([['正在读取主播配置信息…']]); }
-    if (!settings.value.playerMenu.includes('roomInfo')) { request?.abort(); request = undefined; requested = false; return; }
-    if (!requested) void prepare();
-  }
-  const stopPlayer = player.subscribe(sync), stopSettings = settings.subscribe(sync);
-  return { submenu: { element, prepare }, dispose() { stopPlayer(); stopSettings(); request?.abort(); element.remove(); } };
+  const timer = setInterval(() => { if (element.parentElement?.matches(':hover, :focus-within')) prepare(); }, 1000);
+  return { submenu: { element, prepare }, dispose() { clearInterval(timer); element.remove(); } };
 }

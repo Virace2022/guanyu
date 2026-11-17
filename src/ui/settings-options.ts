@@ -12,6 +12,7 @@ export const layoutChoices: { key: keyof OptimizationOptions; label: string; hin
   { key: 'hideTopBanner', label: '隐藏顶部大图', hint: '收起团播和普通直播间顶部的大图，包含带活动链接的主图；保留房间切换按钮。' },
   { key: 'hideRoomExtras', label: '隐藏直播间下方内容', hint: '隐藏播放器下方的视频精选、鱼吧等大块内容和页脚，保留播放器、聊天框与小工具。' },
   { key: 'hideGiftBar', label: '隐藏礼物栏', hint: '收起播放器下方礼物区域，保留原生控制栏。' },
+  { key: 'hideRoomWatermark', label: '隐藏直播间靓号水印', hint: '关闭播放器上的“斗鱼 房间号”水印，避免在多屏下标错画面。' },
   { key: 'collapseChat', label: '收起聊天活动区', hint: '拉高弹幕列表，保留贵宾 / 钻粉人数和恢复按钮。' },
   { key: 'autoHideHeader', label: '顶栏随滚动隐藏', hint: '仅在直播间向下滚动时收起顶栏，向上滚动一段距离后显示。' },
 ];

@@ -1,4 +1,5 @@
 import { accountToken, observeAccountResponse, requireAccount } from '../../adapters/douyu/account';
+import { requireLiveRoom } from '../../adapters/douyu/room-search';
 
 export class MultiScreenRooms {
     constructor() {
@@ -8,12 +9,13 @@ export class MultiScreenRooms {
         this.requests = new Set();
     }
 
-    async request(url) {
+    async request(url, signal) {
         const abort = new AbortController();
-        this.requests.add(abort);
+        // 外部 signal 的搜索由选房窗口释放，候选刷新不能中断它。
+        if (!signal) this.requests.add(abort);
         const timer = setTimeout(() => abort.abort(), 15000);
         try {
-            const response = await fetch(url, { credentials: "include", redirect: "error", signal: abort.signal });
+            const response = await fetch(url, { credentials: "include", redirect: "error", signal: signal ? AbortSignal.any([abort.signal, signal]) : abort.signal });
             if (!response.ok) throw new Error(`房间资料请求失败（HTTP ${response.status}）`);
             return await response.json();
         } finally { clearTimeout(timer); this.requests.delete(abort); }
@@ -67,7 +69,7 @@ export class MultiScreenRooms {
         return this.following;
     }
 
-    async resolve(input) {
+    async resolve(input, liveOnly = false) {
         let value = input.trim();
         if (!/^\d+$/.test(value)) {
             let url;
@@ -79,6 +81,10 @@ export class MultiScreenRooms {
         if (!/^\d+$/.test(value) || !Number.isSafeInteger(Number(value)) || Number(value) <= 0) throw new Error("请输入有效的斗鱼房间号。");
         const rooms = await this.info([Number(value)]);
         if (rooms.length !== 1) throw new Error("没有找到这个直播间，请检查房间号。");
+        if (liveOnly) {
+            await requireLiveRoom(rooms[0].rid, url => this.request(url));
+            rooms[0].showStatus = "1";
+        }
         return rooms[0];
     }
 

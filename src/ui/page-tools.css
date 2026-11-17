@@ -37,10 +37,10 @@ button.guanyu-chat-fallback { display: inline-flex; align-items: center; justify
 .guanyu-chat-summary button:focus-visible, .guanyu-chat-collapse:focus-visible { outline: 2px solid var(--guanyu-page-accent, #ff5d23); outline-offset: 1px; }
 .guanyu-page-error:empty { display: none; }
 .guanyu-page-error { color: #bd3636; font-size: 11px; }
-html.guanyu-video-mirror :is(.layout-Player-videoEntity video, #js-player-video-case video) { scale: -1 1 !important; }
 html.guanyu-auto-header :is(.Header-wrap, .layout-Header:not(:has(.Header-wrap))) { transition: transform 180ms ease-out, opacity 180ms ease-out; }
 html.guanyu-auto-header.guanyu-header-hidden :is(.Header-wrap, .layout-Header:not(:has(.Header-wrap))) { transform: translateY(calc(-100% - 12px)); opacity: 0; pointer-events: none; }
 html.guanyu-auto-header.guanyu-header-hidden #js-player-main::before { visibility: hidden !important; }
 html.guanyu-auto-header #js-player-main::before { transition: visibility 0s linear 180ms; }
 html.guanyu-auto-header.guanyu-header-hidden #js-player-main::before { transition: none; }
 @media (prefers-reduced-motion: reduce) { html.guanyu-auto-header :is(.Header-wrap, .layout-Header:not(:has(.Header-wrap))) { transition: none; } }
+html.guanyu-hide-room-watermark #js-player-video-case [class^="watermark-"] { display: none !important; }

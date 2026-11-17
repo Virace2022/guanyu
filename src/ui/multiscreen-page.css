@@ -23,7 +23,8 @@
 .guanyu-multi-compact [class^="item-"] [class^="tag-"] { transform: scale(.8); transform-origin: top right; }
 .guanyu-multi-compact [class^="item-"][aria-disabled="true"]:not([aria-checked="true"]) { opacity: .5; }
 #guanyu-multi-replace[hidden] { display: none !important; }
-.guanyu-multi-offline { display: none; }
-.guanyu-multi-compact .guanyu-multi-offline { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; margin-top: 8px; }
-.guanyu-multi-offline > div { display: flex; align-items: end; min-width: 0; aspect-ratio: 16 / 9; padding: 5px; box-sizing: border-box; background: #252525 center / cover; opacity: .5; color: #fff; font: 12px/17px "Microsoft YaHei", sans-serif; }
-.guanyu-multi-offline span { width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: rgb(0 0 0 / 70%); }
+.guanyu-multi-group-title, .guanyu-multi-offline-card { display: none; }
+.guanyu-multi-compact .guanyu-multi-group-title { display: block; grid-column: 1 / -1; padding: 9px 0 2px; border-top: 1px solid rgb(255 255 255 / 25%); color: #e2e2e2; font: 12px/18px "Microsoft YaHei", sans-serif; }
+.guanyu-multi-compact .guanyu-multi-group-title[data-first] { border-top: 0; padding-top: 0; }
+.guanyu-multi-compact .guanyu-multi-offline-card { display: flex; align-items: end; min-width: 0; aspect-ratio: 16 / 9; padding: 5px; box-sizing: border-box; background: #252525 center / cover; opacity: .5; color: #fff; font: 12px/17px "Microsoft YaHei", sans-serif; }
+.guanyu-multi-offline-card span { width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: rgb(0 0 0 / 70%); }

@@ -23,7 +23,7 @@ export function isMainPlayerReady() {
   return value?.isReady === true && !value.player._isUpdatingSource && !value.service._isSwitching;
 }
 
-function runtime() {
+export function playerRuntime() {
   const queue = (unsafeWindow as any).sharkLivePlayerJsonp;
   if (!Array.isArray(queue) || queue.push === Array.prototype.push) return;
   if (cached?.queue === queue) return cached.runtime;
@@ -37,7 +37,7 @@ function runtime() {
 }
 
 export function dispatchPlayerAction(action: PlayerAction) {
-  const current = runtime();
+  const current = playerRuntime();
   for (const [key, module] of Object.entries(current?.c ?? {}) as [string, any][]) {
     const source = String(current.m[key]);
     if (!source.includes('awakeFirstVideoAcj') || !source.includes('lianmaireloadVideo')) continue;

@@ -1,0 +1,6 @@
+#guanyu-page-controls { display: inline-flex; flex: none; align-items: center; height: 32px; }
+#guanyu-page-controls > button { appearance: none; display: grid; place-items: center; box-sizing: border-box; flex: none; width: 32px; height: 32px; margin: 0 4px; padding: 4px; border: 0; border-radius: 0; background: none !important; box-shadow: none; color: #fff; cursor: pointer; }
+#guanyu-page-controls > button[hidden] { display: none; }
+#guanyu-page-controls > button:hover, #guanyu-page-controls > button:focus-visible { color: var(--guanyu-page-accent, #ff5d23); }
+#guanyu-page-controls > button:focus-visible { outline: 2px solid currentColor; outline-offset: -2px; }
+#guanyu-page-controls svg { display: block; width: 24px; height: 24px; }
