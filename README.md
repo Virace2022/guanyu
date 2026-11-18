@@ -41,12 +41,12 @@
 | 优先级 | 安装入口 | 境内速度参考 | 安全推荐 | 区别与选择建议 |
 | --- | --- | :---: | :---: | --- |
 | 1 | [GitHub Release](https://github.com/Virace2022/guanyu/releases/latest/download/douyu.guanyu.user.js) | ★★☆☆☆ | ★★★★★ | 项目直接发布的附件，优先选择；部分网络访问较慢或无法连接。 |
-| 2 | [jsDelivr · Fastly](https://fastly.jsdelivr.net/npm/guanyu-douyu@2026.1119.1/dist/fastly/douyu.guanyu.user.js) | ★★★★☆ | ★★★★☆ | 通过 jsDelivr 分发官方 npm 包，使用 Fastly 节点。 |
-| 3 | [jsDelivr · Quantil](https://quantil.jsdelivr.net/npm/guanyu-douyu@2026.1119.1/dist/quantil/douyu.guanyu.user.js) | ★★★★☆ | ★★★★☆ | 同一 npm 包的另一个 jsDelivr 节点，前一入口不可用时尝试。 |
-| 4 | jsDelivr · 默认节点（等待更新缓存） | ★★★★☆ | ★★★★☆ | 固定版本已可下载，`latest` 更新入口仍返回旧版；暂用其他渠道。 |
-| 5 | [jsdmirror · 中国境内第三方镜像](https://cdn.jsdmirror.com/npm/guanyu-douyu@2026.1119.1/dist/jsdmirror/douyu.guanyu.user.js) | ★★★★★ | 未知 | 由第三方运营，当前内容与项目产物一致，但运营方的长期防篡改保障未知。 |
+| 2 | jsDelivr · Fastly（等待同步） | ★★★★☆ | ★★★★☆ | 通过 jsDelivr 分发官方 npm 包，使用 Fastly 节点。 |
+| 3 | jsDelivr · Quantil（等待同步） | ★★★★☆ | ★★★★☆ | 同一 npm 包的另一个 jsDelivr 节点。 |
+| 4 | jsDelivr · 默认节点（等待同步） | ★★★★☆ | ★★★★☆ | 已有默认节点用户可继续沿用安装渠道。 |
+| 5 | jsdmirror · 中国境内第三方镜像（等待同步） | ★★★★★ | 未知 | 由第三方运营，作为最后备选。 |
 
-2026 年 11 月 17 日已核验 GitHub、Fastly、Quantil 和 jsdmirror 的 `2026.1117.2` 首次安装、检查更新与下载新版，功能代码一致；新版本发布后再核验各渠道缓存。默认 jsDelivr 的更新缓存尚未刷新，验收通过后再启用安装链接。完整地址见[发布说明](docs/RELEASING.md#安装与更新地址)。中间三个入口使用不同的 jsDelivr 节点；jsdmirror 由第三方运营，作为最后备选。
+2026 年 11 月 19 日已核验 GitHub Release 的 `2026.1119.1` 安装与更新入口。四个 CDN 的新版安装入口仍在同步，期间可从 GitHub 安装。完整地址见[发布说明](docs/RELEASING.md#安装与更新地址)。
 
 脚本同时通过 npm 包 [`guanyu-douyu`](https://www.npmjs.com/package/guanyu-douyu) 分发。各渠道的脚本名称和安装身份相同，覆盖安装可保留原设置。
 
