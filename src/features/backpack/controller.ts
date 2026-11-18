@@ -6,16 +6,17 @@ import { accountId, accountReady, retryAccount, taskDay } from '../../adapters/d
 import { createState } from '../../core/state';
 import { RoomApi } from '../../adapters/douyu/rooms';
 import { diagnostics } from '../../core/diagnostics';
+import { yieldToPage } from '../../core/background-work';
 
 interface BadgeRoom extends FanBadge { avatar: string }
 interface GlowPlan { uid: string; gift: number; name: string; available: number; each: number; total: number; rooms: BadgeRoom[]; avatarError: string }
 interface GlowDelivery { status: 'sending' | 'sent' | 'failed'; error?: string }
-interface BackpackState { loading: boolean; error: string; gifts: BagGift[]; badges: BadgeRoom[]; avatarError: string; pocket: PocketItem[]; vipDays: number | null; month: MonthCost | null; plan: GlowPlan | null; preparing: boolean; glowError: string; sendError: string; sending: boolean; deliveries: Record<string, GlowDelivery>; sent: Record<string, number> }
-export function createBackpack(settings: SettingsStore, player: PlayerStore, open: () => void, openGlow: () => void) {
+interface BackpackState { starting: boolean; loading: boolean; error: string; gifts: BagGift[]; badges: BadgeRoom[]; avatarError: string; pocket: PocketItem[]; vipDays: number | null; month: MonthCost | null; plan: GlowPlan | null; preparing: boolean; glowError: string; sendError: string; sending: boolean; deliveries: Record<string, GlowDelivery>; sent: Record<string, number> }
+export function createBackpack(settings: SettingsStore, player: PlayerStore, open: () => void, openGlow: () => void, startup?: Promise<boolean>) {
   const api = new BackpackApi();
   const roomApi = new RoomApi();
   const avatars = new Map<string, string>();
-  const state = createState<BackpackState>({ loading: false, error: '', gifts: [], badges: [], avatarError: '', pocket: [], vipDays: null, month: null, plan: null, preparing: false, glowError: '', sendError: '', sending: false, deliveries: {}, sent: {} });
+  const state = createState<BackpackState>({ starting: !!startup, loading: false, error: '', gifts: [], badges: [], avatarError: '', pocket: [], vipDays: null, month: null, plan: null, preparing: false, glowError: '', sendError: '', sending: false, deliveries: {}, sent: {} });
   const dom = mountBackpackPage(open, () => { void refresh(); }, openGlow);
   let stopped = false, generation = 0, identity = '', lastOptions = '', nextAt = 0;
   async function badgeRooms(badges: FanBadge[]) {
@@ -41,12 +42,21 @@ export function createBackpack(settings: SettingsStore, player: PlayerStore, ope
     if (!room || !uid || !accountReady() || state.value.loading || stopped || state.value.sending || state.value.preparing) return;
     publish({ loading: true, error: '' });
     const errors: string[] = [];
+    const updates: Partial<BackpackState> = {};
     const current = () => !stopped && generation === revision && uid === accountId() && room === player.value.roomId;
     async function load<T>(enabled: boolean, label: string, read: () => Promise<T>, result: (value: T) => Partial<BackpackState>) {
       if (!enabled) return;
-      try { const value = await read(); if (current()) { publish(result(value)); diagnostics.report('backpack.api', 'ready', `${label}资料读取完成，空数据按官方结果处理`, label); } }
+      try {
+        const value = await read();
+        if (current()) {
+          Object.assign(updates, result(value));
+          diagnostics.report('backpack.api', 'ready', `${label}资料读取完成，空数据按官方结果处理`, label);
+        }
+      }
       catch (cause) { if (current()) { const error = `${label}：${cause instanceof Error ? cause.message : String(cause)}`; errors.push(error); diagnostics.report('backpack.api', 'error', error, label); } }
     }
+    await yieldToPage();
+    if (!current()) return;
     await Promise.all([
       load(options.details || options.glow, '背包', () => api.bag(room), gifts => {
         const plan = state.value.plan;
@@ -62,7 +72,7 @@ export function createBackpack(settings: SettingsStore, player: PlayerStore, ope
         const value = await api.month(); if (current()) localStorage.setItem(key, JSON.stringify(value)); return value;
       }, month => ({ month })),
     ]);
-    if (current()) { publish({ loading: false, error: errors.join('；') }); nextAt = optionSignature === JSON.stringify(settings.value.backpack) ? Date.now() + 60000 : 0; }
+    if (current()) { publish({ ...updates, loading: false, error: errors.join('；') }); nextAt = optionSignature === JSON.stringify(settings.value.backpack) ? Date.now() + 60000 : 0; }
   }
   async function prepare(each = settings.value.backpack.glowCount) {
     if (stopped || state.value.sending || state.value.preparing) return;
@@ -118,8 +128,8 @@ export function createBackpack(settings: SettingsStore, player: PlayerStore, ope
   }
   function sync() {
     const nextIdentity = `${accountId()}:${player.value.roomId || ''}`, nextOptions = JSON.stringify(settings.value.backpack);
-    dom.apply(settings.value.backpack);
     if (identity === nextIdentity && lastOptions === nextOptions) return;
+    if (!state.value.starting && lastOptions !== nextOptions) dom.apply(settings.value.backpack);
     const accountChanged = identity.split(':')[0] !== accountId();
     const roomChanged = identity !== nextIdentity;
     identity = nextIdentity; lastOptions = nextOptions; nextAt = 0;
@@ -127,10 +137,16 @@ export function createBackpack(settings: SettingsStore, player: PlayerStore, ope
       generation++; api.close(); roomApi.close();
       publish({ loading: false, preparing: false, sending: false, plan: null, glowError: '', sendError: '', deliveries: {}, sent: {}, vipDays: null, pocket: [], gifts: [], badges: [], avatarError: '', month: null, error: '' });
     } else if (roomChanged) publish({ loading: false, vipDays: null, pocket: [], error: '' });
-    void refresh();
+    if (!state.value.starting) void refresh();
   }
   const stopSettings = settings.subscribe(sync), stopPlayer = player.subscribe(sync);
-  const timer = setInterval(() => { sync(); if (!document.hidden && Date.now() >= nextAt) void refresh(); }, 1000);
+  const timer = setInterval(() => { sync(); if (!state.value.starting && !document.hidden && Date.now() >= nextAt) void refresh(); }, 1000);
+  void startup?.then(ready => {
+    if (!ready || stopped) return;
+    dom.apply(settings.value.backpack);
+    publish({ starting: false });
+    if (!document.hidden) void refresh();
+  });
   return { ...state, get value() { return state.value; }, refresh: () => { retryAccount(); return refresh(); }, prepare, setGlowCount, send, openGlow,
     dispose() { stopped = true; generation++; clearInterval(timer); stopSettings(); stopPlayer(); api.close(); roomApi.close(); dom.dispose(); } };
 }

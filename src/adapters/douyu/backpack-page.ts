@@ -18,7 +18,8 @@ export function mountBackpackPage(open: () => void, refresh: () => void, openGlo
   const currentBadge = document.createElement('span'); currentBadge.className = 'guanyu-chat-badge-days';
   const pocket = document.createElement('div'); pocket.className = 'guanyu-pocket';
   const expiry = new Set<HTMLElement>(), badgeDays = new Set<HTMLElement>();
-  let options: BackpackOptions, data: BackpackPageData = { gifts: [], badges: [], pocket: [], vipDays: null, month: null, roomId: '', uid: '' }, signature = '';
+  let options: BackpackOptions, data: BackpackPageData = { gifts: [], badges: [], pocket: [], vipDays: null, month: null, roomId: '', uid: '' };
+  let shownPocket: PocketItem[] | undefined, frame = 0;
   let visible = false, identity = '';
   const visibilityKey = () => `guanyu:month-cost:visible:v1:${data.uid}`;
   function renderMonth() {
@@ -37,6 +38,7 @@ export function mountBackpackPage(open: () => void, refresh: () => void, openGlo
   const onStorage = (event: StorageEvent) => { if (event.key === visibilityKey() || event.key === null) { visible = localStorage.getItem(visibilityKey()) === 'true'; renderMonth(); } };
   window.addEventListener('storage', onStorage);
   let previousPanel: Element | null = null;
+  let nativeUnit: HTMLElement | null | undefined, theme: string | null | undefined;
   function sync() {
     if (!options) return;
     const enabled = Object.entries(options).some(([key, value]) => key !== 'glowCount' && value);
@@ -45,19 +47,23 @@ export function mountBackpackPage(open: () => void, refresh: () => void, openGlo
     else entry.remove();
     if (panel && options.details) { if (summary.parentElement !== panel) panel.insertBefore(summary, entry.parentElement === panel ? entry : null); }
     else summary.remove();
-    let price = 0, intimate = 0;
-    for (const gift of data.gifts) { if (Number(gift.isValuable) === 1) price += Number(gift.price) * Number(gift.count); intimate += Number(gift.intimate) * Number(gift.count); }
-    const text = `背包价值 ¥${(price / 100).toFixed(2)}　总亲密度 ${intimate}`;
-    if (summary.textContent !== text) summary.textContent = text;
+    if (panel && options.details) {
+      let price = 0, intimate = 0;
+      for (const gift of data.gifts) { if (Number(gift.isValuable) === 1) price += Number(gift.price) * Number(gift.count); intimate += Number(gift.intimate) * Number(gift.count); }
+      const text = `背包价值 ¥${(price / 100).toFixed(2)}　总亲密度 ${intimate}`;
+      if (summary.textContent !== text) summary.textContent = text;
+    }
     if (panel && options.vipExpiry && data.vipDays !== null) { vip.textContent = `本房 VIP 剩余 ${data.vipDays} 天`; if (vip.parentElement !== panel) panel.append(vip); } else vip.remove();
     const wealth = document.querySelector('.InteractABAd-valueInfo') ?? document.querySelector('.PlayerToolbar-Wealth');
     const fishball = wealth?.querySelector('.is-yw')?.parentElement;
     if (wealth && options.monthCost) {
       if (monthItem.parentElement !== wealth || (fishball && monthItem.nextElementSibling !== fishball)) wealth.insertBefore(monthItem, fishball ?? wealth.firstChild);
     } else monthItem.remove();
-    const nativeUnit = wealth?.querySelector<HTMLElement>('.InteractABAd-valueInfo--item:not(.guanyu-backpack-month) .is-unit');
-    if (nativeUnit) {
-      const color = getComputedStyle(nativeUnit).color;
+    const unit = wealth?.querySelector<HTMLElement>('.InteractABAd-valueInfo--item:not(.guanyu-backpack-month) .is-unit');
+    const currentTheme = document.documentElement.getAttribute('data-mantine-color-scheme');
+    if (unit && (unit !== nativeUnit || theme !== currentTheme)) {
+      nativeUnit = unit; theme = currentTheme;
+      const color = getComputedStyle(unit).color;
       monthItem.style.setProperty('--guanyu-native-muted', color);
       currentBadge.style.setProperty('--guanyu-native-muted', color);
     }
@@ -88,9 +94,8 @@ export function mountBackpackPage(open: () => void, refresh: () => void, openGlo
     }
     const head = document.querySelector('.FansMedalInfo-head');
     if (options.pocket && head && data.pocket.length) { if (pocket.parentElement !== head) head.append(pocket); } else pocket.remove();
-    const next = JSON.stringify(data.pocket);
-    if (signature !== next) {
-      signature = next; pocket.replaceChildren();
+    if (shownPocket !== data.pocket) {
+      shownPocket = data.pocket; pocket.replaceChildren();
       for (const item of data.pocket) { const span = document.createElement('span'), image = document.createElement('img'); image.src = item.webIcon; image.alt = ''; span.append(image, item.name); span.title = item.intro; pocket.append(span); }
     }
     for (const [key, node, missing] of [
@@ -104,13 +109,18 @@ export function mountBackpackPage(open: () => void, refresh: () => void, openGlo
     if (options.pocket) diagnostics.report('backpack.pocket', !head ? 'unmatched' : pocket.isConnected ? 'applied' : 'idle', !head ? '未找到 .FansMedalInfo-head，等待展开粉丝牌资料' : pocket.isConnected ? '已挂载主播口袋道具' : '口袋资料尚未返回或没有可显示的道具');
     if (panel !== previousPanel) { previousPanel = panel; if (panel && enabled) refresh(); }
   }
-  const timer = setInterval(sync, 1000);
+  function schedule() {
+    if (!frame) frame = requestAnimationFrame(() => { frame = 0; sync(); });
+  }
+  const timer = setInterval(schedule, 1000);
   return {
     apply(value: BackpackOptions) { options = value; sync(); }, update(value: BackpackPageData) {
+      const monthChanged = data.month !== value.month || identity !== value.uid;
       data = value;
       if (identity !== value.uid) { identity = value.uid; try { visible = localStorage.getItem(visibilityKey()) === 'true'; } catch { visible = false; } }
-      renderMonth(); sync();
+      if (monthChanged || !monthToggle.firstChild) renderMonth();
+      schedule();
     },
-    dispose() { clearInterval(timer); window.removeEventListener('storage', onStorage); entry.remove(); summary.remove(); monthItem.remove(); vip.remove(); glow.remove(); currentBadge.remove(); pocket.remove(); for (const node of [...expiry, ...badgeDays]) node.remove(); },
+    dispose() { clearInterval(timer); cancelAnimationFrame(frame); window.removeEventListener('storage', onStorage); entry.remove(); summary.remove(); monthItem.remove(); vip.remove(); glow.remove(); currentBadge.remove(); pocket.remove(); for (const node of [...expiry, ...badgeDays]) node.remove(); },
   };
 }

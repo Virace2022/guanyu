@@ -8,11 +8,12 @@ const prefix = 'guanyu:team:layout:v1:';
 const preferencesKey = 'guanyu:team:preferences:v1';
 type Detection = 'auto' | 'include' | 'exclude';
 
-export function createTeam(source: TeamSourceStore, storage: Storage, events: Window, settings: SettingsStore) {
+export function createTeam(source: TeamSourceStore, storage: Storage, events: Window, settings: SettingsStore, startup?: Promise<boolean>) {
   const api = new RoomApi();
   let modes: Record<string, Detection> = {}, grouped = false, showRoomIds = false, activity = '', released = false, preferenceError = '';
   let timer: ReturnType<typeof setInterval> | undefined;
   let pending: Promise<void> | null = null;
+  let ready = !startup;
   const statuses = new Map<string, boolean>();
   function readPreferences() {
     const value = JSON.parse(storage.getItem(preferencesKey) ?? 'null');
@@ -37,7 +38,7 @@ export function createTeam(source: TeamSourceStore, storage: Storage, events: Wi
   }
   function schedule() {
     clearInterval(timer); timer = undefined;
-    if (state.value.options.autoRefresh && state.value.source) timer = setInterval(() => { if (!document.hidden) void refreshStatus(); }, state.value.options.refreshSeconds * 1000);
+    if (ready && state.value.options.autoRefresh && state.value.source) timer = setInterval(() => { if (!document.hidden) void refreshStatus(); }, state.value.options.refreshSeconds * 1000);
   }
   const stop = source.subscribe(next => {
     const changed = (next?.activity ?? '') !== activity;
@@ -49,14 +50,20 @@ export function createTeam(source: TeamSourceStore, storage: Storage, events: Wi
       state.set({ ...state.value, preview: false, previewMembers: false, lastRefresh: 0, refreshing: false, statusError: '' });
     }
     updateSource();
-    if (changed) { read(); schedule(); if (state.value.options.autoRefresh) void refreshStatus(); }
+    if (changed) { read(); schedule(); if (ready && state.value.options.autoRefresh) void refreshStatus(); }
   });
   const stopSettings = settings.runtime.subscribe(value => {
     const previous = state.value.options;
     state.set({ ...state.value, options: { ...value.team, hideBanner: value.optimization.hideTopBanner } });
     if (previous.autoRefresh !== value.team.autoRefresh || previous.refreshSeconds !== value.team.refreshSeconds) {
-      schedule(); if (value.team.autoRefresh) void refreshStatus();
+      schedule(); if (ready && value.team.autoRefresh) void refreshStatus();
     }
+  });
+  void startup?.then(loaded => {
+    if (!loaded || released) return;
+    ready = true;
+    schedule();
+    if (!document.hidden && state.value.options.autoRefresh) void refreshStatus();
   });
 
   async function refreshStatus() {

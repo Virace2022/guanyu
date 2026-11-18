@@ -1,5 +1,8 @@
 import { GM_registerMenuCommand, GM_unregisterMenuCommand, monkeyWindow, unsafeWindow } from '$';
 import { observePlayer } from '../adapters/douyu/player';
+import { watchChatRoom } from '../adapters/douyu/chat-priority';
+import { afterPageLoad, yieldToPage } from './background-work';
+import { diagnostics } from './diagnostics';
 import { observePageTheme } from '../adapters/douyu/theme';
 import { createSettings } from '../config/settings';
 import { createGain } from '../features/volume-gain/controller';
@@ -34,23 +37,27 @@ import { createGlowWindow } from '../ui/glow-window';
 import { mountViolationNotice } from '../ui/violation-notice';
 
 export function start() {
+  const deferredStartup = new AbortController();
+  const startup = afterPageLoad(deferredStartup.signal);
   const settings = createSettings(localStorage, window);
   const stopDiagnostics = configureFeatureLogs(settings);
+  const pageTools = createPageTools(settings, unsafeWindow), barrage = createBarrage(settings, unsafeWindow);
   const player = observePlayer(unsafeWindow), pageTheme = observePageTheme();
+  const stopWatchingChat = watchChatRoom(player);
   const stopTheme = connectTheme(settings, pageTheme);
-  const gain = createGain(player, settings, localStorage, window), pageTools = createPageTools(settings, unsafeWindow), barrage = createBarrage(settings, unsafeWindow);
-  const teamSource = observeTeam(unsafeWindow), team = createTeam(teamSource, localStorage, window, settings);
+  const gain = createGain(player, settings, localStorage, window);
+  const teamSource = observeTeam(unsafeWindow), team = createTeam(teamSource, localStorage, window, settings, startup);
   const teamEditor = createTeamEditor(team, settings, pageTheme);
   let prompt = (_target?: number) => {};
   const multi = createMultiscreen(settings, team, target => prompt(target));
   const multiWindow = createMultiWindow(multi); prompt = multiWindow.open;
   const openTeam = () => { if (team.value.source) teamEditor.open(); else settingsWindow.open('team'); };
-  const sign = createSign(settings, () => player.value.roomId || '', (title, content) => confirmAction(title, content, '前往鱼吧', '继续自动重试'));
+  const sign = createSign(settings, () => player.value.roomId || '', (title, content) => confirmAction(title, content, '前往鱼吧', '继续自动重试'), startup);
   const roomPage = createRoomPage(settings, player);
   const playback = createPlayback(settings, player, () => roomPage.value.roomId === player.value.roomId && roomPage.value.live === true, gain.handoffAudio);
   const removeViolationNotice = mountViolationNotice(player, playback.violation);
   let openGlow = () => {};
-  const backpack = createBackpack(settings, player, () => settingsWindow.open('backpack'), () => openGlow());
+  const backpack = createBackpack(settings, player, () => settingsWindow.open('backpack'), () => openGlow(), startup);
   const glowWindow = createGlowWindow(backpack, settings); openGlow = glowWindow.open;
   const settingsWindow = createSettingsWindow(settings, gain, pageTheme, pageTools, team, multi, sign, backpack, playback, roomPage, openTeam);
   const stopRuntimeLogs = observeRuntimeLogs(team, multi, sign);
@@ -59,7 +66,7 @@ export function start() {
   const removeTeamLayout = mountTeamLayout(team, openTeam, player);
   const removeTopBanner = mountTopBanner(settings, team);
   const removeRoomLayout = mountRoomLayout(settings, team);
-  const removeQuickDock = mountQuickDock(settings, () => settingsWindow.open());
+  const removeQuickDock = mountQuickDock(settings, () => settingsWindow.open(), startup);
   const menus = [GM_registerMenuCommand('观鱼 · 设置', () => settingsWindow.open()), GM_registerMenuCommand('观鱼 · 团播名单', openTeam), GM_registerMenuCommand('观鱼 · 每日任务', () => settingsWindow.open('sign'))];
   const toggle = (key: keyof OptimizationOptions) => settings.save({ ...settings.value, optimization: { ...settings.value.optimization, [key]: !settings.value.optimization[key] } });
   const hasTeam = () => !!team.value.source;
@@ -90,10 +97,15 @@ export function start() {
     signSettings: { label: () => '每日任务', run: () => settingsWindow.open('sign') },
   };
   const context = mountPlayerMenu(settings, actions, message => { void confirmAction('操作未完成', message, '知道了'); }, screenMenu.context);
-  multi.start();
+  void startup.then(async ready => {
+    if (!ready) return;
+    await yieldToPage(deferredStartup.signal);
+    if (!deferredStartup.signal.aborted) multi.start();
+  }).catch(cause => { if (!deferredStartup.signal.aborted) diagnostics.failure('多屏初始化', cause); });
   if (settings.value.debugLogs) console.info('[观鱼][基础] 初始化完成，后续日志随功能运行输出', { sameWindow: monkeyWindow === unsafeWindow });
   function onPageHide(event: PageTransitionEvent) { if (!event.persisted) dispose(); }
   function dispose() {
+    deferredStartup.abort();
     stopRuntimeLogs();
     stopDiagnostics();
     for (const menu of menus) GM_unregisterMenuCommand(menu);
@@ -102,7 +114,7 @@ export function start() {
     removeTopBanner();
     removeRoomLayout();
     removeQuickDock(); barrage.dispose(); pageTools.dispose(); removeTeamLayout(); teamEditor.dispose(); team.dispose(); teamSource.dispose();
-    removeGainControl(); gain.dispose(); player.dispose(); stopTheme(); pageTheme.dispose(); settings.dispose();
+    removeGainControl(); gain.dispose(); stopWatchingChat(); player.dispose(); stopTheme(); pageTheme.dispose(); settings.dispose();
     window.removeEventListener('pagehide', onPageHide);
   }
   window.addEventListener('pagehide', onPageHide);

@@ -1,6 +1,6 @@
 import { taskDay } from './task-request';
 
-export function createTaskRunner(storage: Storage = localStorage) {
+export function createTaskRunner(storage: Storage = localStorage, yieldToPage?: () => Promise<void>) {
   let uid = '', owner = false, stopped = false;
   let release: (() => void) | undefined;
   let pending: Promise<boolean> | undefined;
@@ -13,7 +13,10 @@ export function createTaskRunner(storage: Storage = localStorage) {
     }
     if (!account) return false;
     if (!navigator.locks) throw new Error('自动签到需要 HTTPS 和支持 Web Locks 的新版浏览器');
-    if (roomId) storage.setItem(`guanyu:task-room:v1:${account}`, roomId);
+    if (roomId) {
+      const roomKey = `guanyu:task-room:v1:${account}`;
+      if (storage.getItem(roomKey) !== roomId) storage.setItem(roomKey, roomId);
+    }
     if (owner) return true;
     if (pending) return pending;
     const attempt = new Promise<boolean>((resolve, reject) => {
@@ -33,6 +36,7 @@ export function createTaskRunner(storage: Storage = localStorage) {
 
   return {
     claim,
+    yield: yieldToPage,
     room() { return uid ? storage.getItem(`guanyu:task-room:v1:${uid}`) || '' : ''; },
     submit(account: string) {
       for (const kind of ['daily', 'yuba']) storage.setItem(`guanyu:task-retry:v1:${account}:${kind}`, taskDay());

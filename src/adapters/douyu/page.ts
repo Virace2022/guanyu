@@ -22,6 +22,7 @@ export function mountPageTools(toggleChat: () => void) {
   let rank: Element | null = null;
   let previousY = Math.max(0, scrollY), direction = 0, distance = 0;
   let frame = 0;
+  let chatFrame = 0, resizePending = false;
   const summary = document.createElement('div'); summary.className = 'guanyu-chat-summary';
   const counts = document.createElement('span'); counts.className = 'guanyu-chat-counts';
   const rankItems = ['贵宾', '钻粉'].map((name, index) => {
@@ -40,7 +41,19 @@ export function mountPageTools(toggleChat: () => void) {
     catch (error) { status.textContent = `未能保存：${String(error)}`; }
   }
   restore.onclick = collapse.onclick = toggle;
-  const rankObserver = new MutationObserver(syncChat);
+  const rankObserver = new MutationObserver(scheduleChat);
+
+  function scheduleChat() {
+    if (chatFrame) return;
+    chatFrame = requestAnimationFrame(() => {
+      syncChat();
+      if (resizePending) {
+        resizePending = false;
+        window.dispatchEvent(new Event('resize'));
+      }
+      chatFrame = 0;
+    });
+  }
 
   function syncPage() {
     if (!options) return;
@@ -53,16 +66,15 @@ export function mountPageTools(toggleChat: () => void) {
       root.classList.toggle(classes[key], enabled); changed = true;
     }
     if (!room) showHeader();
-    syncChat();
-    for (const key of ['hideAds', 'hideGiftBar', 'hidePk', 'hideActivities'] as const) if (options[key]) {
-      reportStyleMatches(`optimization.${key}`, style, `html.${classes[key]} `, '隐藏规则已挂载，当前没有匹配内容，继续观察');
+    scheduleChat();
+    if (diagnostics.verbose) {
+      for (const key of ['hideAds', 'hideGiftBar', 'hidePk', 'hideActivities'] as const) if (options[key]) {
+        reportStyleMatches(`optimization.${key}`, style, `html.${classes[key]} `, '隐藏规则已挂载，当前没有匹配内容，继续观察');
+      }
+      if (options.autoHideHeader) reportMatches('optimization.autoHideHeader', '.Header-wrap, .layout-Header', '未找到导航宿主，滚动监听仍保留');
     }
-    if (options.autoHideHeader) reportMatches('optimization.autoHideHeader', '.Header-wrap, .layout-Header', '未找到导航宿主，滚动监听仍保留');
-    if (changed) window.dispatchEvent(new Event('resize'));
+    resizePending ||= changed;
   }
-  const pageObserver = new MutationObserver(syncPage);
-  pageObserver.observe(root, { attributes: true, attributeFilter: ['class'], childList: true });
-  pageObserver.observe(document.head, { childList: true });
 
   function syncChat() {
     const nextRank = document.querySelector('.layout-Player-rank');
@@ -78,11 +90,8 @@ export function mountPageTools(toggleChat: () => void) {
     const nativeButton = rank?.querySelector<HTMLElement>('.DiamondsFansRankInfo-diamondsFansIcon:not(.guanyu-chat-collapse)');
     if (nativeButton) {
       const nativeClass = nativeButton.className.trim();
-      const font = getComputedStyle(nativeButton).font;
       if (collapse.className !== `${nativeClass} guanyu-chat-collapse`) collapse.className = `${nativeClass} guanyu-chat-collapse`;
       if (restore.className !== `${nativeClass} guanyu-chat-restore`) restore.className = `${nativeClass} guanyu-chat-restore`;
-      collapse.style.setProperty('--guanyu-native-button-font', font);
-      restore.style.setProperty('--guanyu-native-button-font', font);
     } else {
       collapse.className = 'guanyu-chat-collapse guanyu-chat-fallback';
       restore.className = 'guanyu-chat-restore guanyu-chat-fallback';
@@ -127,7 +136,7 @@ export function mountPageTools(toggleChat: () => void) {
     if (event.target instanceof Element && event.target.closest('.Header-wrap, .layout-Header')) showHeader();
   }
   window.addEventListener('scroll', onScroll, { passive: true });
-  window.addEventListener('resize', syncChat);
+  window.addEventListener('resize', scheduleChat);
   document.addEventListener('fullscreenchange', showHeader);
   document.addEventListener('focusin', onFocus);
   const timer = setInterval(syncPage, 1000);
@@ -139,12 +148,11 @@ export function mountPageTools(toggleChat: () => void) {
       collapse.style.setProperty('--guanyu-page-accent', accentColor);
       if (!value.autoHideHeader) showHeader();
       syncPage();
-      window.dispatchEvent(new Event('resize'));
     },
     dispose() {
-      clearInterval(timer); cancelAnimationFrame(frame); rankObserver.disconnect(); pageObserver.disconnect();
+      clearInterval(timer); cancelAnimationFrame(frame); cancelAnimationFrame(chatFrame); rankObserver.disconnect();
       window.removeEventListener('scroll', onScroll); document.removeEventListener('fullscreenchange', showHeader); document.removeEventListener('focusin', onFocus);
-      window.removeEventListener('resize', syncChat);
+      window.removeEventListener('resize', scheduleChat);
       root.classList.remove(...Object.values(classes), 'guanyu-header-hidden');
       summary.remove(); collapse.remove(); status.remove(); style.parentNode?.removeChild(style);
       window.dispatchEvent(new Event('resize'));

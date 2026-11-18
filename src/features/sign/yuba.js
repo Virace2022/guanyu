@@ -76,6 +76,8 @@ export class SignYubaController {
         this.waiting = false;
         const previousError = this.storageError;
         try {
+            await this.runner.yield?.();
+            if (this.stopped) return;
             const uid = accountId();
             if (!uid) {
                 this.uid = null; this.state = null;

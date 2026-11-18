@@ -1,6 +1,6 @@
 import { GM_openInTab } from '$';
 import type { SettingsStore } from '../../config/settings';
-import { accountId, createTaskRequest, retryAccount, taskDay } from '../../adapters/douyu/task-request';
+import { accountId, createTaskRequest, interrupted, retryAccount, taskDay } from '../../adapters/douyu/task-request';
 import { createState } from '../../core/state';
 import { createDailyTasks, type SignRow } from './daily';
 import { SignYubaController } from './yuba';
@@ -8,26 +8,33 @@ import type { LevelTask } from '../../adapters/douyu/tasks';
 import { createStarPacket, type StarPacketSnapshot } from './star-packet';
 import { createTaskRunner } from '../../adapters/douyu/task-runner';
 import { diagnostics } from '../../core/diagnostics';
+import { yieldToPage } from '../../core/background-work';
 
 export interface SignSnapshot {
   uid: string; day: string; rows: SignRow[]; tasks: LevelTask[]; yubaDetails: string[];
-  running: boolean; error: string; notice: string; restore: string;
+  starting: boolean; running: boolean; error: string; notice: string; restore: string;
   packet: StarPacketSnapshot;
 }
 export function createSign(settings: SettingsStore, roomId: () => string,
-  reminder: (title: string, content: string) => Promise<boolean>) {
-  const packet = createStarPacket(settings, roomId);
-  const state = createState<SignSnapshot>({ uid: '', day: taskDay(), rows: [], tasks: [], yubaDetails: [], running: false, error: '', notice: '', restore: '', packet: packet.value });
+  reminder: (title: string, content: string) => Promise<boolean>, startup?: Promise<boolean>) {
+  const packet = createStarPacket(settings, roomId, startup);
+  let starting = !!startup;
+  let pageLoaded = !startup;
+  const state = createState<SignSnapshot>({ uid: '', day: taskDay(), rows: [], tasks: [], yubaDetails: [], starting, running: false, error: '', notice: '', restore: '', packet: packet.value });
   let yuba: SignYubaController | undefined, stopped = false, notice = '';
   let yubaRow: SignRow = { id: 'yuba', label: '鱼吧签到', status: 'pending', detail: '等待登录后读取', nextAt: 0, attempts: 0 };
   let yubaDetails: string[] = [];
-  const runner = createTaskRunner();
+  const runner = createTaskRunner(localStorage, async () => {
+    if (startup && !await startup) throw interrupted();
+    await yieldToPage();
+  });
   const daily = createDailyTasks(settings, roomId, runner);
   function publish() {
     if (stopped) return;
     const value = daily.value;
     state.set({ uid: value.uid, day: value.day, rows: [{ ...yubaRow }, ...value.rows], tasks: value.tasks,
-      yubaDetails: [...yubaDetails], running: value.running || !!yuba?.running || packet.value.running, error: value.error, notice, restore: value.restore, packet: packet.value });
+      yubaDetails: [...yubaDetails], starting: starting && settings.value.sign.enabled,
+      running: value.running || !!yuba?.running || packet.value.running, error: value.error, notice, restore: value.restore, packet: packet.value });
   }
   function report(controller: SignYubaController, message: string) {
     const progress = controller.state, groups = Object.values(progress?.groups || {}) as any[];
@@ -50,12 +57,15 @@ export function createSign(settings: SettingsStore, roomId: () => string,
     }
     publish();
   }
-  const stopDaily = daily.subscribe(publish);
+  const stopDaily = daily.subscribe(() => {
+    if (pageLoaded) starting = false;
+    publish();
+  });
   const stopPacket = packet.subscribe(publish);
   const stopSettings = settings.subscribe(value => {
     const enabled = value.sign.enabled && value.sign.yuba;
     if (enabled && !yuba) {
-      yuba = new SignYubaController(settings, createTaskRequest(), report,
+      yuba = new SignYubaController(settings, createTaskRequest(localStorage, yieldToPage), report,
         (message: string, level?: string) => {
           notice = message;
           if (level === 'error') {
@@ -72,6 +82,10 @@ export function createSign(settings: SettingsStore, roomId: () => string,
     if (!enabled) yubaRow = { ...yubaRow, status: 'disabled', detail: '已关闭自动鱼吧签到' };
     else if (yuba) void yuba.wake();
     publish();
+  });
+  void startup?.then(ready => {
+    if (!ready || stopped) return;
+    pageLoaded = true;
   });
   return { ...state, get value() { return state.value; },
     async run() {

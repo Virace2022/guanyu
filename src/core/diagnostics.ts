@@ -21,6 +21,7 @@ function reportError(id: string, category: string, name: string, stage: string, 
 }
 
 export const diagnostics = {
+  get verbose() { return verbose; },
   start(version: string) {
     entries.clear(); errors.clear(); running = true; verbose = false; publishErrors();
     console.info(`%c><(((°>  观鱼 v${version}\n脚本已加载，详细功能日志可在「通用 → 诊断」中开启。`, 'color:#ff5d23;font-weight:bold');

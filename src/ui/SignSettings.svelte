@@ -13,15 +13,21 @@
 <p class="intro">为当前账号自动签到、完成下方已开启的任务并领取奖励。</p>
 <section>
   <h2 data-setting="sign.progress">今日进度</h2>
-  <p class="help">{runtime.uid ? `账号 ${runtime.uid} · 北京时间 ${runtime.day}` : '登录斗鱼后自动读取进度。'}</p>
-  <div class="inline-actions"><button class="button" disabled={!runtime.uid || runtime.running || !saved.enabled || unsaved} onclick={() => { void sign.run(); }}>{runtime.running ? '正在处理…' : '检查已开启任务'}</button><a class="button" href="https://www.douyu.com/pages/ord-task-center?clientType=web" target="_blank" rel="noreferrer">打开官方任务中心</a></div>
+  {#if runtime.starting}
+    <p class="guanyu-loading" role="status">正在准备每日任务…</p>
+  {:else}
+    <p class="help">{runtime.uid ? `账号 ${runtime.uid} · 北京时间 ${runtime.day}` : '登录斗鱼后自动读取进度。'}</p>
+  {/if}
+  <div class="inline-actions"><button class="button" disabled={!runtime.uid || runtime.running || !saved.enabled || unsaved} onclick={() => { void sign.run(); }}>{runtime.running && !runtime.starting ? '正在处理…' : '检查已开启任务'}</button><a class="button" href="https://www.douyu.com/pages/ord-task-center?clientType=web" target="_blank" rel="noreferrer">打开官方任务中心</a></div>
   {#if unsaved}<p class="help">每日任务有未保存修改，请先保存全部，再检查已开启的任务。</p>{:else if !saved.enabled}<p class="help">每日任务已关闭，开启并保存后才能检查任务。</p>{/if}
   {#if runtime.notice}<p class="status" role="status">{runtime.notice}</p>{/if}
   {#if runtime.error}<p class="error" role="alert">{runtime.error}</p>{/if}
   {#if runtime.restore}<p class="error" role="alert">{runtime.restore}；恢复操作优先于其他任务。</p>{/if}
-  <div class="sign-progress" aria-live="polite">
+  <div class="sign-progress" aria-live="polite" aria-busy={runtime.starting}>
     {#each runtime.rows as row (row.id)}
-      <div class="sign-progress-row"><div><strong>{row.label}</strong><span class:error-text={row.status === 'error'}>{statusName[row.status]}</span></div><p>{row.detail}</p>{#if row.error && row.error !== row.detail}<p class="error-text">{row.error}</p>{/if}</div>
+      {#if !runtime.starting}
+        <div class="sign-progress-row guanyu-ready"><div><strong>{row.label}</strong><span class:error-text={row.status === 'error'}>{statusName[row.status]}</span></div><p>{row.detail}</p>{#if row.error && row.error !== row.detail}<p class="error-text">{row.error}</p>{/if}</div>
+      {/if}
     {/each}
   </div>
   {#if runtime.yubaDetails.length}<details><summary>鱼吧未完成与补签详情（{runtime.yubaDetails.length}）</summary><ul class="sign-details">{#each runtime.yubaDetails as detail}<li>{detail}</li>{/each}</ul></details>{/if}

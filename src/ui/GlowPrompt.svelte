@@ -44,7 +44,7 @@
         <ul class="room-grid glow-rooms">{#each plan.rooms as room (room.id)}{@const delivery = runtime.deliveries[room.id]}{@const sent = runtime.sent[room.id] || 0}<li class="room-tile" data-status={delivery?.status} title={`${room.name}（${room.id}）${sent ? ` · 本页已送 ${sent} 根` : ''}${delivery?.error ? ` · ${delivery.error}` : ''}`}><RoomAvatar name={room.name} src={room.avatar} mark={delivery?.status === 'sending' ? 'busy' : delivery?.status === 'failed' ? 'failed' : sent ? 'done' : undefined} /><span class="room-name">{room.name}</span>{#if sent}<small class="room-detail">已送 {sent} 根</small>{/if}<span class="visually-hidden">房间 {room.id}{delivery?.status === 'sending' ? '，正在赠送' : delivery?.status === 'failed' ? '，本次赠送失败' : ''}</span></li>{/each}</ul>
         {#if plan.avatarError}<p class="help">{plan.avatarError}</p>{/if}
       </section>
-    {:else if runtime.preparing}<p class="glow-loading" role="status">正在读取库存与目标房间…</p>{/if}
+    {:else if runtime.preparing}<p class="glow-loading guanyu-loading" role="status">正在读取库存与目标房间…</p>{/if}
     <p class="visually-hidden" role="status">{runtime.sending ? '正在赠送' : finished ? '赠送完成' : ''}</p>
   </main>
 </dialog>

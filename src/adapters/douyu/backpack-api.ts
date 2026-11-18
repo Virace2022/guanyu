@@ -1,4 +1,5 @@
 import { assertResponse, accountId, accountToken, requireAccount, observeAccountResponse, taskDay } from './task-request';
+import { yieldToPage } from '../../core/background-work';
 
 export interface BagGift { id: number; name: string; count: number; expiry: number; met: number; price: number; intimate: number; isValuable: number; picUrlPrefix: string; propPic?: { src: string }[] }
 export interface FanBadge { id: string; name: string; since: number; days: number }
@@ -29,7 +30,9 @@ export class BackpackApi {
     return data.list;
   }
   async badges(): Promise<FanBadge[]> {
-    const doc = new DOMParser().parseFromString(await this.request('/member/cp/getFansBadgeList', undefined, true), 'text/html');
+    const html = await this.request('/member/cp/getFansBadgeList', undefined, true);
+    await yieldToPage();
+    const doc = new DOMParser().parseFromString(html, 'text/html');
     if (!doc.querySelector('.fans-badge-list')) throw new Error('未能读取粉丝牌，请检查登录状态');
     return [...doc.querySelectorAll<HTMLElement>('[data-fans-room]')].map(node => {
       const since = Number(node.dataset.fansGbdgts) * 1000;
@@ -38,7 +41,9 @@ export class BackpackApi {
     }).filter(item => /^\d+$/.test(item.id));
   }
   async vip(room: string): Promise<number | null> {
-    const doc = new DOMParser().parseFromString(await this.request('/member/platform_task/effect_list', undefined, true), 'text/html');
+    const html = await this.request('/member/platform_task/effect_list', undefined, true);
+    await yieldToPage();
+    const doc = new DOMParser().parseFromString(html, 'text/html');
     if (!doc.querySelector('.enter-wraper')) throw new Error('未能读取头衔资料，请检查登录状态');
     for (const node of doc.querySelectorAll('.show-effect-more[data-detail]')) {
       const detail = JSON.parse(node.getAttribute('data-detail') || '{}');

@@ -1,4 +1,5 @@
 import { unsafeWindow } from '$';
+import { yieldToPage } from '../../core/background-work';
 import { interrupted } from './task-request';
 
 interface Runtime { m: Record<string, Function>; c: Record<string, { exports: any }>; p: string }
@@ -43,25 +44,34 @@ export function rememberChatRuntime() {
   try { if (localStorage.getItem(recipeKey) !== value) localStorage.setItem(recipeKey, value); } catch { /* 当前页仍可直接发现官方模块。 */ }
 }
 
-function collect(target: Window, urls: string[]): ChatRuntime {
+async function collect(target: Window, urls: string[], signal: AbortSignal): Promise<ChatRuntime> {
+  let deadline = performance.now() + 4;
+  async function pause() { await yieldToPage(signal); deadline = performance.now() + 4; }
   const roots = new Map<string, Runtime>();
   for (const name of Object.getOwnPropertyNames(target)) {
+    if (performance.now() >= deadline) await pause();
     const value = Object.getOwnPropertyDescriptor(target, name)?.value;
     if (typeof value === 'function' && value.m && value.c) roots.set(name, value);
   }
   const main = roots.get('_room_common_');
-  const socket = main && Object.entries(main.m).find(([, factory]) => {
-    const source = factory.toString();
-    return source.includes('function SocketCore(') && source.includes('socketInit:');
-  })?.[0];
-  const dataEntry = [...roots].flatMap(([name, root]) => Object.entries(root.m).filter(([, factory]) => {
-    const source = factory.toString(); return source.includes('"DataCenter"') && source.includes('"SocketData"');
-  }).map(([id]) => ({ name, id })))[0];
+  let socket: string | undefined;
+  let dataEntry: { name: string; id: string } | undefined;
+  for (const [name, root] of roots) {
+    for (const [id, factory] of Object.entries(root.m)) {
+      if (performance.now() >= deadline) await pause();
+      const source = factory.toString();
+      if (!socket && root === main && source.includes('function SocketCore(') && source.includes('socketInit:')) socket = id;
+      if (!dataEntry && source.includes('"DataCenter"') && source.includes('"SocketData"')) dataEntry = { name, id };
+      if (socket && dataEntry) break;
+    }
+    if (socket && dataEntry) break;
+  }
   const polyfill = urls.find(url => url.includes('/dynamic-polyfill-master/'));
   if (!main || !socket || !dataEntry || !polyfill) throw new Error('官方聊天运行时尚未就绪');
   const queue: [string, string][] = [['_room_common_', socket], [dataEntry.name, dataEntry.id]];
   const groups = new Map<string, Map<string, string>>();
   while (queue.length) {
+    if (performance.now() >= deadline) await pause();
     const [name, id] = queue.pop()!, root = roots.get(name)!;
     let group = groups.get(name);
     if (!group) groups.set(name, group = new Map());
@@ -108,7 +118,7 @@ async function prepare(signal: AbortSignal): Promise<ChatRuntime> {
   const page = unsafeWindow as unknown as Window;
   const urls = assets(page);
   if ((page as any)._room_common_) {
-    const runtime = collect(page, urls);
+    const runtime = await collect(page, urls, signal);
     rememberChatRuntime();
     return runtime;
   }
@@ -122,7 +132,7 @@ async function prepare(signal: AbortSignal): Promise<ChatRuntime> {
       if (typeof url !== 'string' || !assetUrl.test(url)) throw new Error('官方聊天资源清单无效');
       await loadScript(target, url, signal);
     }
-    return collect(frame.contentWindow!, saved);
+    return await collect(frame.contentWindow!, saved, signal);
   } finally { frame.remove(); }
 }
 

@@ -118,7 +118,7 @@ export function mountBarrage(page: DouyuBarragePage) {
       observer.disconnect(); container = next;
       if (next) { observer.observe(next, { childList: true, subtree: true }); next.querySelectorAll<HTMLElement>('dy-fan-medal').forEach(syncMedal); }
     }
-    if (options) {
+    if (options && diagnostics.verbose) {
       for (const key of Object.keys(markSelectors) as (keyof typeof markSelectors)[]) if (options[key]) {
         const selectors = [...markSelectors[key], ...(['fans', 'diamond'].includes(key) ? ['dy-fan-medal'] : [])].map(selector => `.Barrage-listItem ${selector}`).join(', ');
         reportMatches(`barrage.${key}`, selectors, '规则已准备，当前无对应弹幕标记，继续观察');

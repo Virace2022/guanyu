@@ -1,3 +1,4 @@
+import { yieldToPage } from '../../core/background-work';
 import type { SettingsStore } from '../../config/settings';
 import type { TeamController } from '../../features/team-live/controller';
 import { readRoomLayout } from './room-layout';
@@ -19,8 +20,14 @@ export function mountTopBanner(settings: SettingsStore, team: TeamController) {
   }
   let signature = '';
   let previous: HTMLElement[] = [];
+  let previousEnabled: boolean | undefined;
   function sync() {
     const enabled = settings.runtime.value.optimization.hideTopBanner;
+    if (!enabled) {
+      if (saved.size) { restore(); window.dispatchEvent(new Event('resize')); }
+      signature = ''; previous = [];
+      return;
+    }
     const layout = readRoomLayout();
     if (!layout) { diagnostics.report('optimization.hideTopBanner', 'unmatched', '未识别播放器与内容根的布局关系：#js-player-main → #root / .layout-Main'); restore(); signature = ''; previous = []; return; }
     const candidates = [...document.querySelectorAll<HTMLElement>('.bacpCommonHeader.is-innerRoom, .wm-general, [id^="bc"][style*="background-image"]')]
@@ -35,7 +42,6 @@ export function mountTopBanner(settings: SettingsStore, team: TeamController) {
     const next = JSON.stringify([enabled, candidates.map(node => node.id || node.className), team.value.source?.activity]);
     if (next === signature && candidates.every((node, index) => node === previous[index])) return;
     restore(); signature = next; previous = candidates;
-    if (!enabled) return;
     diagnostics.report('optimization.hideTopBanner', team.value.source ? 'idle' : candidates.length ? 'applied' : 'unmatched',
       team.value.source ? '团播顶图交由名单布局处理' : candidates.length ? '已匹配播放器上方的官方顶图，应用隐藏与占位调整' : '当前没有符合布局条件的顶图；选择器：.bacpCommonHeader.is-innerRoom / .wm-general / [id^="bc"][style*="background-image"]，继续观察');
     for (const node of candidates) {
@@ -52,6 +58,23 @@ export function mountTopBanner(settings: SettingsStore, team: TeamController) {
     }
     window.dispatchEvent(new Event('resize'));
   }
-  const stop = settings.runtime.subscribe(sync), stopTeam = team.subscribe(() => { signature = ''; sync(); }), timer = setInterval(sync, 1200);
-  return () => { stop(); stopTeam(); clearInterval(timer); restore(); window.dispatchEvent(new Event('resize')); };
+  const abort = new AbortController();
+  let pending = false;
+  function schedule() {
+    if (pending) return;
+    pending = true;
+    void yieldToPage(abort.signal).then(() => {
+      if (!abort.signal.aborted) sync();
+    }).catch(cause => {
+      if (!abort.signal.aborted) diagnostics.failure('顶图整理', cause);
+    }).finally(() => { pending = false; });
+  }
+  const stop = settings.runtime.subscribe(value => {
+    const enabled = value.optimization.hideTopBanner;
+    if (enabled === previousEnabled) return;
+    previousEnabled = enabled;
+    sync();
+  });
+  const stopTeam = team.subscribe(() => { signature = ''; schedule(); }), timer = setInterval(schedule, 1200);
+  return () => { abort.abort(); stop(); stopTeam(); clearInterval(timer); restore(); window.dispatchEvent(new Event('resize')); };
 }

@@ -110,7 +110,15 @@ export function mountRoomLayout(settings: SettingsStore, team: TeamController) {
     }
   }
   function schedule() { if (!frame) frame = requestAnimationFrame(sync); }
-  const stopSettings = settings.runtime.subscribe(schedule), stopTeam = team.subscribe(schedule);
+  let hideTopBanner: boolean | undefined, hideRoomExtras: boolean | undefined;
+  const stopSettings = settings.runtime.subscribe(({ optimization }) => {
+    if (hideTopBanner === optimization.hideTopBanner && hideRoomExtras === optimization.hideRoomExtras) return;
+    hideTopBanner = optimization.hideTopBanner;
+    hideRoomExtras = optimization.hideRoomExtras;
+    cancelAnimationFrame(frame);
+    sync();
+  });
+  const stopTeam = team.subscribe(schedule);
   const timer = setInterval(schedule, 750);
   window.addEventListener('resize', schedule);
   document.addEventListener('fullscreenchange', schedule);

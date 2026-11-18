@@ -27,6 +27,7 @@ async function session(donate = async () => {}) {
   const player = core.createState({ roomId: '99' });
   const { createBackpack } = load('src/features/backpack/controller.ts', {
     '../../core/state': core,
+    '../../core/background-work': { async yieldToPage() {} },
     '../../adapters/douyu/task-request': { accountId: () => uid, accountReady: () => true, retryAccount() {}, taskDay: () => '2026-11-06' },
     '../../adapters/douyu/backpack-page': { mountBackpackPage: () => ({ apply() {}, update() {}, dispose() {} }) },
     '../../adapters/douyu/rooms': { RoomApi: class { async info() { return []; } close() {} } },

@@ -12,13 +12,15 @@ interface Progress {
 export interface StarPacketSnapshot { status: string; error: string; running: boolean; received: number }
 const pollInterval = 60000, leadTime = 2000, graceTime = 2000, sendInterval = 250;
 
-export function createStarPacket(settings: SettingsStore, roomId: () => string) {
-  const view = createState<StarPacketSnapshot>({ status: '等待识别当前直播间', error: '', running: false, received: 0 });
+export function createStarPacket(settings: SettingsStore, roomId: () => string, startup?: Promise<boolean>) {
+  const enabled = () => settings.value.sign.enabled && settings.value.sign.starPacket;
+  const view = createState<StarPacketSnapshot>({ status: !enabled() ? '星推荐红包自动领取已关闭' : startup ? '等待页面就绪后检查红包' : '等待识别当前直播间', error: '', running: false, received: 0 });
   let abort = new AbortController(), generation = 0, identity = '', stopped = false, running = false, wakeAt = 0, error = '';
   let alarm: ReturnType<typeof setTimeout> | undefined;
   let progress: Progress | undefined;
   let packets = new Map<string, StarPacket>();
-  const enabled = () => settings.value.sign.enabled && settings.value.sign.starPacket;
+  let started = false, timer: ReturnType<typeof setInterval> | undefined;
+  let stopSettings: (() => void) | undefined;
   const key = () => `guanyu:star-packet:v1:${accountId()}:${roomId()}`;
   function read(): Progress {
     const raw = localStorage.getItem(key());
@@ -97,7 +99,7 @@ export function createStarPacket(settings: SettingsStore, roomId: () => string) 
     return { ...result, attempts, nextAt: 0 };
   }
   async function wake(manual = false) {
-    if (stopped || running || !enabled() || !accountReady() || !/^\d+$/.test(roomId())) return;
+    if (!started || stopped || running || !enabled() || !accountReady() || !/^\d+$/.test(roomId())) return;
     const expected = generation, uid = accountId(), room = roomId(), day = taskDay();
     const current = () => {
       if (stopped || generation !== expected || uid !== accountId() || room !== roomId() || day !== taskDay() || !enabled()) throw interrupted();
@@ -172,12 +174,18 @@ export function createStarPacket(settings: SettingsStore, roomId: () => string) 
     publish();
     if (Date.now() >= wakeAt && !running) void wake();
   }
-  const stopSettings = settings.subscribe(sync);
-  const timer = setInterval(sync, 1000);
+  function start() {
+    if (stopped) return;
+    started = true;
+    stopSettings = settings.subscribe(sync);
+    timer = setInterval(sync, 1000);
+  }
+  if (startup) void startup.then(ready => { if (ready) start(); });
+  else start();
   const onStorage = (event: StorageEvent) => { if (!event.key || event.key === key()) { wakeAt = 0; void wake(); } };
   const onOnline = () => { wakeAt = 0; void wake(); };
   window.addEventListener('storage', onStorage); window.addEventListener('online', onOnline);
   return { ...view, get value() { return view.value; }, run: () => wake(true),
-    dispose() { stopped = true; generation++; clearInterval(timer); if (alarm !== undefined) clearTimeout(alarm); stopSettings(); abort.abort(); window.removeEventListener('storage', onStorage); window.removeEventListener('online', onOnline); },
+    dispose() { stopped = true; generation++; clearInterval(timer); if (alarm !== undefined) clearTimeout(alarm); stopSettings?.(); abort.abort(); window.removeEventListener('storage', onStorage); window.removeEventListener('online', onOnline); },
   };
 }

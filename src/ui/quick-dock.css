@@ -14,4 +14,23 @@ button { font: inherit; cursor: pointer; }
 :host(:not([data-player-controls])) .dock-trigger:hover { color: color-mix(in srgb, var(--accent, #ff5d23) 80%, black); }
 button:focus-visible { outline: 2px solid var(--accent, #ff5d23); outline-offset: 1px; }
 .dock-trigger { transition: color 120ms ease-out; }
-@media (prefers-reduced-motion: reduce) { .dock-trigger { transition: none; } }
+.dock-trigger { position: relative; }
+.dock-trigger > .dock-loading {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border: 2px solid color-mix(in srgb, currentColor 22%, transparent);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: guanyu-dock-loading 720ms linear infinite;
+  transition: opacity 160ms ease-out, visibility 160ms allow-discrete;
+}
+:host([data-player-controls]) .dock-trigger > .dock-loading { width: 16px; height: 16px; }
+.ready > .dock-loading { opacity: 0; visibility: hidden; }
+.ready > .dock-icon { animation: guanyu-dock-enter 180ms ease-out both; }
+@keyframes guanyu-dock-loading { to { transform: rotate(360deg); } }
+@keyframes guanyu-dock-enter { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .dock-trigger, .dock-trigger > .dock-loading { transition: none; }
+  .dock-trigger > .dock-loading, .ready > .dock-icon { animation: none; }
+}

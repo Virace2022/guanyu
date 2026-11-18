@@ -23,7 +23,7 @@ interface Restore { id: string; name: string }
 export interface DailySnapshot { uid: string; day: string; running: boolean; waiting: boolean; error: string; rows: SignRow[]; tasks: LevelTask[]; restore: string }
 
 export function createDailyTasks(settings: SettingsStore, roomId: () => string, runner: TaskRunner) {
-  let http = createTaskRequest();
+  let http = createTaskRequest(localStorage, runner.yield);
   const chat = createChatSessions(roomId);
   const api = createDouyuTasks({ request: (...args: Parameters<TaskRequest['request']>) => http.request(...args), dispose: () => http.dispose() });
   const client = createClientSignApi({ request: (...args: Parameters<TaskRequest['request']>) => http.request(...args), dispose: () => http.dispose() }, current);
@@ -240,15 +240,24 @@ export function createDailyTasks(settings: SettingsStore, roomId: () => string, 
     if (stopped || running) return;
     running = true; waiting = false; clearTimeout(timer);
     try {
-      load(); error = ''; publish();
-      if (!uid) { await runner.claim(''); return; }
-      if (!accountReady()) { waiting = true; return; }
+      await runner.yield?.();
+      if (stopped) return;
+      const account = accountId();
+      if (!account) { uid = ''; state = undefined; restore = undefined; await runner.claim(''); return; }
+      if (!settings.value.sign.enabled && !localStorage.getItem(`guanyu:follow-restore:v1:${account}`)) {
+        if (uid !== account) load();
+        restore = undefined; error = '';
+        await runner.claim('');
+        return;
+      }
+      error = '';
+      if (!accountReady()) { load(); waiting = true; return; }
       if (!navigator.locks) throw new Error('自动签到需要 HTTPS 和支持 Web Locks 的新版浏览器');
-      if (!await runner.claim(uid, roomId())) { waiting = true; return; }
-      rememberChatRuntime();
-      await navigator.locks.request(`guanyu:daily-tasks:${uid}`, { ifAvailable: true }, async lock => {
-        if (!lock) { waiting = true; return; }
-        current();
+      if (!await runner.claim(account, roomId())) { load(); waiting = true; return; }
+      if (stopped || accountId() !== account) return;
+      await navigator.locks.request(`guanyu:daily-tasks:${account}`, { ifAvailable: true }, async lock => {
+        if (!lock) { load(); waiting = true; return; }
+        if (stopped || accountId() !== account) return;
         const restored = load(); current();
         if (restored) persist();
         if (restore) await restoreFollow();
@@ -263,6 +272,7 @@ export function createDailyTasks(settings: SettingsStore, roomId: () => string, 
           .sort((a, b) => a.nextAt - b.nextAt)[0];
         if (!lane) return;
         active = lane.id;
+        if (lane.id === 'fanChat') rememberChatRuntime();
         lane.attempts++; lane.nextAt = Date.now() + 120000; persist(); publish();
         try {
           await execute(lane); current(); lane.attempts = 0;
@@ -285,6 +295,7 @@ export function createDailyTasks(settings: SettingsStore, roomId: () => string, 
     finally { running = false; active = undefined; if (!stopped) { publish(); schedule(); } }
   }
   function schedule() {
+    if (!settings.value.sign.enabled && !restore) return;
     let delay = 30000;
     if (!waiting && !error && state && settings.value.sign.enabled && navigator.onLine !== false) {
       const due = Object.values(state.lanes).filter(lane => settings.value.sign[lane.id as SignTask] && lane.status !== 'done').map(lane => lane.nextAt);
@@ -303,7 +314,7 @@ export function createDailyTasks(settings: SettingsStore, roomId: () => string, 
     previousRemedy = value.sign.clientRemedy;
     if (active && (!value.sign.enabled || !value.sign[active as SignTask] || active === 'client' && remedyStopped)) {
       chat.cancel();
-      http.dispose(); http = createTaskRequest();
+      http.dispose(); http = createTaskRequest(localStorage, runner.yield);
     }
     void wake();
   });

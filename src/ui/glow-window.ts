@@ -9,12 +9,22 @@ import scrollbars from './scrollbars.css?style';
 import { isolateKeyboard } from './modal';
 
 export function createGlowWindow(backpack: BackpackController, settings: SettingsStore) {
-  const host = document.createElement('div'); host.id = 'guanyu-glow-window';
-  const root = host.attachShadow({ mode: 'open' }); root.append(styles.cloneNode(true), glowStyles.cloneNode(true), motion.cloneNode(true), scrollbars.cloneNode(true));
-  const stopKeyboard = isolateKeyboard(root);
-  const component = mount(GlowPrompt, { target: root, props: { backpack, settings } }); flushSync();
+  let host: HTMLDivElement | undefined;
+  let component: ReturnType<typeof mount> & { show(): void } | undefined;
+  let stopKeyboard: (() => void) | undefined;
   return {
-    open() { (document.fullscreenElement || document.body).append(host); component.show(); },
-    dispose() { stopKeyboard(); void unmount(component); host.remove(); },
+    open() {
+      if (!host || !component) {
+        host = document.createElement('div'); host.id = 'guanyu-glow-window';
+        const root = host.attachShadow({ mode: 'open' });
+        root.append(styles.cloneNode(true), glowStyles.cloneNode(true), motion.cloneNode(true), scrollbars.cloneNode(true));
+        stopKeyboard = isolateKeyboard(root);
+        component = mount(GlowPrompt, { target: root, props: { backpack, settings } });
+        flushSync();
+      }
+      (document.fullscreenElement || document.body).append(host);
+      component.show();
+    },
+    dispose() { stopKeyboard?.(); if (component) void unmount(component); host?.remove(); },
   };
 }

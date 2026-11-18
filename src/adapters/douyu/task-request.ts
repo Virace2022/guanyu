@@ -37,7 +37,7 @@ interface RequestOptions {
   prepare?: () => { data: string; headers: Record<string, string> };
 }
 
-export function createTaskRequest(storage: Storage = localStorage) {
+export function createTaskRequest(storage: Storage = localStorage, yieldToPage?: () => Promise<void>) {
   const abort = new AbortController();
   function check(uid: string) { if (abort.signal.aborted || accountId() !== uid) throw interrupted(); }
   function wait(ms: number) {
@@ -86,8 +86,10 @@ export function createTaskRequest(storage: Storage = localStorage) {
           }
           if (options.groupId) headers.Referer = `https://yuba.douyu.com/group/${options.groupId}`;
           const url = path.startsWith('https://') ? path : `${options.yuba || path.startsWith('/wbapi') || path.startsWith('/ybapi') ? 'https://yuba.douyu.com' : 'https://www.douyu.com'}${path}`;
-          const receive = (response: { status: number; response?: unknown; responseText: string }) => {
+          const receive = async (response: { status: number; response?: unknown; responseText: string }) => {
             try {
+              if (yieldToPage) await yieldToPage();
+              if (settled) return;
               check(uid);
               let result = options.text ? response.responseText : response.response;
               if (!options.text && (!result || typeof result !== 'object')) result = JSON.parse(response.responseText);

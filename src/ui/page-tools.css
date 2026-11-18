@@ -27,7 +27,7 @@ html.guanyu-chat-collapsed .layout-Player-barrageStage:has(> .guanyu-chat-summar
 .guanyu-chat-counts > [hidden] { display: none; }
 .guanyu-chat-counts svg { width: 16px; height: 16px; flex: none; }
 /* 官方控件是 div，按钮复用其视觉类，仅消除原生 button 的字体与内边距差异。 */
-button.guanyu-chat-collapse, button.guanyu-chat-restore { appearance: none; flex: none; margin: 0; padding: 0; font: var(--guanyu-native-button-font, inherit); cursor: pointer; }
+button.guanyu-chat-collapse, button.guanyu-chat-restore { appearance: none; flex: none; margin: 0; padding: 0; font: inherit; cursor: pointer; }
 .DiamondsFansRankInfo > button.guanyu-chat-collapse, .ChatTabContainer-titleWraper > button.guanyu-chat-collapse { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); z-index: 1; }
 .ChatTabContainer-titleWraper:has(> .guanyu-chat-collapse) { position: relative; }
 .ChatTabContainer-titleWraper:has(> .guanyu-chat-collapse) > .ChatTabContainer-titleWraper--tabTitle { width: calc(100% - 96px); }

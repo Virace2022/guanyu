@@ -15,6 +15,7 @@
 
 <h1>背包与权益</h1><p class="intro">查看道具、消费和粉丝牌资料，按需手动续牌。</p>
 <div class="inline-actions"><button class="button" disabled={runtime.loading || runtime.sending} onclick={() => { void backpack.refresh(); }}>{runtime.loading ? '读取中…' : '刷新资料'}</button></div>
+{#if runtime.starting && !runtime.loading}<p class="guanyu-loading" role="status">正在准备背包资料…</p>{:else if runtime.loading}<p class="guanyu-loading" role="status">正在读取背包资料…</p>{/if}
 {#if runtime.error}<p class="error" role="alert">{runtime.error}</p>{/if}
 <section><h2>道具与消费</h2>
 {@render options(['details', 'monthCost'])}

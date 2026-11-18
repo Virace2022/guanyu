@@ -31,17 +31,21 @@ export function mountNativeShield(page: ShieldPage) {
       if (!config || typeof config !== 'object') { log('waiting', 'ShieldToolServices.getToShieldData 尚未返回屏蔽配置'); return; }
       const items = nativeShieldChoices.map(choice => Object.values(config).find(item => item.type === choice.key));
       if (items.some(item => !item || !Number.isFinite(item.id) || ![0, 1].includes(item.state))) { log('waiting', '官方屏蔽元数据缺少已知 type / 有效 id / 0或1状态，未应用偏好'); return; }
-      let skipped = 0;
+      let skipped = 0, changed = false;
       for (let index = 0; index < nativeShieldChoices.length; index++) {
         const item = items[index]!;
         if (item.isHidden) { skipped++; continue; }
         const desired = requested[nativeShieldChoices[index]!.key];
+        if (item.state === Number(desired)) continue;
         config[item.id] = { ...item, state: desired ? 1 : 0 };
+        changed = true;
       }
       // 批量走官方状态和同步路径，避免逐项切换的异步回包用中间状态覆盖最终选择。
-      call('updateReducerShield', [config]);
-      call('sendFlashShield', [config]);
-      for (let index = 0; index < nativeShieldChoices.length; index++) diagnostics.report(`shield.${nativeShieldChoices[index]!.key}`, items[index]!.isHidden ? 'idle' : 'applied', items[index]!.isHidden ? '官方标记此项 isHidden，当前不适用' : '已通过 updateReducerShield / sendFlashShield 应用');
+      if (changed) {
+        call('updateReducerShield', [config]);
+        call('sendFlashShield', [config]);
+      }
+      for (let index = 0; index < nativeShieldChoices.length; index++) diagnostics.report(`shield.${nativeShieldChoices[index]!.key}`, items[index]!.isHidden ? 'idle' : 'applied', items[index]!.isHidden ? '官方标记此项 isHidden，当前不适用' : changed ? '已通过 updateReducerShield / sendFlashShield 应用' : '官方屏蔽状态已符合偏好');
       stopWaiting();
       state.set(skipped ? `已应用屏蔽偏好，${skipped} 项当前不适用` : '已应用屏蔽偏好');
     } catch (error) {

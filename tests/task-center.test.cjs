@@ -349,6 +349,28 @@ test('已由其他页面完成的弹幕任务只核对，不重发', async () =>
   assert.equal(lane.results['80432'], 'already');
 });
 
+test('正在观看的房间延期，继续处理其他房间', async () => {
+  const lane = chatLane(['84452', '74751', '80432']);
+  const checked = [], sent = [];
+  const api = { async fanChatTask(id) {
+    checked.push(id);
+    return { cur: Number(sent.includes(id)), max: 1, done: sent.includes(id) };
+  } };
+  const sessions = { async send(id) {
+    if (id === '84452') return false;
+    sent.push(id);
+    return true;
+  } };
+  await runFanChat(lane, api, sessions, 'test-account', () => {}, () => {});
+  await runFanChat(lane, api, sessions, 'test-account', () => {}, () => {});
+  assert.deepEqual(sent, ['74751', '80432']);
+  assert.equal(checked.filter(id => id === '84452').length, 1);
+  assert.equal(lane.results['84452'], undefined);
+  assert.equal(lane.submitted['84452'], undefined);
+  assert.equal(lane.failures['84452'], undefined);
+  assert.equal(lane.status, 'waiting');
+});
+
 test('弹幕最多两路运行，逐房落盘后恢复只处理剩余房间', async () => {
   const lane = chatLane(['84452', '74751', '80432']);
   const completed = new Set(), release = new Map(), sent = [];
