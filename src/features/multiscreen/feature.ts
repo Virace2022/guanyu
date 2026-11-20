@@ -12,8 +12,9 @@ import { createMultiQuality } from './quality';
 import { searchLiveRooms } from '../../adapters/douyu/room-search';
 import type { CandidateGroup } from './candidates';
 import { createScreens } from './screens';
+import type { PlaybackController } from '../playback/controller';
 
-export function createMultiscreen(settings: SettingsStore, team: TeamController, prompt: (target?: number) => void) {
+export function createMultiscreen(settings: SettingsStore, team: TeamController, prompt: (target?: number) => void, refreshMain: PlaybackController['refreshMain']) {
   const state = createState({ ready: false, active: false, currentRoom: 0, selected: [] as number[], rooms: [] as RoomData[], groups: [] as CandidateGroup[], useFollow: settings.value.multi.useFollow, status: '等待官方播放器就绪' });
   const style = styles.cloneNode(true); document.head.append(style);
   const backend = new MultiScreenController({
@@ -32,7 +33,7 @@ export function createMultiscreen(settings: SettingsStore, team: TeamController,
   });
   const audio = createMultiAudio();
   const audioHost = mountMultiscreenAudio(() => backend.native, audio);
-  const quality = createMultiQuality(createNativeMultiQuality(() => backend.native));
+  const quality = createMultiQuality(createNativeMultiQuality(() => backend.native, refreshMain));
   const screens = createScreens(() => backend.native, id => backend.rooms.rooms.get(id));
   const labels = mountMultiscreenLabels(() => backend.native, audio, quality, id => backend.rooms.rooms.get(id), screens.open);
   const stop = settings.subscribe(value => { backend.configure(value.multi); audioHost.apply(value.multi); });

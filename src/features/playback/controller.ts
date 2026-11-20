@@ -18,6 +18,6 @@ export function createPlayback(settings: SettingsStore, player: PlayerStore, isL
     event => violation.set(event ? { ...event, ...parseViolation(event.content) } : null),
     violationError => state.set({ ...state.value, violationError }));
   const stop = settings.subscribe(value => { adapter.apply(value.playback); background.apply(value.playback.keepBackgroundVideo); rectification.apply(value.playback.keepViolationPlayback); });
-  return { ...state, violation, get value() { return state.value; }, dispose() { stop(); adapter.dispose(); handoff.dispose(); rectification.dispose(); background.dispose(); } };
+  return { ...state, violation, refreshMain: handoff.refresh, get value() { return state.value; }, dispose() { stop(); adapter.dispose(); handoff.dispose(); rectification.dispose(); background.dispose(); } };
 }
 export type PlaybackController = ReturnType<typeof createPlayback>;
