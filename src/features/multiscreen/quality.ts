@@ -10,7 +10,7 @@ export interface QualityPort {
   read: (id: number) => Promise<void>;
   change: (id: number, rate: number) => Promise<void>;
   changeLine: (id: number, cdn: string) => Promise<void>;
-  refresh: (id: number) => Promise<void>;
+  refresh: (id: number, roomName: string) => Promise<void>;
   dispose: () => void;
 }
 const empty = (): QualityRoom => ({ rates: [], rate: null, ready: false, loading: false, error: '', pending: false, refreshing: false });
@@ -57,7 +57,7 @@ export function createMultiQuality(port: QualityPort) {
       if (!value.rates.some(item => item.rate === rate)) return;
       await run(id, false, () => port.change(id, rate));
     },
-    refresh: (id: number) => run(id, true, () => port.refresh(id)),
+    refresh: (id: number, roomName: string) => run(id, true, () => port.refresh(id, roomName)),
     async changeLine(id: number, cdn: string) {
       const value = state.value.get(id) ?? empty();
       if (value.pending || value.ready && value.line === cdn || !value.lines?.some(line => line.cdn === cdn)) return;

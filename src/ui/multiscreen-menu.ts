@@ -49,7 +49,7 @@ export function createScreenMenu(multi: MultiscreenController) {
   const context: PlayerMenuContext = { screens, actions: {
     screenRefresh: { label: () => { const target = screens.current(); return target && multi.quality.get(target.id).refreshing ? '刷新中…' : '刷新此画面'; },
       enabled: () => { const target = screens.current(); return !!target && !multi.quality.get(target.id).pending; },
-      run: async () => { const target = screens.current(); if (!target) return; await multi.quality.refresh(target.id); const error = multi.quality.get(target.id).error; if (error) throw new Error(error); } },
+      run: async () => { const target = screens.current(); if (!target) return; await multi.quality.refresh(target.id, screens.name()); const error = multi.quality.get(target.id).error; if (error) throw new Error(error); } },
     screenQuality: { label: () => '清晰度', submenu: rates, enabled: () => !!screens.current() },
     screenChange: { label: () => '更换直播间…', visible: () => !screens.current()?.main, enabled: () => !!screens.current(), run: () => { const target = screens.current(); if (target && !target.main) multi.replace(target.id); } },
     screenLine: { label: () => '线路', submenu: lines, enabled: () => !!screens.current() },

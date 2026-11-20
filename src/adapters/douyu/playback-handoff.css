@@ -3,12 +3,29 @@
   pointer-events: none !important;
 }
 
+#js-player-multiContainer > [data-guanyu-refresh-cover] .loadingView-7325de {
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+#js-player-main video[data-guanyu-handoff] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+  opacity: 0.001;
+  pointer-events: none;
+  z-index: 1;
+}
+
 #js-player-main[data-guanyu-switching] .rate-ec9440 {
   pointer-events: none;
   opacity: 0.65;
 }
 
-#js-player-main[data-guanyu-switching] .rate-ec9440 .textLabel-429176::after {
+#js-player-main[data-guanyu-switching=""] .rate-ec9440 .textLabel-429176::after {
   content: ' · 切换中';
 }
 
