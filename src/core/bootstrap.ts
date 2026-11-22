@@ -1,5 +1,6 @@
 import { GM_registerMenuCommand, GM_unregisterMenuCommand, monkeyWindow, unsafeWindow } from '$';
 import { observePlayer } from '../adapters/douyu/player';
+import type { FirstStreamQuality } from '../adapters/douyu/first-stream-quality';
 import { watchChatRoom } from '../adapters/douyu/chat-priority';
 import { afterPageLoad, yieldToPage } from './background-work';
 import { diagnostics } from './diagnostics';
@@ -36,7 +37,7 @@ import { connectTheme } from '../ui/theme';
 import { createGlowWindow } from '../ui/glow-window';
 import { mountViolationNotice } from '../ui/violation-notice';
 
-export function start() {
+export function start(firstStreamQuality?: FirstStreamQuality) {
   const deferredStartup = new AbortController();
   const startup = afterPageLoad(deferredStartup.signal);
   const settings = createSettings(localStorage, window);
@@ -51,7 +52,8 @@ export function start() {
   const openTeam = () => { if (team.value.source) teamEditor.open(); else settingsWindow.open('team'); };
   const sign = createSign(settings, () => player.value.roomId || '', (title, content) => confirmAction(title, content, '前往鱼吧', '继续自动重试'), startup);
   const roomPage = createRoomPage(settings, player);
-  const playback = createPlayback(settings, player, () => roomPage.value.roomId === player.value.roomId && roomPage.value.live === true, gain.handoffAudio);
+  const playback = createPlayback(settings, player, () => roomPage.value.roomId === player.value.roomId && roomPage.value.live === true,
+    gain.handoffAudio, firstStreamQuality);
   let prompt = (_target?: number) => {};
   const multi = createMultiscreen(settings, team, target => prompt(target), playback.refreshMain);
   const multiWindow = createMultiWindow(multi); prompt = multiWindow.open;

@@ -1,5 +1,6 @@
 import type { SettingsStore } from '../../config/settings';
 import type { PlayerStore } from '../../adapters/douyu/player';
+import type { FirstStreamQuality } from '../../adapters/douyu/first-stream-quality';
 import { mountPlayback } from '../../adapters/douyu/playback';
 import { mountPlaybackHandoff } from '../../adapters/douyu/playback-handoff';
 import { mountBackgroundVideo } from '../../adapters/douyu/background-video';
@@ -8,11 +9,11 @@ import { parseViolation, type ViolationNotice } from './violation';
 import { createState } from '../../core/state';
 
 export function createPlayback(settings: SettingsStore, player: PlayerStore, isLive: () => boolean,
-  handoffAudio: (video: HTMLVideoElement, signal: AbortSignal) => Promise<() => void>) {
+  handoffAudio: (video: HTMLVideoElement, signal: AbortSignal) => Promise<() => void>, firstStreamQuality?: FirstStreamQuality) {
   const state = createState({ error: '', backgroundError: '', violationError: '' });
   const violation = createState<ViolationNotice | null>(null);
   const handoff = mountPlaybackHandoff(player, handoffAudio, error => state.set({ ...state.value, error }));
-  const adapter = mountPlayback(player, isLive, error => state.set({ ...state.value, error }));
+  const adapter = mountPlayback(player, isLive, error => state.set({ ...state.value, error }), firstStreamQuality);
   const background = mountBackgroundVideo(player, backgroundError => state.set({ ...state.value, backgroundError }));
   const rectification = mountViolationPlayback(player,
     event => violation.set(event ? { ...event, ...parseViolation(event.content) } : null),

@@ -10,7 +10,7 @@
 | 语言 | TypeScript 与已验证的 JS 模块，通过显式 imports 连接 |
 | 自有界面 | Svelte 5、原生控件、dialog/popover；复杂交互按需引入 Bits UI |
 | 运行入口 | `src/main.ts` → `src/core/bootstrap.ts` |
-| 运行范围 | `https://www.douyu.com/` 下以数字开头的房间路径、`/beta/*`、`/topic/*` 与 `/member/cp/getFansBadgeList` 顶层页面，`document-idle` |
+| 运行范围 | `https://www.douyu.com/` 下以数字开头的房间路径、`/beta/*`、`/topic/*` 与 `/member/cp/getFansBadgeList` 顶层页面，首路适配在 `document-start`，常规启动等 DOM 就绪 |
 
 `bootstrap.start()` 创建配置、播放器与页面状态，再连接功能控制器、设置窗口、原生入口和右键菜单，返回统一释放函数。各功能分别等待自己的宿主，房间和节点变化通过订阅或适配层观察器传递。
 
@@ -61,7 +61,9 @@
 
 `player.ts` 观察真实房间号、主媒体、音量宿主和原生全屏状态。房间号优先读取官方主屏服务，其次读取官方页面数据和 BroadcastEvent JSON-LD；地址栏与 canonical 的数字可能是靓号，不能作为真实房间号触发资料请求。`playback.ts` 调用官方网页全屏、画质和音量路径，原生音量存储的 `v` 保持二次 JSON 编码。
 
-自动最高画质等待官方档位、账号与控制栏 `isAllReady`，再核对主媒体的已解码帧、播放状态及未来数据。`player-actions.ts` 的 `isMainPlayerReady` 从已提交的主屏 hook 引用核对 SDK 首次就绪与在途切流，避免与官方已有切换重叠。随后完整调用一次 `onMultirateChange`，让官方提交画质记忆及主动选择标记；即使预载画面已经是最高档位也不提前跳过，避免官方 `checkSwitch` 的启动计时器稍后恢复旧偏好。
+`first-stream-quality.ts` 在 DOM 就绪前读取已保存的播放设置，匹配斗鱼预取 Promise 发起的官方首路请求。仅将默认 `rate=-1` 改为原画 `0`，首路命中或页面加载完成即撤除包装。改档取流失败时发回原请求，分房间记录官方返回的最高普通档位，并同步官方已有的启动恢复档位，保留 `checkSwitch` 替换预载片段的行为。
+
+播放适配等待官方档位、账号和控制栏 `isAllReady`，并核对主媒体的已解码帧、播放状态和未来数据。`isMainPlayerReady` 从已提交的主屏 hook 核对 SDK 首次就绪与在途切流。已确认该房间的首路在播档位就是最高普通档位时直接完成，否则完整调用一次 `onMultirateChange`，由官方检查权限并提交画质记忆和主动选择标记。
 
 等待期间在当前画质组件上包装 `onMultirateChange`，手动选择后取消本页自动选择；执行自动选择、关闭、换房、组件变化与释放时恢复这层包装。独立的 `playback-handoff.ts` 先于自动偏好挂载，包装清晰度、线路下拉框 `selectXL` 与 `selectCodec` 原生入口，保留原处理器的权限检查、偏好和官方切流逻辑。线路下拉框先保存事件中的线路值与名称，避免异步准备期间 React 事件被回收；右键线路选项从当前官方菜单识别，延后执行原 React 点击回调，失败通过官方 `selectXL` 恢复原线路，两种入口共享同一在途交接。
 

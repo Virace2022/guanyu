@@ -25,7 +25,7 @@ npm run dev
 
 服务固定在 `http://127.0.0.1:5173`，端口被占用时直接报错，不自动打开浏览器。通过用户脚本管理器安装服务提供的“开发 · 观鱼”，并保持服务运行；它支持热更新，不递增生产版本。开发项与生产项为独立安装项，在同一页面调试时只启用其中一个。
 
-运行范围由 `vite.config.ts` 的用户脚本元数据定义：主站以数字开头的房间路径、`/beta/*`、`/topic/*` 和粉丝牌列表页，仅顶层页面，`document-idle` 执行。GM 跨源权限限定 `douyu.com` 与 `douyucdn.cn`。
+运行范围由 `vite.config.ts` 的用户脚本元数据定义：主站以数字开头的房间路径、`/beta/*`、`/topic/*` 和粉丝牌列表页，仅顶层页面。用户脚本在 `document-start` 尝试接入首路画质，其他功能等 DOM 就绪后启动。Chromium 版油猴的 UserScripts API Dynamic 支持直接早期注入，默认的消息式注入可能赶不上。GM 跨源权限限定 `douyu.com` 与 `douyucdn.cn`。
 
 ## 控制台功能日志
 

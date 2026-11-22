@@ -1,5 +1,6 @@
 import type { PlaybackOptions } from '../../config/enhancements';
 import type { PlayerStore } from './player';
+import type { FirstStreamQuality } from './first-stream-quality';
 import { diagnostics } from '../../core/diagnostics';
 import { accountId, accountReady } from './account';
 import { isMainPlayerReady } from './player-actions';
@@ -16,7 +17,8 @@ function component(node: Element | null, accepts: (value: any) => boolean): any 
   return null;
 }
 
-export function mountPlayback(player: PlayerStore, isLive: () => boolean, report: (message: string) => void) {
+export function mountPlayback(player: PlayerStore, isLive: () => boolean, report: (message: string) => void,
+  firstStreamQuality?: FirstStreamQuality) {
   let options: PlaybackOptions, fullscreenApplied = false, qualityApplied = false, room = '', volume: Element | null = null;
   let qualityControl: any, restoreQuality: (() => void) | undefined;
   function releaseQuality() {
@@ -110,6 +112,11 @@ export function mountPlayback(player: PlayerStore, isLive: () => boolean, report
           return;
         }
         releaseQuality(); qualityApplied = true;
+        const highestRate = Number(highest.type ?? highest.rate);
+        if (firstStreamQuality?.usedRate(room, highestRate) && Number(rate.props.rate) === highestRate && Number(highest.diamondFan) !== 1) {
+          diagnostics.report('playback.highestQuality', 'applied', '首路已使用官方最高画质');
+          return;
+        }
         // 完整提交官方选择以记住偏好，并阻止官方启动计时器稍后恢复旧档位。
         void Promise.resolve().then(() => rate.onMultirateChange(highest)).then(result => diagnostics.report('playback.highestQuality', result === false ? 'idle' : 'ready', result === false ? '本次自动选择未完成切流，继续当前播放，可手动重新选择画质' : '已在当前视频播放后执行官方最高画质入口', '操作')).catch(error => { diagnostics.report('playback.highestQuality', 'error', `画质切换失败：${String(error)}`, '操作'); report(`画质切换失败：${String(error)}`); });
       }

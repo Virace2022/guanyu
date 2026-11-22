@@ -58,7 +58,7 @@ function validate(value: Settings): Settings {
     playback: readPlayback(value.playback), room: readRoom(value.room), backpack: readBackpack(value.backpack) };
 }
 
-function read(storage: Storage): Settings {
+export function readSettings(storage: Storage): Settings {
   const raw = storage.getItem(settingsKey);
   if (raw === null) return { ...defaults, gainPresets: [...defaults.gainPresets] };
   const value = JSON.parse(raw);
@@ -72,7 +72,7 @@ function read(storage: Storage): Settings {
 export function createSettings(storage: Storage, events: Window) {
   let loadError = '';
   let initial = { ...defaults };
-  try { initial = read(storage); }
+  try { initial = readSettings(storage); }
   catch (error) { loadError = `设置读取失败：${String(error)}`; diagnostics.failure('设置读取', error); }
   const state = createState(initial);
   const runtime = createState(initial);
@@ -96,7 +96,7 @@ export function createSettings(storage: Storage, events: Window) {
 
   function onStorage(event: StorageEvent) {
     if (event.key !== settingsKey && event.key !== null) return;
-    try { const value = read(storage); loadError = ''; state.set(value); refreshRuntime(); }
+    try { const value = readSettings(storage); loadError = ''; state.set(value); refreshRuntime(); }
     catch (error) { loadError = `设置读取失败：${String(error)}`; diagnostics.failure('跨页设置同步', error); }
   }
   events.addEventListener('storage', onStorage);

@@ -46,7 +46,7 @@
 | 4 | jsDelivr · 默认节点（等待同步） | ★★★★☆ | ★★★★☆ | 已有默认节点用户可继续沿用安装渠道。 |
 | 5 | jsdmirror · 中国境内第三方镜像（等待同步） | ★★★★★ | 未知 | 由第三方运营，作为最后备选。 |
 
-`2026.1121.1` 优先通过 GitHub Release 安装。四个 CDN 的新版安装入口将在实测通过后启用。完整地址见[发布说明](docs/RELEASING.md#安装与更新地址)。
+`2026.1122.1` 优先通过 GitHub Release 安装。四个 CDN 的新版安装入口将在实测通过后启用。完整地址见[发布说明](docs/RELEASING.md#安装与更新地址)。
 
 脚本同时通过 npm 包 [`guanyu-douyu`](https://www.npmjs.com/package/guanyu-douyu) 分发。各渠道的脚本名称和安装身份相同，覆盖安装可保留原设置。
 

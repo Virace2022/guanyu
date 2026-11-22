@@ -27,7 +27,7 @@ export default defineConfig(({ command }) => {
             'https://www.douyu.com/topic/*',
             'https://www.douyu.com/member/cp/getFansBadgeList',
           ],
-          'run-at': 'document-idle',
+          'run-at': 'document-start',
           noframes: true,
           connect: ['douyu.com', 'douyucdn.cn'],
           license: 'MIT',
