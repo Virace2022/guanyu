@@ -9,14 +9,34 @@ interface StreamRate {
   diamondFan?: number;
 }
 
-interface StreamResult {
-  error: number;
-  data?: { room_id: number; rate: number; multirates?: StreamRate[] };
+interface StartupStream {
+  room_id: number;
+  rate: number;
+  multirates?: StreamRate[];
+  rtmp_url?: string;
+  rtmp_live?: string;
+  is_mixed?: boolean;
+  rtc_stream_url?: string;
+  p2p?: number;
+  h265_p2p?: number;
 }
+
+interface StreamResult { error: number; data?: StartupStream }
 
 const originalRate = 0;
 const restoreRateKey = 'realRateModel2_h5p_room';
 const firstStreamPath = /^\/(?:lapi\/live\/getH5PlayV1|gapi\/live\/web\/super\/stream\/v1)\/([1-9]\d*)$/;
+
+function keepStartupCdn(response: Response, result: StreamResult, data: StartupStream) {
+  if (data.is_mixed || data.rtc_stream_url || !data.rtmp_url || !data.rtmp_live || !data.p2p) return response;
+  // 原生先用预载 CDN，并在 P2P 标记非零时安排第二次换流。直接使用同一 CDN 连续流可省掉这次交接。
+  const headers = new Headers(response.headers);
+  headers.delete('content-length');
+  headers.delete('content-encoding');
+  return new Response(JSON.stringify({ ...result, data: { ...data, p2p: 0, h265_p2p: 0 } }), {
+    status: response.status, statusText: response.statusText, headers,
+  });
+}
 
 function rememberStartupRate(page: Window) {
   try {
@@ -64,7 +84,10 @@ export function preferFirstStreamQuality(page: FirstStreamPage) {
           const selected = rates.find(rate => Number(rate.rate) === Number(data.rate));
           if (Number(data.rate) !== originalRate || Number(selected?.diamondFan) !== 1) {
             if (!disposed && String(data.room_id) === roomId && selected && selected === rates[0]
-              && Number(selected.rate) === originalRate && rememberStartupRate(page)) confirmedRoom = roomId;
+              && Number(selected.rate) === originalRate && rememberStartupRate(page)) {
+              confirmedRoom = roomId;
+              return keepStartupCdn(response, result, data);
+            }
             return response;
           }
         }

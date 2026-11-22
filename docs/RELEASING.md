@@ -25,10 +25,10 @@
 | 渠道 | 首次安装 | 检查更新 | 下载新版 |
 | --- | --- | --- | --- |
 | GitHub Release | [user.js](https://github.com/Virace2022/guanyu/releases/latest/download/douyu.guanyu.user.js) | [meta.js](https://github.com/Virace2022/guanyu/releases/latest/download/douyu.guanyu.meta.js) | [user.js](https://github.com/Virace2022/guanyu/releases/latest/download/douyu.guanyu.user.js) |
-| jsDelivr · Fastly | [user.js](https://fastly.jsdelivr.net/npm/guanyu-douyu@2026.1122.1/dist/fastly/douyu.guanyu.user.js) | [meta.js](https://fastly.jsdelivr.net/npm/guanyu-douyu@latest/dist/fastly/douyu.guanyu.meta.js) | [user.js](https://fastly.jsdelivr.net/npm/guanyu-douyu@latest/dist/fastly/douyu.guanyu.user.js) |
-| jsDelivr · Quantil | [user.js](https://quantil.jsdelivr.net/npm/guanyu-douyu@2026.1122.1/dist/quantil/douyu.guanyu.user.js) | [meta.js](https://quantil.jsdelivr.net/npm/guanyu-douyu@latest/dist/quantil/douyu.guanyu.meta.js) | [user.js](https://quantil.jsdelivr.net/npm/guanyu-douyu@latest/dist/quantil/douyu.guanyu.user.js) |
-| jsDelivr · 默认节点 | [user.js](https://cdn.jsdelivr.net/npm/guanyu-douyu@2026.1122.1/dist/douyu.guanyu.user.js) | [meta.js](https://cdn.jsdelivr.net/npm/guanyu-douyu@latest/dist/douyu.guanyu.meta.js) | [user.js](https://cdn.jsdelivr.net/npm/guanyu-douyu@latest/dist/douyu.guanyu.user.js) |
-| jsdmirror | [user.js](https://cdn.jsdmirror.com/npm/guanyu-douyu@2026.1122.1/dist/jsdmirror/douyu.guanyu.user.js) | [meta.js](https://cdn.jsdmirror.com/npm/guanyu-douyu@latest/dist/jsdmirror/douyu.guanyu.meta.js) | [user.js](https://cdn.jsdmirror.com/npm/guanyu-douyu@latest/dist/jsdmirror/douyu.guanyu.user.js) |
+| jsDelivr · Fastly | [user.js](https://fastly.jsdelivr.net/npm/guanyu-douyu@2026.1122.2/dist/fastly/douyu.guanyu.user.js) | [meta.js](https://fastly.jsdelivr.net/npm/guanyu-douyu@latest/dist/fastly/douyu.guanyu.meta.js) | [user.js](https://fastly.jsdelivr.net/npm/guanyu-douyu@latest/dist/fastly/douyu.guanyu.user.js) |
+| jsDelivr · Quantil | [user.js](https://quantil.jsdelivr.net/npm/guanyu-douyu@2026.1122.2/dist/quantil/douyu.guanyu.user.js) | [meta.js](https://quantil.jsdelivr.net/npm/guanyu-douyu@latest/dist/quantil/douyu.guanyu.meta.js) | [user.js](https://quantil.jsdelivr.net/npm/guanyu-douyu@latest/dist/quantil/douyu.guanyu.user.js) |
+| jsDelivr · 默认节点 | [user.js](https://cdn.jsdelivr.net/npm/guanyu-douyu@2026.1122.2/dist/douyu.guanyu.user.js) | [meta.js](https://cdn.jsdelivr.net/npm/guanyu-douyu@latest/dist/douyu.guanyu.meta.js) | [user.js](https://cdn.jsdelivr.net/npm/guanyu-douyu@latest/dist/douyu.guanyu.user.js) |
+| jsdmirror | [user.js](https://cdn.jsdmirror.com/npm/guanyu-douyu@2026.1122.2/dist/jsdmirror/douyu.guanyu.user.js) | [meta.js](https://cdn.jsdmirror.com/npm/guanyu-douyu@latest/dist/jsdmirror/douyu.guanyu.meta.js) | [user.js](https://cdn.jsdmirror.com/npm/guanyu-douyu@latest/dist/jsdmirror/douyu.guanyu.user.js) |
 
 GitHub 附件的元数据为：
 
