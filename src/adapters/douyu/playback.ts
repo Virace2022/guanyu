@@ -20,6 +20,7 @@ function component(node: Element | null, accepts: (value: any) => boolean): any 
 export function mountPlayback(player: PlayerStore, isLive: () => boolean, report: (message: string) => void,
   firstStreamQuality?: FirstStreamQuality) {
   let options: PlaybackOptions, fullscreenApplied = false, qualityApplied = false, room = '', volume: Element | null = null;
+  let qualityRequested = false;
   let qualityControl: any, restoreQuality: (() => void) | undefined;
   function releaseQuality() {
     restoreQuality?.(); restoreQuality = undefined; qualityControl = undefined;
@@ -31,6 +32,7 @@ export function mountPlayback(player: PlayerStore, isLive: () => boolean, report
     const original = control.onMultirateChange;
     const change = function(this: any, ...args: any[]) {
       qualityApplied = true;
+      qualityRequested = false;
       releaseQuality();
       diagnostics.report('playback.highestQuality', 'idle', '已手动选择画质，本页不再自动切到最高画质');
       return original.apply(this, args);
@@ -89,12 +91,9 @@ export function mountPlayback(player: PlayerStore, isLive: () => boolean, report
     }
     if (options.highestQuality && !qualityApplied) {
       const rate = component(bar, value => typeof value.onMultirateChange === 'function' && Array.isArray(value.props?.multirates));
-      watchQuality(rate);
-      if (accountId() && !accountReady()) {
-        diagnostics.report('playback.highestQuality', 'waiting', '等待官方确认账号登录后再自动切换画质');
-        return;
-      }
-      const highest = rate?.props.multirates[0];
+      if (qualityRequested) watchQuality(rate);
+      const highest = qualityRequested ? rate?.props.multirates[0]
+        : rate?.props.multirates.find((value: { diamondFan?: number }) => Number(value.diamondFan) !== 1);
       if (!highest) diagnostics.report('playback.highestQuality', 'unmatched', !bar ? '未找到 #js-player-controlbar' : !rate ? '未找到带 onMultirateChange / props.multirates 的原生画质组件' : '官方 multirates 尚未提供画质档位');
       if (highest) {
         if (!rate.props.isAllReady) {
@@ -104,20 +103,28 @@ export function mountPlayback(player: PlayerStore, isLive: () => boolean, report
         const video = player.value.video;
         if (!video || video.paused || video.seeking || video.readyState < HTMLMediaElement.HAVE_FUTURE_DATA
           || video.currentTime <= 0 || video.getVideoPlaybackQuality?.().totalVideoFrames === 0) {
-          diagnostics.report('playback.highestQuality', 'waiting', '等待当前视频开始播放并有可用缓冲，再使用官方平滑画质切换');
+          diagnostics.report('playback.highestQuality', 'waiting', '等待当前视频开始播放并有可用缓冲');
           return;
         }
         if (!isMainPlayerReady()) {
           diagnostics.report('playback.highestQuality', 'waiting', '等待官方主播放器就绪并完成当前切流');
           return;
         }
-        releaseQuality(); qualityApplied = true;
-        const highestRate = Number(highest.type ?? highest.rate);
-        if (firstStreamQuality?.usedRate(room, highestRate) && Number(rate.props.rate) === highestRate && Number(highest.diamondFan) !== 1) {
-          diagnostics.report('playback.highestQuality', 'applied', '首路已使用官方最高画质');
+        if (qualityRequested && accountId() && !accountReady()) {
+          diagnostics.report('playback.highestQuality', 'waiting', '等待官方确认账号登录后再切换画质');
           return;
         }
-        // 完整提交官方选择以记住偏好，并阻止官方启动计时器稍后恢复旧档位。
+        releaseQuality(); qualityApplied = true;
+        const highestRate = Number(highest.type ?? highest.rate);
+        if (!qualityRequested) {
+          const matched = Number(rate.props.rate) === highestRate;
+          const confirmed = matched && firstStreamQuality?.usedRate(room, highestRate);
+          diagnostics.report('playback.highestQuality', matched ? 'applied' : 'idle', confirmed ? '首路已使用官方最高画质'
+            : matched ? '当前已使用官方最高画质' : '首播未取得最高画质，继续当前播放');
+          return;
+        }
+        qualityRequested = false;
+        if (Number(rate.props.rate) === highestRate) return;
         void Promise.resolve().then(() => rate.onMultirateChange(highest)).then(result => diagnostics.report('playback.highestQuality', result === false ? 'idle' : 'ready', result === false ? '本次自动选择未完成切流，继续当前播放，可手动重新选择画质' : '已在当前视频播放后执行官方最高画质入口', '操作')).catch(error => { diagnostics.report('playback.highestQuality', 'error', `画质切换失败：${String(error)}`, '操作'); report(`画质切换失败：${String(error)}`); });
       }
     }
@@ -126,8 +133,8 @@ export function mountPlayback(player: PlayerStore, isLive: () => boolean, report
   return {
     apply(value: PlaybackOptions) {
       if (options && !options.autoWebFullscreen && value.autoWebFullscreen) fullscreenApplied = false;
-      if (options && !options.highestQuality && value.highestQuality) qualityApplied = false;
-      if (!value.highestQuality) releaseQuality();
+      if (options && !options.highestQuality && value.highestQuality) { qualityApplied = false; qualityRequested = true; }
+      if (!value.highestQuality) { qualityRequested = false; releaseQuality(); }
       options = value; sync();
     },
     dispose() { stop(); clearInterval(timer); releaseQuality(); volume?.removeEventListener('wheel', wheel, true); },
